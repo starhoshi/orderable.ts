@@ -97,4 +97,4 @@ firebase-debug.log
 sample-cloud-functions/functions/out
 
 # Test
-out/__tests__
+orderable/out/__tests__
