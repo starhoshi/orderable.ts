@@ -9,18 +9,6 @@ import * as Flow from '@1amageek/flow'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as request from 'request'
 
-// import { DocumentPath } from './ref'
-// import * as Firebase from './model'
-// import { ValueChanges, ValueChangesResult } from './valuechanges'
-// import { Region, Prefecture, regions } from './regions'
-// import { Task, TaskAction, TaskError, TaskStatus } from './task'
-// import { ValidationErrorType, FlowError, KomercoNeoTask } from './neoTask'
-// import { StripeError } from './stripeError'
-
-// export class HasNeoTask extends Pring.Base {
-//   @property neoTask?: HasNeoTask
-// }
-
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
 let slackURL: string
@@ -637,7 +625,7 @@ export namespace Functions {
     }
   })
 
-  export const orderPaymentRequested = functions.firestore.document(`${Model.Order.getPath()}/{orderID}`).onUpdate(async event => {
+  export const orderPaymentRequested = functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
       await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)

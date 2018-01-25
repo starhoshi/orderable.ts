@@ -21,16 +21,6 @@ const pring_1 = require("pring");
 const retrycf_1 = require("retrycf");
 const Flow = require("@1amageek/flow");
 const request = require("request");
-// import { DocumentPath } from './ref'
-// import * as Firebase from './model'
-// import { ValueChanges, ValueChangesResult } from './valuechanges'
-// import { Region, Prefecture, regions } from './regions'
-// import { Task, TaskAction, TaskError, TaskStatus } from './task'
-// import { ValidationErrorType, FlowError, KomercoNeoTask } from './neoTask'
-// import { StripeError } from './stripeError'
-// export class HasNeoTask extends Pring.Base {
-//   @property neoTask?: HasNeoTask
-// }
 let stripe;
 let firestore;
 let slackURL;
@@ -653,7 +643,7 @@ var Functions;
             throw new FlowError(neoTask, error);
         }
     }));
-    Functions.orderPaymentRequested = functions.firestore.document(`${Model.Order.getPath()}/{orderID}`).onUpdate((event) => __awaiter(this, void 0, void 0, function* () {
+    Functions.orderPaymentRequested = functions.firestore.document(`version/1/order/{orderID}`).onUpdate((event) => __awaiter(this, void 0, void 0, function* () {
         try {
             const shouldRetry = NeoTask.shouldRetry(event.data);
             yield NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event);
