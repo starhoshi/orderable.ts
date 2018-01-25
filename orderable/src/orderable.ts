@@ -1,9 +1,34 @@
-import { Retrycf } from 'retrycf'
+import * as functions from 'firebase-functions'
+import * as FirebaseFirestore from '@google-cloud/firestore'
+import * as admin from 'firebase-admin'
+import * as Stripe from 'stripe'
 import { Pring, property } from 'pring'
+import { Retrycf } from 'retrycf'
+import * as Flow from '@1amageek/flow'
+import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
+
+// import { DocumentPath } from './ref'
+// import * as Firebase from './model'
+// import { ValueChanges, ValueChangesResult } from './valuechanges'
+// import { Region, Prefecture, regions } from './regions'
+// import { Task, TaskAction, TaskError, TaskStatus } from './task'
+// import { ValidationErrorType, FlowError, KomercoNeoTask } from './neoTask'
+// import { StripeError } from './stripeError'
 
 // export class HasNeoTask extends Pring.Base {
 //   @property neoTask?: HasNeoTask
 // }
+
+let stripe: Stripe
+let firestore: FirebaseFirestore.Firestore
+
+const initialize = (options: { adminOptions: any, stripeToken: string }) => {
+  admin.initializeApp(options.adminOptions)
+  Pring.initialize(options.adminOptions)
+  Retrycf.initialize(options.adminOptions)
+  firestore = new FirebaseFirestore.Firestore(options)
+  stripe = new Stripe(options.stripeToken)
+}
 
 export namespace Model {
   export class HasNeoTask extends Pring.Base {
