@@ -38,7 +38,7 @@ let slackChannel;
 exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
     retrycf_1.Retrycf.initialize(options.adminOptions);
-    firestore = new FirebaseFirestore.Firestore(options);
+    firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
     slackURL = options.slack.url;
     slackChannel = options.slack.channel;
