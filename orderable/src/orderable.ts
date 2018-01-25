@@ -28,7 +28,7 @@ let slackChannel: string
 export const initialize = (options: { adminOptions: any, stripeToken: string, slack: { url: string, channel: string } }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
-  firestore = new FirebaseFirestore.Firestore(options)
+  firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
   slackURL = options.slack.url
   slackChannel = options.slack.channel
