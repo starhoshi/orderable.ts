@@ -1,0 +1,23 @@
+{
+  "name": "@star__hoshi/ordarable",
+  "version": "0.0.1",
+  "description": "",
+  "main": "out/orderable.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starhoshi/orderable.ts.git"
+  },
+  "keywords": [
+    "firebase",
+    "stripe"
+  ],
+  "author": "star__hoshi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/starhoshi/orderable.ts/issues"
+  },
+  "homepage": "https://github.com/starhoshi/orderable.ts#readme"
+}
