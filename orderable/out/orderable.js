@@ -13,3 +13,12 @@ __decorate([
     pring_1.property
 ], HasNeoTask.prototype, "neoTask", void 0);
 exports.HasNeoTask = HasNeoTask;
+var Model;
+(function (Model) {
+    class Order extends pring_1.Pring.Base {
+    }
+    __decorate([
+        pring_1.property
+    ], Order.prototype, "neoTask", void 0);
+    Model.Order = Order;
+})(Model = exports.Model || (exports.Model = {}));
