@@ -14,7 +14,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const functions = require("firebase-functions");
 const FirebaseFirestore = require("@google-cloud/firestore");
 const Stripe = require("stripe");
 const pring_1 = require("pring");
@@ -643,7 +642,8 @@ var Functions;
             throw new FlowError(neoTask, error);
         }
     }));
-    Functions.orderPaymentRequested = functions.firestore.document(`version/1/order/{orderID}`).onUpdate((event) => __awaiter(this, void 0, void 0, function* () {
+    Functions.orderPaymentRequested = (event) => __awaiter(this, void 0, void 0, function* () {
+        // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
         try {
             const shouldRetry = NeoTask.shouldRetry(event.data);
             yield NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event);
@@ -692,5 +692,5 @@ var Functions;
             }
             return Promise.reject(error);
         }
-    }));
+    });
 })(Functions = exports.Functions || (exports.Functions = {}));

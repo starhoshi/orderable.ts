@@ -625,7 +625,8 @@ export namespace Functions {
     }
   })
 
-  export const orderPaymentRequested = functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>) => {
+  // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
       await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
@@ -678,5 +679,5 @@ export namespace Functions {
 
       return Promise.reject(error)
     }
-  })
+  }
 }

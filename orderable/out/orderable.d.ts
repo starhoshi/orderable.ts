@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions';
-import { Event, TriggerAnnotated } from 'firebase-functions';
+import { Event } from 'firebase-functions';
 import * as FirebaseFirestore from '@google-cloud/firestore';
 import { Pring } from 'pring';
 import { Retrycf } from 'retrycf';
@@ -118,5 +118,5 @@ export declare class StripeError extends Error {
     setNeoTask(event: functions.Event<DeltaDocumentSnapshot>, step: string): Promise<NeoTask>;
 }
 export declare namespace Functions {
-    const orderPaymentRequested: TriggerAnnotated & ((event: Event<any> | Event<DeltaDocumentSnapshot>) => any);
+    const orderPaymentRequested: (event: Event<DeltaDocumentSnapshot>) => Promise<void>;
 }
