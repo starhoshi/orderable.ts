@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions'
+import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as admin from 'firebase-admin'
 import * as Stripe from 'stripe'
@@ -25,7 +26,7 @@ let firestore: FirebaseFirestore.Firestore
 let slackURL: string
 let slackChannel: string
 
-const initialize = (options: { adminOptions: any, stripeToken: string, slack: { url: string, channel: string } }) => {
+export const initialize = (options: { adminOptions: any, stripeToken: string, slack: { url: string, channel: string } }) => {
   admin.initializeApp(options.adminOptions)
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
@@ -309,61 +310,6 @@ export namespace Functions {
       return orderSKUObjects
     }
   }
-
-  export const orderPaymentRequested = functions.firestore.document(`${Model.Order.getPath()}/{orderID}`).onUpdate(async event => {
-    try {
-      const shouldRetry = NeoTask.shouldRetry(event.data)
-      await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
-
-      // status が payment requested に変更された時
-      // もしくは should retry が true だった時にこの functions は実行される
-      // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
-      //   return undefined
-      // }
-      if (event.data.data().status !== Model.OrderStatus.PaymentRequested && !shouldRetry) {
-        return undefined
-      }
-
-      if (!event.params || !event.params.orderID) {
-        throw Error('orderID must be non-null')
-      }
-
-      const orderObject = new OrderObject(event.params.orderID, event)
-      const flow = new Flow.Line([
-        prepareRequiredData,
-        validateShopIsActive,
-        validateSKUIsActive,
-        validateCardExpired,
-        validateAndDecreaseStock,
-        stripeCharge,
-        updateOrder,
-        updateOrderShops,
-        setOrderTask
-      ])
-
-      try {
-        await flow.run(orderObject)
-      } catch (e) {
-        throw e
-      }
-
-      return Promise.resolve()
-    } catch (error) {
-      console.error(error)
-      if (error.constructor === Retrycf.CompletedError) {
-        // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
-        return undefined
-      } else {
-        // await Task.failure(event.data.ref, TaskAction.resume, event.data.data(), new TaskError(error.toString()))
-      }
-
-      if (error.constructor !== FlowError) {
-        await NeoTask.setFatalAndPostToSlack(event, 'orderPaymentRequested', error.toString())
-      }
-
-      return Promise.reject(error)
-    }
-  })
 
   class OrderObject implements Flow.Dependency {
     orderID: string
@@ -689,6 +635,61 @@ export namespace Functions {
       // 失敗する可能性があるのは update の失敗だけなので retry
       const neoTask = await NeoTask.setRetry(orderObject.event, 'setOrderTask', error)
       throw new FlowError(neoTask, error)
+    }
+  })
+
+  export const orderPaymentRequested = functions.firestore.document(`${Model.Order.getPath()}/{orderID}`).onUpdate(async event => {
+    try {
+      const shouldRetry = NeoTask.shouldRetry(event.data)
+      await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
+
+      // status が payment requested に変更された時
+      // もしくは should retry が true だった時にこの functions は実行される
+      // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
+      //   return undefined
+      // }
+      if (event.data.data().status !== Model.OrderStatus.PaymentRequested && !shouldRetry) {
+        return undefined
+      }
+
+      if (!event.params || !event.params.orderID) {
+        throw Error('orderID must be non-null')
+      }
+
+      const orderObject = new OrderObject(event.params.orderID, event)
+      const flow = new Flow.Line([
+        prepareRequiredData,
+        validateShopIsActive,
+        validateSKUIsActive,
+        validateCardExpired,
+        validateAndDecreaseStock,
+        stripeCharge,
+        updateOrder,
+        updateOrderShops,
+        setOrderTask
+      ])
+
+      try {
+        await flow.run(orderObject)
+      } catch (e) {
+        throw e
+      }
+
+      return Promise.resolve()
+    } catch (error) {
+      console.error(error)
+      if (error.constructor === Retrycf.CompletedError) {
+        // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
+        return undefined
+      } else {
+        // await Task.failure(event.data.ref, TaskAction.resume, event.data.data(), new TaskError(error.toString()))
+      }
+
+      if (error.constructor !== FlowError) {
+        await NeoTask.setFatalAndPostToSlack(event, 'orderPaymentRequested', error.toString())
+      }
+
+      return Promise.reject(error)
     }
   })
 }
