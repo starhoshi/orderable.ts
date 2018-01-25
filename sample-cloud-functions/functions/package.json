@@ -12,15 +12,20 @@
     "deploy": "tsc && firebase deploy --only functions"
   },
   "dependencies": {
+    "@1amageek/flow": "^0.2.1",
+    "@star__hoshi/orderable": "^0.0.4",
     "firebase-admin": "~5.8.1",
     "firebase-functions": "^0.8.1",
     "pring": "^0.4.1",
-    "retrycf": "^0.0.29"
+    "retrycf": "^0.0.29",
+    "stripe": "^5.4.0"
   },
   "private": true,
   "main": "out/index.js",
   "devDependencies": {
     "@types/jest": "^22.1.0",
+    "@types/stripe": "^5.0.2",
+    "firebase-tools": "^3.17.3",
     "jest": "^22.1.4",
     "ts-jest": "^22.0.0",
     "tslint": "^5.9.1",
