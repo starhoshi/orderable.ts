@@ -353,6 +353,7 @@ export namespace Functions {
         }
 
         // 重複実行された時に、2回目の実行を弾く
+        console.log('mark ref', this.event.data.ref)
         promises.push(NeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
 
         return Promise.all(promises)
