@@ -3,8 +3,11 @@
   "version": "0.0.1",
   "description": "",
   "main": "out/orderable.js",
+  "types": "out/orderable.d.ts",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "tslint -p tslint.json && tsc -d",
+    "npm_publish": "yarn run build && npm version patch && git commit -am 'publish' && git push origin master && npm publish"
   },
   "repository": {
     "type": "git",
@@ -19,5 +22,29 @@
   "bugs": {
     "url": "https://github.com/starhoshi/orderable.ts/issues"
   },
-  "homepage": "https://github.com/starhoshi/orderable.ts#readme"
+  "homepage": "https://github.com/starhoshi/orderable.ts#readme",
+  "devDependencies": {
+    "@types/jest": "^22.0.0",
+    "jest": "^22.1.4",
+    "ts-jest": "^22.0.0",
+    "tslint": "^5.9.1",
+    "typescript": "^2.6.2"
+  },
+  "jest": {
+    "transform": {
+      "\\.ts": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "src/__tests__/.*.test.ts",
+    "moduleFileExtensions": [
+      "ts",
+      "js",
+      "json"
+    ]
+  },
+  "dependencies": {
+    "firebase-admin": "^5.8.1",
+    "firebase-functions": "^0.8.1",
+    "pring": "^0.4.1",
+    "retrycf": "^0.0.31"
+  }
 }
