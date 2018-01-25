@@ -43,7 +43,6 @@ export namespace Model {
     }
   }
 
-
   export enum OrderStatus {
     Unknown = 0,
     Created = 1,
