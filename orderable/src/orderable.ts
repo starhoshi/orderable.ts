@@ -1,7 +1,6 @@
 import * as functions from 'firebase-functions'
 import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
-import * as admin from 'firebase-admin'
 import * as Stripe from 'stripe'
 import { Pring, property } from 'pring'
 import { Retrycf } from 'retrycf'
@@ -27,7 +26,6 @@ let slackURL: string
 let slackChannel: string
 
 export const initialize = (options: { adminOptions: any, stripeToken: string, slack: { url: string, channel: string } }) => {
-  admin.initializeApp(options.adminOptions)
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   firestore = new FirebaseFirestore.Firestore(options)
@@ -347,10 +345,10 @@ export namespace Functions {
         throw Error('orderSKUObjects must be non-null')
       }
 
-      return admin.firestore().runTransaction(async (transaction) => {
+      return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
         for (const orderSKUObject of orderSKUObjects) {
-          const skuRef = admin.firestore().collection(`version/1/sku`).doc(orderSKUObject.sku.id)
+          const skuRef = firestore.collection(`version/1/sku`).doc(orderSKUObject.sku.id)
           const t = transaction.get(skuRef).then(tsku => {
             const quantity = orderSKUObject.orderSKU.quantity * operator
             const newStock = tsku.data()!.stock + quantity
@@ -597,11 +595,11 @@ export namespace Functions {
     try {
       const order = orderObject.order!
 
-      await admin.firestore().collection('version/1/ordershop')
-        .where('order', '==', admin.firestore().collection(`version/1/order`).doc(order.id))
+      await firestore.collection('version/1/ordershop')
+        .where('order', '==', firestore.collection(`version/1/order`).doc(order.id))
         .get()
         .then(snapshot => {
-          const batch = admin.firestore().batch()
+          const batch = firestore.batch()
 
           // OrderShopStatus が Create のだけ Paid に更新する。
           snapshot.docs.filter(doc => {

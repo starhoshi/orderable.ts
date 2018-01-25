@@ -16,7 +16,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const functions = require("firebase-functions");
 const FirebaseFirestore = require("@google-cloud/firestore");
-const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const pring_1 = require("pring");
 const retrycf_1 = require("retrycf");
@@ -37,7 +36,6 @@ let firestore;
 let slackURL;
 let slackChannel;
 exports.initialize = (options) => {
-    admin.initializeApp(options.adminOptions);
     pring_1.Pring.initialize(options.adminOptions);
     retrycf_1.Retrycf.initialize(options.adminOptions);
     firestore = new FirebaseFirestore.Firestore(options);
@@ -409,10 +407,10 @@ var Functions;
             if (!orderSKUObjects) {
                 throw Error('orderSKUObjects must be non-null');
             }
-            return admin.firestore().runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
+            return firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = admin.firestore().collection(`version/1/sku`).doc(orderSKUObject.sku.id);
+                    const skuRef = firestore.collection(`version/1/sku`).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
                         const newStock = tsku.data().stock + quantity;
@@ -619,11 +617,11 @@ var Functions;
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            yield admin.firestore().collection('version/1/ordershop')
-                .where('order', '==', admin.firestore().collection(`version/1/order`).doc(order.id))
+            yield firestore.collection('version/1/ordershop')
+                .where('order', '==', firestore.collection(`version/1/order`).doc(order.id))
                 .get()
                 .then(snapshot => {
-                const batch = admin.firestore().batch();
+                const batch = firestore.batch();
                 // OrderShopStatus が Create のだけ Paid に更新する。
                 snapshot.docs.filter(doc => {
                     const orderShop = new Model.OrderShop();
