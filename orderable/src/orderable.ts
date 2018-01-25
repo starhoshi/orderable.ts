@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions'
+import * as admin from 'firebase-admin'
 import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
