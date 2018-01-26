@@ -322,9 +322,9 @@
   dependencies:
     "@types/node" "*"
 
-"@types/stripe@^5.0.2":
-  version "5.0.2"
-  resolved "https://registry.yarnpkg.com/@types/stripe/-/stripe-5.0.2.tgz#df0d9b90da2da8d96adf19181a0f19b69e7571c6"
+"@types/stripe@^5.0.3":
+  version "5.0.3"
+  resolved "https://registry.yarnpkg.com/@types/stripe/-/stripe-5.0.3.tgz#957504ee1b74237b3c22f6e3663294891f881d99"
   dependencies:
     "@types/node" "*"
 
@@ -1956,9 +1956,9 @@ firebase-functions@^0.8.1:
     lodash "^4.6.1"
     sha1 "^1.1.1"
 
-firebase-tools@^3.17.3:
-  version "3.17.3"
-  resolved "https://registry.yarnpkg.com/firebase-tools/-/firebase-tools-3.17.3.tgz#6e8a29a746807e1a2d8b11499d97a8580827b5ab"
+firebase-tools@^3.17.4:
+  version "3.17.4"
+  resolved "https://registry.yarnpkg.com/firebase-tools/-/firebase-tools-3.17.4.tgz#dde15ee12a6fa9930a4142b7dafd12313f6555d8"
   dependencies:
     JSONStream "^1.2.1"
     archiver "^2.1.1"
@@ -4527,9 +4527,9 @@ retry-request@^3.0.0, retry-request@^3.3.1:
     request "^2.81.0"
     through2 "^2.0.0"
 
-retrycf@^0.0.33:
-  version "0.0.33"
-  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.0.33.tgz#ca683d4d8f217db345913fd45d01815d4a7d5781"
+retrycf@^0.0.34:
+  version "0.0.34"
+  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.0.34.tgz#c24ca7c4203da54c07da98618f054e83d5fd784d"
   dependencies:
     firebase-admin "^5.8.1"
     firebase-functions "^0.8.1"
