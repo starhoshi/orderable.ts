@@ -11,19 +11,18 @@ import * as request from 'request'
 
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
-let slackURL: string
-let slackChannel: string
+let slackParams: SlackParams
 
-export const initialize = (options: { adminOptions: any, stripeToken: string, slack: { url: string, channel: string } }) => {
+export const initialize = (options: { adminOptions: any, stripeToken: string, slack: SlackParams }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
-  slackURL = options.slack.url
-  slackChannel = options.slack.channel
+  slackParams = options.slack
 }
 
 interface SlackParams {
+  enabled: boolean
   url?: string
   channel?: string
   username?: string
@@ -31,19 +30,27 @@ interface SlackParams {
 }
 
 class Slack {
+  enabled: boolean = true
   url: string
   channel: string
   username: string
   iconEmoji: string
 
-  constructor(params: SlackParams) {
-    this.url = params.url || slackURL
-    this.channel = params.channel || slackChannel
-    this.username = params.username || 'cloud-functions-police'
-    this.iconEmoji = params.iconEmoji || ':warning:'
+  constructor(params: SlackParams = slackParams) {
+    this.enabled = params.enabled || slackParams.enabled
+    if (this.enabled) {
+      this.url = params.url!
+      this.channel = params.channel!
+      this.username = params.username || 'cloud-functions-police'
+      this.iconEmoji = params.iconEmoji || ':warning:'
+    }
   }
 
   async post(text: string) {
+    if (!this.enabled) {
+      return
+    }
+
     const options = {
       json: {
         channel: this.channel,
@@ -85,12 +92,12 @@ export class NeoTask extends Retrycf.NeoTask {
   static async  setFatalAndPostToSlackIfRetryCountIsMax(event: functions.Event<DeltaDocumentSnapshot>) {
     const neoTask = await NeoTask.setFatalIfRetryCountIsMax(event)
     if (neoTask) {
-      await new Slack({}).post(`fatal error! step: retry_failed, error: ${JSON.stringify(neoTask.rawValue())}`)
+      await new Slack().post(`fatal error! step: retry_failed, error: ${JSON.stringify(neoTask.rawValue())}`)
     }
   }
 
   static async setFatalAndPostToSlack(event: functions.Event<DeltaDocumentSnapshot>, step: string, error: any) {
-    await new Slack({}).post(`fatal error! step: ${step}, error: ${error}`)
+    await new Slack().post(`fatal error! step: ${step}, error: ${error}`)
     return NeoTask.setFatal(event, step, error)
   }
 }
