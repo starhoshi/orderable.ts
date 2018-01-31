@@ -652,7 +652,7 @@ var Functions;
             // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
             //   return undefined
             // }
-            if (event.data.data().status !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
+            if (event.data.data().paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
                 return undefined;
             }
             if (!event.params || !event.params.orderID) {

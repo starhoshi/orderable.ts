@@ -17,7 +17,7 @@ Orderable.initialize({
 console.log(functions.config())
 
 // export const orderablePayOrder = Orderable.Functions.orderPaymentRequested
-export const orderablePayOrder = functions.firestore
+export const payOrder = functions.firestore
   .document('version/1/order/{orderID}')
   .onUpdate(event => {
     return Orderable.Functions.orderPaymentRequested(event)
