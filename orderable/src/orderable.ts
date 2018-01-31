@@ -100,14 +100,12 @@ export namespace Model {
     @property neoTask?: HasNeoTask
   }
 
-  export class User extends Pring.Base {
-    @property stripeCustomerID?: string
-  }
+  export class User extends Pring.Base { }
 
   export class Shop extends Pring.Base {
     @property name?: string
     @property isActive: boolean = true
-    @property freePostageMinimunPrice: number = -1
+    @property freePostageMinimumPrice: number = -1
   }
 
   export class Product extends Pring.Base {
@@ -128,54 +126,65 @@ export namespace Model {
     @property isActive: boolean = true
 
     // 在庫チェック
-    isInStock(quantity: number): boolean {
-      return this.stock - quantity >= 0
-    }
+    // hasStock(quantity: number): boolean {
+    //   return this.stock - quantity >= 0
+    // }
   }
 
-  export enum OrderStatus {
+  export enum OrderPaymentStatus {
     Unknown = 0,
     Created = 1,
     PaymentRequested = 2,
     WaitingForPayment = 3,
     Paid = 4
   }
-  export class Order extends HasNeoTask {
-    @property user: FirebaseFirestore.DocumentReference
-    @property stripeCardID?: string
-    @property amount: number = 0
-    @property skuPriceSum: number = 0
-    @property postage: number = 0
-    @property paidDate: FirebaseFirestore.FieldValue
-    @property expirationDate: FirebaseFirestore.FieldValue = new Date().setHours(new Date().getHours() + 1)
-    @property status: OrderStatus = OrderStatus.Created
-    @property stripeChargeID?: string
-    @property currency?: string
 
-    // @property orderShops: Pring.ReferenceCollection<OrderShop> = new Pring.ReferenceCollection(this)
-
-    @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
+  export class StripeCharge extends Pring.Base {
+    @property cardID?: string
+    @property customerID?: string
+    @property chargeID?: string
   }
 
-  export enum OrderShopStatus {
+  export class Order extends HasNeoTask {
+    @property user: FirebaseFirestore.DocumentReference
+    @property amount: number = 0
+    // @property stripeCardID?: string
+    // @property skuPriceSum: number = 0
+    // @property postage: number = 0
+    @property paidDate: FirebaseFirestore.FieldValue
+    @property expirationDate: FirebaseFirestore.FieldValue = new Date().setHours(new Date().getHours() + 1)
+    @property currency?: string
+    @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
+
+    @property paymentStatus: OrderPaymentStatus = OrderPaymentStatus.Created
+    @property stripe?: StripeCharge
+
+    isCharged(): boolean {
+      if (this.stripe && this.stripe.chargeID) {
+        return true
+      }
+
+      return false
+    }
+  }
+
+  export enum OrderShopPaymentStatus {
     Unknown = 0,
     Created = 1,
-    Paid = 2,
-    Delivered = 3,
-    Recieved = 4
+    Paid = 2
   }
   export class OrderShop extends Pring.Base {
     @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
-    @property status: OrderShopStatus = OrderShopStatus.Unknown
+    @property paymentStatus: OrderShopPaymentStatus = OrderShopPaymentStatus.Unknown
 
-    @property order: FirebaseFirestore.DocumentReference
+    // @property order: FirebaseFirestore.DocumentReference
     @property user: FirebaseFirestore.DocumentReference
   }
 
   export class OrderSKU extends Pring.Base {
-    @property orderShop: FirebaseFirestore.DocumentReference
-    @property snapshotSKU: SKU
-    @property snapshotProduct: Product
+    // @property orderShop: FirebaseFirestore.DocumentReference
+    @property snapshotSKU?: SKU
+    @property snapshotProduct?: Product
     @property quantity: number = 0
 
     // @property order: FirebaseFirestore.DocumentReference
@@ -303,7 +312,9 @@ export namespace Functions {
     event: functions.Event<DeltaDocumentSnapshot>
     order?: Model.Order
     shops?: Model.Shop[]
+    // shops?: T extends ShopProtocol
     user?: Model.User
+    // user?: U extends UserProtocol
     orderSKUObjects?: OrderSKUObject[]
     stripeCharge?: Stripe.charges.ICharge
     stripeCard?: Stripe.cards.ICard
@@ -346,7 +357,7 @@ export namespace Functions {
               transaction.update(skuRef, { stock: newStock })
             } else {
               throw new Retrycf.ValidationError(ValidationErrorType.OutOfStock,
-                `${orderSKUObject.orderSKU.snapshotProduct.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
+                `${orderSKUObject.orderSKU.snapshotProduct!.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
             }
           })
           promises.push(t)
@@ -376,11 +387,11 @@ export namespace Functions {
       })
       const orderSKUObjects = await OrderSKUObject.fetchFrom(order)
       const shops = await OrderObject.fetchShopsFrom(orderSKUObjects)
-      const stripeCard = await stripe.customers.retrieveCard(user.stripeCustomerID!, order.stripeCardID!)
+      // TODO if stripe
+      const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
 
       console.log('amount', order.amount)
-      console.log('stripeCardID', order.stripeCardID)
-      console.log('stripeCustomerID', user.stripeCustomerID)
+      console.log('stripe', order.stripe)
 
       orderObject.order = order
       orderObject.user = user
@@ -402,7 +413,7 @@ export namespace Functions {
       const shops = orderObject.shops!
 
       // 決済済みだったらスキップして良い
-      if (order.stripeChargeID) {
+      if (order.isCharged()) {
         return orderObject
       }
 
@@ -431,14 +442,14 @@ export namespace Functions {
       const orderSKUObjects = orderObject.orderSKUObjects!
 
       // 決済済みだったらスキップして良い
-      if (order.stripeChargeID) {
+      if (order.isCharged()) {
         return orderObject
       }
 
       orderSKUObjects.forEach((orderSKUObject, index) => {
         if (!orderSKUObject.sku.isActive) {
           throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
-            `商品「${orderSKUObject.orderSKU.snapshotProduct.name}」は現在ご利用いただけません。`)
+            `商品「${orderSKUObject.orderSKU.snapshotProduct!.name}」は現在ご利用いただけません。`)
         }
       })
 
@@ -460,7 +471,7 @@ export namespace Functions {
       const stripeCard = orderObject.stripeCard!
 
       // 決済済みだったらスキップ
-      if (order.stripeChargeID) {
+      if (order.isCharged()) {
         return orderObject
       }
 
@@ -488,7 +499,7 @@ export namespace Functions {
       const order = orderObject.order!
 
       // 決済済みだったらスキップして良い
-      if (order.stripeChargeID) {
+      if (order.isCharged()) {
         return orderObject
       }
 
@@ -513,7 +524,7 @@ export namespace Functions {
       const currency = order.currency!
 
       // 決済済み
-      if (order.stripeChargeID) {
+      if (order.isCharged()) {
         return orderObject
       }
 
@@ -521,14 +532,12 @@ export namespace Functions {
         {
           amount: order.amount,
           currency: currency,
-          customer: user.stripeCustomerID,
-          source: order.stripeCardID,
+          customer: order.stripe!.customerID, // TODO: if stripe
+          source: order.stripe!.cardID, // TODO: if stripe
           transfer_group: order.id,
           metadata: {
             orderID: order.id,
-            skuPriceSum: order.skuPriceSum,
-            postage: order.postage,
-            userID: user.id
+            rawValue: order.rawValue()
           }
         },
         {
@@ -562,14 +571,14 @@ export namespace Functions {
       const order = orderObject.order!
 
       // 決済済み
-      if (order.stripeChargeID) {
+      if (order.isCharged()) {
         return orderObject
       }
 
       const charge = orderObject.stripeCharge!
 
-      order.status = Model.OrderStatus.Paid
-      order.stripeChargeID = charge.id
+      order.paymentStatus = Model.OrderPaymentStatus.Paid
+      order.stripe!.chargeID = charge.id
       await order.update()
       console.log('charge completed')
 
@@ -585,19 +594,19 @@ export namespace Functions {
     try {
       const order = orderObject.order!
 
-      await firestore.collection('version/1/ordershop')
-        .where('order', '==', firestore.collection(`version/1/order`).doc(order.id))
+      await admin.firestore().collection('version/1/ordershop')
+        .where('order', '==', admin.firestore().collection(`version/1/order`).doc(order.id))
         .get()
         .then(snapshot => {
-          const batch = firestore.batch()
+          const batch = admin.firestore().batch()
 
           // OrderShopStatus が Create のだけ Paid に更新する。
           snapshot.docs.filter(doc => {
             const orderShop = new Model.OrderShop()
             orderShop.init(doc)
-            return orderShop.status === Model.OrderShopStatus.Created
+            return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
           }).forEach(doc => {
-            batch.update(doc.ref, { status: Model.OrderShopStatus.Paid })
+            batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid })
           })
           return batch.commit()
         })
@@ -637,7 +646,7 @@ export namespace Functions {
       // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
       //   return undefined
       // }
-      if (event.data.data().status !== Model.OrderStatus.PaymentRequested && !shouldRetry) {
+      if (event.data.data().status !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
         return undefined
       }
 

@@ -14,6 +14,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const admin = require("firebase-admin");
 const FirebaseFirestore = require("@google-cloud/firestore");
 const Stripe = require("stripe");
 const pring_1 = require("pring");
@@ -101,15 +102,12 @@ var Model;
     Model.HasNeoTask = HasNeoTask;
     class User extends pring_1.Pring.Base {
     }
-    __decorate([
-        pring_1.property
-    ], User.prototype, "stripeCustomerID", void 0);
     Model.User = User;
     class Shop extends pring_1.Pring.Base {
         constructor() {
             super(...arguments);
             this.isActive = true;
-            this.freePostageMinimunPrice = -1;
+            this.freePostageMinimumPrice = -1;
         }
     }
     __decorate([
@@ -120,7 +118,7 @@ var Model;
     ], Shop.prototype, "isActive", void 0);
     __decorate([
         pring_1.property
-    ], Shop.prototype, "freePostageMinimunPrice", void 0);
+    ], Shop.prototype, "freePostageMinimumPrice", void 0);
     Model.Shop = Shop;
     class Product extends pring_1.Pring.Base {
     }
@@ -142,10 +140,10 @@ var Model;
             this.stock = 0;
             this.isPublished = true;
             this.isActive = true;
-        }
-        // 在庫チェック
-        isInStock(quantity) {
-            return this.stock - quantity >= 0;
+            // 在庫チェック
+            // hasStock(quantity: number): boolean {
+            //   return this.stock - quantity >= 0
+            // }
         }
     }
     __decorate([
@@ -164,24 +162,39 @@ var Model;
         pring_1.property
     ], SKU.prototype, "isActive", void 0);
     Model.SKU = SKU;
-    let OrderStatus;
-    (function (OrderStatus) {
-        OrderStatus[OrderStatus["Unknown"] = 0] = "Unknown";
-        OrderStatus[OrderStatus["Created"] = 1] = "Created";
-        OrderStatus[OrderStatus["PaymentRequested"] = 2] = "PaymentRequested";
-        OrderStatus[OrderStatus["WaitingForPayment"] = 3] = "WaitingForPayment";
-        OrderStatus[OrderStatus["Paid"] = 4] = "Paid";
-    })(OrderStatus = Model.OrderStatus || (Model.OrderStatus = {}));
+    let OrderPaymentStatus;
+    (function (OrderPaymentStatus) {
+        OrderPaymentStatus[OrderPaymentStatus["Unknown"] = 0] = "Unknown";
+        OrderPaymentStatus[OrderPaymentStatus["Created"] = 1] = "Created";
+        OrderPaymentStatus[OrderPaymentStatus["PaymentRequested"] = 2] = "PaymentRequested";
+        OrderPaymentStatus[OrderPaymentStatus["WaitingForPayment"] = 3] = "WaitingForPayment";
+        OrderPaymentStatus[OrderPaymentStatus["Paid"] = 4] = "Paid";
+    })(OrderPaymentStatus = Model.OrderPaymentStatus || (Model.OrderPaymentStatus = {}));
+    class StripeCharge extends pring_1.Pring.Base {
+    }
+    __decorate([
+        pring_1.property
+    ], StripeCharge.prototype, "cardID", void 0);
+    __decorate([
+        pring_1.property
+    ], StripeCharge.prototype, "customerID", void 0);
+    __decorate([
+        pring_1.property
+    ], StripeCharge.prototype, "chargeID", void 0);
+    Model.StripeCharge = StripeCharge;
     class Order extends HasNeoTask {
         constructor() {
             super(...arguments);
             this.amount = 0;
-            this.skuPriceSum = 0;
-            this.postage = 0;
             this.expirationDate = new Date().setHours(new Date().getHours() + 1);
-            this.status = OrderStatus.Created;
-            // @property orderShops: Pring.ReferenceCollection<OrderShop> = new Pring.ReferenceCollection(this)
             this.orderSKUs = new pring_1.Pring.ReferenceCollection(this);
+            this.paymentStatus = OrderPaymentStatus.Created;
+        }
+        isCharged() {
+            if (this.stripe && this.stripe.chargeID) {
+                return true;
+            }
+            return false;
         }
     }
     __decorate([
@@ -189,16 +202,7 @@ var Model;
     ], Order.prototype, "user", void 0);
     __decorate([
         pring_1.property
-    ], Order.prototype, "stripeCardID", void 0);
-    __decorate([
-        pring_1.property
     ], Order.prototype, "amount", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "skuPriceSum", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "postage", void 0);
     __decorate([
         pring_1.property
     ], Order.prototype, "paidDate", void 0);
@@ -207,30 +211,28 @@ var Model;
     ], Order.prototype, "expirationDate", void 0);
     __decorate([
         pring_1.property
-    ], Order.prototype, "status", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "stripeChargeID", void 0);
-    __decorate([
-        pring_1.property
     ], Order.prototype, "currency", void 0);
     __decorate([
         pring_1.property
     ], Order.prototype, "orderSKUs", void 0);
+    __decorate([
+        pring_1.property
+    ], Order.prototype, "paymentStatus", void 0);
+    __decorate([
+        pring_1.property
+    ], Order.prototype, "stripe", void 0);
     Model.Order = Order;
-    let OrderShopStatus;
-    (function (OrderShopStatus) {
-        OrderShopStatus[OrderShopStatus["Unknown"] = 0] = "Unknown";
-        OrderShopStatus[OrderShopStatus["Created"] = 1] = "Created";
-        OrderShopStatus[OrderShopStatus["Paid"] = 2] = "Paid";
-        OrderShopStatus[OrderShopStatus["Delivered"] = 3] = "Delivered";
-        OrderShopStatus[OrderShopStatus["Recieved"] = 4] = "Recieved";
-    })(OrderShopStatus = Model.OrderShopStatus || (Model.OrderShopStatus = {}));
+    let OrderShopPaymentStatus;
+    (function (OrderShopPaymentStatus) {
+        OrderShopPaymentStatus[OrderShopPaymentStatus["Unknown"] = 0] = "Unknown";
+        OrderShopPaymentStatus[OrderShopPaymentStatus["Created"] = 1] = "Created";
+        OrderShopPaymentStatus[OrderShopPaymentStatus["Paid"] = 2] = "Paid";
+    })(OrderShopPaymentStatus = Model.OrderShopPaymentStatus || (Model.OrderShopPaymentStatus = {}));
     class OrderShop extends pring_1.Pring.Base {
         constructor() {
             super(...arguments);
             this.orderSKUs = new pring_1.Pring.ReferenceCollection(this);
-            this.status = OrderShopStatus.Unknown;
+            this.paymentStatus = OrderShopPaymentStatus.Unknown;
         }
     }
     __decorate([
@@ -238,10 +240,7 @@ var Model;
     ], OrderShop.prototype, "orderSKUs", void 0);
     __decorate([
         pring_1.property
-    ], OrderShop.prototype, "status", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderShop.prototype, "order", void 0);
+    ], OrderShop.prototype, "paymentStatus", void 0);
     __decorate([
         pring_1.property
     ], OrderShop.prototype, "user", void 0);
@@ -252,9 +251,6 @@ var Model;
             this.quantity = 0;
         }
     }
-    __decorate([
-        pring_1.property
-    ], OrderSKU.prototype, "orderShop", void 0);
     __decorate([
         pring_1.property
     ], OrderSKU.prototype, "snapshotSKU", void 0);
@@ -434,10 +430,10 @@ var Functions;
             });
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order);
             const shops = yield OrderObject.fetchShopsFrom(orderSKUObjects);
-            const stripeCard = yield stripe.customers.retrieveCard(user.stripeCustomerID, order.stripeCardID);
+            // TODO if stripe
+            const stripeCard = yield stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
             console.log('amount', order.amount);
-            console.log('stripeCardID', order.stripeCardID);
-            console.log('stripeCustomerID', user.stripeCustomerID);
+            console.log('stripe', order.stripe);
             orderObject.order = order;
             orderObject.user = user;
             orderObject.orderSKUObjects = orderSKUObjects;
@@ -456,7 +452,7 @@ var Functions;
             const order = orderObject.order;
             const shops = orderObject.shops;
             // 決済済みだったらスキップして良い
-            if (order.stripeChargeID) {
+            if (order.isCharged()) {
                 return orderObject;
             }
             shops.forEach((shop, index) => {
@@ -480,7 +476,7 @@ var Functions;
             const order = orderObject.order;
             const orderSKUObjects = orderObject.orderSKUObjects;
             // 決済済みだったらスキップして良い
-            if (order.stripeChargeID) {
+            if (order.isCharged()) {
                 return orderObject;
             }
             orderSKUObjects.forEach((orderSKUObject, index) => {
@@ -504,7 +500,7 @@ var Functions;
             const order = orderObject.order;
             const stripeCard = orderObject.stripeCard;
             // 決済済みだったらスキップ
-            if (order.stripeChargeID) {
+            if (order.isCharged()) {
                 return orderObject;
             }
             const now = new Date(new Date().getFullYear(), new Date().getMonth());
@@ -527,7 +523,7 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済みだったらスキップして良い
-            if (order.stripeChargeID) {
+            if (order.isCharged()) {
                 return orderObject;
             }
             yield orderObject.updateStock(Operator.minus);
@@ -548,20 +544,18 @@ var Functions;
             const user = orderObject.user;
             const currency = order.currency;
             // 決済済み
-            if (order.stripeChargeID) {
+            if (order.isCharged()) {
                 return orderObject;
             }
             const charge = yield stripe.charges.create({
                 amount: order.amount,
                 currency: currency,
-                customer: user.stripeCustomerID,
-                source: order.stripeCardID,
+                customer: order.stripe.customerID,
+                source: order.stripe.cardID,
                 transfer_group: order.id,
                 metadata: {
                     orderID: order.id,
-                    skuPriceSum: order.skuPriceSum,
-                    postage: order.postage,
-                    userID: user.id
+                    rawValue: order.rawValue()
                 }
             }, {
                 idempotency_key: order.id
@@ -588,12 +582,12 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済み
-            if (order.stripeChargeID) {
+            if (order.isCharged()) {
                 return orderObject;
             }
             const charge = orderObject.stripeCharge;
-            order.status = Model.OrderStatus.Paid;
-            order.stripeChargeID = charge.id;
+            order.paymentStatus = Model.OrderPaymentStatus.Paid;
+            order.stripe.chargeID = charge.id;
             yield order.update();
             console.log('charge completed');
             return orderObject;
@@ -607,18 +601,18 @@ var Functions;
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            yield firestore.collection('version/1/ordershop')
-                .where('order', '==', firestore.collection(`version/1/order`).doc(order.id))
+            yield admin.firestore().collection('version/1/ordershop')
+                .where('order', '==', admin.firestore().collection(`version/1/order`).doc(order.id))
                 .get()
                 .then(snapshot => {
-                const batch = firestore.batch();
+                const batch = admin.firestore().batch();
                 // OrderShopStatus が Create のだけ Paid に更新する。
                 snapshot.docs.filter(doc => {
                     const orderShop = new Model.OrderShop();
                     orderShop.init(doc);
-                    return orderShop.status === Model.OrderShopStatus.Created;
+                    return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created;
                 }).forEach(doc => {
-                    batch.update(doc.ref, { status: Model.OrderShopStatus.Paid });
+                    batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid });
                 });
                 return batch.commit();
             });
@@ -653,7 +647,7 @@ var Functions;
             // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
             //   return undefined
             // }
-            if (event.data.data().status !== Model.OrderStatus.PaymentRequested && !shouldRetry) {
+            if (event.data.data().status !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
                 return undefined;
             }
             if (!event.params || !event.params.orderID) {

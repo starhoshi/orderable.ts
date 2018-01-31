@@ -34,12 +34,11 @@ export declare namespace Model {
         neoTask?: HasNeoTask;
     }
     class User extends Pring.Base {
-        stripeCustomerID?: string;
     }
     class Shop extends Pring.Base {
         name?: string;
         isActive: boolean;
-        freePostageMinimunPrice: number;
+        freePostageMinimumPrice: number;
     }
     class Product extends Pring.Base {
         name?: string;
@@ -55,45 +54,43 @@ export declare namespace Model {
         stock: number;
         isPublished: boolean;
         isActive: boolean;
-        isInStock(quantity: number): boolean;
     }
-    enum OrderStatus {
+    enum OrderPaymentStatus {
         Unknown = 0,
         Created = 1,
         PaymentRequested = 2,
         WaitingForPayment = 3,
         Paid = 4,
     }
+    class StripeCharge extends Pring.Base {
+        cardID?: string;
+        customerID?: string;
+        chargeID?: string;
+    }
     class Order extends HasNeoTask {
         user: FirebaseFirestore.DocumentReference;
-        stripeCardID?: string;
         amount: number;
-        skuPriceSum: number;
-        postage: number;
         paidDate: FirebaseFirestore.FieldValue;
         expirationDate: FirebaseFirestore.FieldValue;
-        status: OrderStatus;
-        stripeChargeID?: string;
         currency?: string;
         orderSKUs: Pring.ReferenceCollection<OrderSKU>;
+        paymentStatus: OrderPaymentStatus;
+        stripe?: StripeCharge;
+        isCharged(): boolean;
     }
-    enum OrderShopStatus {
+    enum OrderShopPaymentStatus {
         Unknown = 0,
         Created = 1,
         Paid = 2,
-        Delivered = 3,
-        Recieved = 4,
     }
     class OrderShop extends Pring.Base {
         orderSKUs: Pring.ReferenceCollection<OrderSKU>;
-        status: OrderShopStatus;
-        order: FirebaseFirestore.DocumentReference;
+        paymentStatus: OrderShopPaymentStatus;
         user: FirebaseFirestore.DocumentReference;
     }
     class OrderSKU extends Pring.Base {
-        orderShop: FirebaseFirestore.DocumentReference;
-        snapshotSKU: SKU;
-        snapshotProduct: Product;
+        snapshotSKU?: SKU;
+        snapshotProduct?: Product;
         quantity: number;
         sku: FirebaseFirestore.DocumentReference;
         shop: FirebaseFirestore.DocumentReference;
