@@ -7,11 +7,15 @@ import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestor
 export declare const initialize: (options: {
     adminOptions: any;
     stripeToken: string;
-    slack: {
-        url: string;
-        channel: string;
-    };
+    slack: SlackParams;
 }) => void;
+export interface SlackParams {
+    enabled: boolean;
+    url?: string;
+    channel?: string;
+    username?: string;
+    iconEmoji?: string;
+}
 export declare enum ValidationErrorType {
     ShopIsNotActive = "ShopIsNotActive",
     SKUIsNotActive = "SKUIsNotActive",

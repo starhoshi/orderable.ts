@@ -21,7 +21,7 @@ export const initialize = (options: { adminOptions: any, stripeToken: string, sl
   slackParams = options.slack
 }
 
-interface SlackParams {
+export interface SlackParams {
   enabled: boolean
   url?: string
   channel?: string

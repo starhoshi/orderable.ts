@@ -23,25 +23,30 @@ const Flow = require("@1amageek/flow");
 const request = require("request");
 let stripe;
 let firestore;
-let slackURL;
-let slackChannel;
+let slackParams;
 exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
     retrycf_1.Retrycf.initialize(options.adminOptions);
     firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
-    slackURL = options.slack.url;
-    slackChannel = options.slack.channel;
+    slackParams = options.slack;
 };
 class Slack {
-    constructor(params) {
-        this.url = params.url || slackURL;
-        this.channel = params.channel || slackChannel;
-        this.username = params.username || 'cloud-functions-police';
-        this.iconEmoji = params.iconEmoji || ':warning:';
+    constructor(params = slackParams) {
+        this.enabled = true;
+        this.enabled = params.enabled || slackParams.enabled;
+        if (this.enabled) {
+            this.url = params.url;
+            this.channel = params.channel;
+            this.username = params.username || 'cloud-functions-police';
+            this.iconEmoji = params.iconEmoji || ':warning:';
+        }
     }
     post(text) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this.enabled) {
+                return;
+            }
             const options = {
                 json: {
                     channel: this.channel,
@@ -80,13 +85,13 @@ class NeoTask extends retrycf_1.Retrycf.NeoTask {
         return __awaiter(this, void 0, void 0, function* () {
             const neoTask = yield NeoTask.setFatalIfRetryCountIsMax(event);
             if (neoTask) {
-                yield new Slack({}).post(`fatal error! step: retry_failed, error: ${JSON.stringify(neoTask.rawValue())}`);
+                yield new Slack().post(`fatal error! step: retry_failed, error: ${JSON.stringify(neoTask.rawValue())}`);
             }
         });
     }
     static setFatalAndPostToSlack(event, step, error) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield new Slack({}).post(`fatal error! step: ${step}, error: ${error}`);
+            yield new Slack().post(`fatal error! step: ${step}, error: ${error}`);
             return NeoTask.setFatal(event, step, error);
         });
     }
