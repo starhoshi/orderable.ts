@@ -1,6 +1,6 @@
 {
   "name": "@star__hoshi/orderable",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "",
   "main": "out/orderable.js",
   "types": "out/orderable.d.ts",
@@ -24,12 +24,12 @@
   },
   "homepage": "https://github.com/starhoshi/orderable.ts#readme",
   "devDependencies": {
-    "@types/jest": "^22.0.0",
-    "@types/request": "^2.0.13",
-    "@types/stripe": "^5.0.3",
+    "@types/jest": "^22.1.1",
+    "@types/request": "^2.47.0",
+    "@types/stripe": "^5.0.4",
     "firebase-tools": "^3.17.4",
     "jest": "^22.1.4",
-    "ts-jest": "^22.0.0",
+    "ts-jest": "^22.0.2",
     "tslint": "^5.9.1",
     "typescript": "^2.6.2"
   },
@@ -46,9 +46,9 @@
   },
   "dependencies": {
     "@1amageek/flow": "^0.2.1",
-    "firebase-admin": "^5.8.1",
+    "firebase-admin": "^5.8.2",
     "firebase-functions": "^0.8.1",
-    "pring": "^0.4.1",
+    "pring": "^0.5.1",
     "request": "^2.83.0",
     "retrycf": "^0.0.34",
     "stripe": "^5.4.0"

@@ -293,9 +293,9 @@ export namespace Functions {
     sku: Model.SKU
 
     static async fetchFrom(order: Model.Order): Promise<OrderSKUObject[]> {
-      const orderSKUDocs = await order.orderSKUs.get()
-      const orderSKUObjects = await Promise.all(orderSKUDocs.map(orderSKUDoc => {
-        return Model.OrderSKU.get(orderSKUDoc.id).then(s => {
+      const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+      const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
+        return Model.OrderSKU.get(orderSKURef.id).then(s => {
           const orderSKU = s as Model.OrderSKU
           const orderSKUObject = new OrderSKUObject()
           orderSKUObject.orderSKU = orderSKU

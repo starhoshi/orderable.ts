@@ -352,9 +352,9 @@ var Functions;
     class OrderSKUObject {
         static fetchFrom(order) {
             return __awaiter(this, void 0, void 0, function* () {
-                const orderSKUDocs = yield order.orderSKUs.get();
-                const orderSKUObjects = yield Promise.all(orderSKUDocs.map(orderSKUDoc => {
-                    return Model.OrderSKU.get(orderSKUDoc.id).then(s => {
+                const orderSKURefs = yield order.orderSKUs.get(Model.OrderSKU);
+                const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
+                    return Model.OrderSKU.get(orderSKURef.id).then(s => {
                         const orderSKU = s;
                         const orderSKUObject = new OrderSKUObject();
                         orderSKUObject.orderSKU = orderSKU;
