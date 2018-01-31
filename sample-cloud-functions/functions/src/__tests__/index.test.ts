@@ -18,7 +18,7 @@ beforeAll(() => {
     adminOptions: {
       projectId: 'sandbox-329fc',
       keyFilename: './sandbox-329fc-firebase-adminsdk.json'
-    }, stripeToken: '', slack: { url: '', channel: '' }
+    }, stripeToken: '', slack: { enabled: false, url: '', channel: '' }
   })
 })
 
