@@ -11,9 +11,9 @@ import * as request from 'request'
 
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
-let slackParams: SlackParams
+let slackParams: SlackParams | undefined = undefined
 
-export const initialize = (options: { adminOptions: any, stripeToken: string, slack: SlackParams }) => {
+export const initialize = (options: { adminOptions: any, stripeToken: string, slack?: SlackParams }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
@@ -22,45 +22,34 @@ export const initialize = (options: { adminOptions: any, stripeToken: string, sl
 }
 
 export interface SlackParams {
-  enabled: boolean
-  url?: string
-  channel?: string
+  url: string
+  channel: string
   username?: string
   iconEmoji?: string
 }
 
 class Slack {
-  enabled: boolean = true
-  url: string
-  channel: string
-  username: string
-  iconEmoji: string
+  slackParams: SlackParams | undefined = undefined
 
-  constructor(params: SlackParams = slackParams) {
-    this.enabled = params.enabled || slackParams.enabled
-    if (this.enabled) {
-      this.url = params.url!
-      this.channel = params.channel!
-      this.username = params.username || 'cloud-functions-police'
-      this.iconEmoji = params.iconEmoji || ':warning:'
-    }
+  constructor(params = slackParams) {
+    this.slackParams = params
   }
 
   async post(text: string) {
-    if (!this.enabled) {
+    if (!this.slackParams) {
       return
     }
 
     const options = {
       json: {
-        channel: this.channel,
-        username: this.username,
+        channel: this.slackParams.channel,
+        username: this.slackParams.username,
         text: text,
-        icon_emoji: this.iconEmoji
+        icon_emoji: this.slackParams.iconEmoji
       }
     }
 
-    await request.post(this.url, options, (error, response, body) => {
+    await request.post(this.slackParams.url, options, (error, response, body) => {
       if (error || response.statusCode !== 200) {
         throw `slack error: ${error}, response.statusCode: ${response.statusCode}, body: ${body}`
       }

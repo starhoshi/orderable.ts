@@ -12,7 +12,7 @@ Retrycf.initialize(functions.config().firebase)
 Orderable.initialize({
   adminOptions: functions.config().firebase,
   stripeToken: functions.config().stripe.token,
-  slack: { enabled: false, url: functions.config().slack.url, channel: '#komerco-error' }
+  slack: undefined
 })
 console.log(functions.config())
 
