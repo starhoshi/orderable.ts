@@ -1,7 +1,9 @@
 import * as admin from 'firebase-admin'
 import 'jest'
-import * as Orderable from '@star__hoshi/orderable'
-// import { Pring } from 'pring'
+// import * as Orderable from '@star__hoshi/orderable'
+import * as Orderable from '../orderable'
+import { Pring } from 'pring'
+import { FirebaseHelper } from './helper/firebase';
 
 beforeAll(() => {
   const serviceAccount = require('../../sandbox-329fc-firebase-adminsdk.json')
@@ -9,10 +11,10 @@ beforeAll(() => {
     credential: admin.credential.cert(serviceAccount)
   })
 
-  // Pring.initialize({
-  //   projectId: 'sandbox-329fc',
-  //   keyFilename: './sandbox-329fc-firebase-adminsdk.json'
-  // })
+  Pring.initialize({
+    projectId: 'sandbox-329fc',
+    keyFilename: './sandbox-329fc-firebase-adminsdk.json'
+  })
 
   Orderable.initialize({
     adminOptions: {
@@ -22,58 +24,81 @@ beforeAll(() => {
   })
 })
 
-it('order create', async () => {
-  // jest.setTimeout(1000000)
+it('order pay', async () => {
+  jest.setTimeout(600000)
 
-  // const skuData = [...Array(3).keys()].map(index => {
-  //   return { price: 5000, stock: 1000, index: index }
-  // })
-  // const skus = await Promise.all(skuData.map(data => {
-  //   return admin.firestore().collection('version/1/testsku').add(data)
-  // }))
+  const user = new Orderable.Model.User()
+  user.stripeCustomerID = 'cus_CC65RZ8Gf6zi7V'
+  await user.save()
 
-  // const testOrders = [...Array(5).keys()].map(a => {
-  //   const testOrder: any = {}
-  //   testOrder.orderSKUs = skus
-  //   return testOrder
-  // })
+  const shop = new Orderable.Model.Shop()
+  shop.name = 'shop'
+  await shop.save()
 
-  // // await addOrdersPer02(testOrders)
-  // await addOrdersAtOnce(testOrders)
-  const aaa = new Orderable.Model.User()
-  await aaa.save()
+  const product1 = new Orderable.Model.Product()
+  product1.name = 'pro1'
+  await product1.save()
+
+  const product2 = new Orderable.Model.Product()
+  product2.name = 'pro2'
+  await product2.save()
+
+  const sku1 = new Orderable.Model.SKU()
+  sku1.price = 100
+  sku1.stockType = Orderable.Model.StockType.Finite
+  sku1.stock = 1000
+  await sku1.save()
+  const sku2 = new Orderable.Model.SKU()
+  sku2.price = 400
+  sku2.stockType = Orderable.Model.StockType.Finite
+  sku2.stock = 5000
+  await sku2.save()
+
+  const stripeCharge = new Orderable.Model.StripeCharge()
+  stripeCharge.cardID = 'card_1BnhthKZcOra3JxsKaxABsRj'
+  stripeCharge.customerID = user.stripeCustomerID
+
+  const order = new Orderable.Model.Order()
+  order.user = user.reference
+  order.amount = 1000
+  order.currency = 'jpy'
+  order.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+  order.stripe = stripeCharge.rawValue()
+
+  const orderSKU1 = new Orderable.Model.OrderSKU()
+  orderSKU1.snapshotSKU = sku1.rawValue()
+  orderSKU1.snapshotProduct = product1.rawValue()
+  orderSKU1.quantity = 1
+  orderSKU1.sku = sku1.reference
+  orderSKU1.shop = shop.reference
+
+  const orderSKU2 = new Orderable.Model.OrderSKU()
+  orderSKU2.snapshotSKU = sku2.rawValue()
+  orderSKU2.snapshotProduct = product2.rawValue()
+  orderSKU2.quantity = 2
+  orderSKU2.sku = sku2.reference
+  orderSKU2.shop = shop.reference
+
+  const orderShop = new Orderable.Model.OrderShop()
+  orderShop.orderSKUs.insert(orderSKU1)
+  orderShop.orderSKUs.insert(orderSKU2)
+  orderShop.paymentStatus = Orderable.Model.OrderShopPaymentStatus.Created
+  orderShop.user = user.reference
+
+  order.orderSKUs.insert(orderSKU1)
+  order.orderSKUs.insert(orderSKU2)
+
+  await order.save()
+  console.log('order created', order.id)
+
+  order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+  await order.update()
+
+  await FirebaseHelper.observe(order.reference, (data, resolve, reject) => {
+    if (data.neoTask && data.neoTask.status === 1) {
+      return resolve()
+    }
+  })
 
   expect(true)
 })
-
-const addOrdersAtOnce = async (testOrders: any[]) => {
-  const testOrderColRef = admin.firestore().collection('version/1/testorder')
-  const testOrderColRef2 = admin.firestore().collection('version/1/testorder2')
-
-  await Promise.all(testOrders.map(async testOrder => {
-    return testOrderColRef.add(testOrder)
-  }))
-  await Promise.all(testOrders.map(async testOrder => {
-    return testOrderColRef2.add(testOrder)
-  }))
-}
-
-const addOrdersPer02 = async (testOrders: any[]) => {
-  const testOrderColRef = admin.firestore().collection('version/1/testorder')
-  const testOrderColRef2 = admin.firestore().collection('version/1/testorder2')
-
-  for (const testOrder of testOrders) {
-    await sleep(0.2)
-    await testOrderColRef.add(testOrder)
-  }
-  for (const testOrder of testOrders) {
-    await sleep(0.2)
-    await testOrderColRef2.add(testOrder)
-  }
-}
-
-const sleep = (milliseconds: number) => {
-  return new Promise<void>(resolve => {
-    setTimeout(() => resolve(), milliseconds)
-  })
-}
