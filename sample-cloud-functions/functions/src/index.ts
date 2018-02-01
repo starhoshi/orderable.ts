@@ -1,10 +1,10 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 import { Retrycf } from 'retrycf'
-// import { INeoTask, NeoTask } from '../../../retrycf/src/retrycf'
+import * as Orderable from './orderable'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import { Pring } from 'pring'
-import * as Orderable from '@star__hoshi/orderable'
+// import * as Orderable from '@star__hoshi/orderable'
 
 admin.initializeApp(<admin.AppOptions>functions.config().firebase)
 Pring.initialize(functions.config().firebase)
