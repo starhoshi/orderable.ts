@@ -83,7 +83,7 @@ it('order pay', async () => {
   orderSKU2.shop = shop.reference
 
   const orderShop = new Model.SampleOrderShop()
-  orderShop.orderSKUs.insert(orderSKU1)
+  // orderShop.orderSKUs.insert(orderSKU1)
   // orderShop.orderSKUs.insert(orderSKU2)
   orderShop.paymentStatus = Orderable.Model.OrderShopPaymentStatus.Created
   orderShop.user = user.reference
@@ -91,6 +91,7 @@ it('order pay', async () => {
   // order.orderSKUs.insert(orderSKU1)
   // order.orderSKUs.insert(orderSKU2)
 
+  console.log('orderSKU1', orderSKU1.id)
   await orderShop.save()
 
   await order.save()

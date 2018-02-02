@@ -196,7 +196,7 @@ export namespace Model {
     @property user: FirebaseFirestore.DocumentReference
   }
 
-  export class OrderSKU extends Pring.Base {
+  export class OrderSKU extends Orderable {
     // @property orderShop: FirebaseFirestore.DocumentReference
     @property snapshotSKU?: SKU
     @property snapshotProduct?: Product
