@@ -92,21 +92,31 @@ export class NeoTask extends Retrycf.NeoTask {
 }
 
 export namespace Model {
-  export class HasNeoTask extends Pring.Base {
+  class Orderable extends Pring.Base {
+    didFetchCompleted(): Boolean {
+      return this.isSaved
+    }
+
+    getCollectionPath(): string {
+      return `version/${this.getVersion()}/${this.getModelName()}`
+    }
+  }
+
+  export class HasNeoTask extends Orderable {
     @property neoTask?: HasNeoTask
   }
 
-  export class User extends Pring.Base {
+  export class User extends Orderable {
     @property stripeCustomerID?: string
   }
 
-  export class Shop extends Pring.Base {
+  export class Shop extends Orderable {
     @property name?: string
     @property isActive: boolean = true
     @property freePostageMinimumPrice: number = -1
   }
 
-  export class Product extends Pring.Base {
+  export class Product extends Orderable {
     @property name?: string
   }
 
@@ -116,7 +126,7 @@ export namespace Model {
     Infinite = 'infinite'
   }
 
-  export class SKU extends Pring.Base {
+  export class SKU extends Orderable {
     @property price: number = 0
     @property stockType: StockType = StockType.Unknown
     @property stock: number = 0
@@ -305,7 +315,45 @@ export namespace Functions {
     }
   }
 
-  class OrderObject implements Flow.Dependency {
+  export class OrderObject2<T extends Model.Order, A extends Model.User> implements Flow.Dependency {
+    orderID: string
+    event: functions.Event<DeltaDocumentSnapshot>
+
+    orderType: T
+    orderType2?: T
+
+    order?: Model.Order
+    shops?: Model.Shop[]
+    // shops?: T extends ShopProtocol
+    user?: Model.User
+    // user?: U extends UserProtocol
+    orderSKUObjects?: OrderSKUObject[]
+    stripeCharge?: Stripe.charges.ICharge
+    stripeCard?: Stripe.cards.ICard
+
+    static async fetchShopsFrom(orderSKUObjects: OrderSKUObject[]) {
+      return await Promise.all(orderSKUObjects.map(orderSKUObject => {
+        return orderSKUObject.orderSKU.shop
+      }).filter((shopRef, index, self) => { // 重複排除
+        return self.indexOf(shopRef) === index
+      }).map(shopRef => {
+        return shopRef.get().then(shopSnapshot => {
+          const shop = new Model.Shop()
+          shop.init(shopSnapshot)
+          return shop
+        })
+      })
+      )
+    }
+
+    constructor(event: functions.Event<DeltaDocumentSnapshot>, type: { new(): T }) {
+      this.event = event
+      this.orderID = event.params!.orderID!
+      this.orderType = new type()
+    }
+  }
+
+  export class OrderObject implements Flow.Dependency {
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
     order?: Model.Order
