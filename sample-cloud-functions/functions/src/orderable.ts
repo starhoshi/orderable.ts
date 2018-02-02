@@ -402,6 +402,13 @@ export namespace Functions {
       this.orderID = event.params!.orderID!
       this.initializableClass = initializableClass
     }
+
+    isCharged(): boolean {
+      if (this.order && this.order.stripe && this.order.stripe.chargeID) {
+        return true
+      }
+      return false
+    }
   }
 
   export class OrderObject2 implements Flow.Dependency {
@@ -515,13 +522,14 @@ export namespace Functions {
       }
     })
 
-  const validateShopIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateShopIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
       const shops = orderObject.shops!
 
       // 決済済みだったらスキップして良い
-      if (order.isCharged()) {
+      if (orderObject.isCharged()) {
         return orderObject
       }
 
@@ -544,13 +552,14 @@ export namespace Functions {
     }
   })
 
-  const validateSKUIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateSKUIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+   = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
       const orderSKUObjects = orderObject.orderSKUObjects!
 
       // 決済済みだったらスキップして良い
-      if (order.isCharged()) {
+      if (orderObject.isCharged()) {
         return orderObject
       }
 
@@ -573,13 +582,14 @@ export namespace Functions {
     }
   })
 
-  const validateCardExpired: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateCardExpired: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+   = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
       const stripeCard = orderObject.stripeCard!
 
       // 決済済みだったらスキップ
-      if (order.isCharged()) {
+      if (orderObject.isCharged()) {
         return orderObject
       }
 
@@ -602,12 +612,13 @@ export namespace Functions {
     }
   })
 
-  const validateAndDecreaseStock: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateAndDecreaseStock: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
 
       // 決済済みだったらスキップして良い
-      if (order.isCharged()) {
+      if (orderObject.isCharged()) {
         return orderObject
       }
 
@@ -625,14 +636,15 @@ export namespace Functions {
     }
   })
 
-  const stripeCharge: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const stripeCharge: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
       const user = orderObject.user!
       const currency = order.currency!
 
       // 決済済み
-      if (order.isCharged()) {
+      if (orderObject.isCharged()) {
         return orderObject
       }
 
@@ -674,12 +686,13 @@ export namespace Functions {
   })
 
   /// ここでこけたらおわり、 charge が浮いている状態になる。
-  const updateOrder: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const updateOrder: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+   = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
 
       // 決済済み
-      if (order.isCharged()) {
+      if (orderObject.isCharged()) {
         return orderObject
       }
 
@@ -698,7 +711,8 @@ export namespace Functions {
     }
   })
 
-  const updateOrderShops: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+   = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
 
@@ -727,7 +741,8 @@ export namespace Functions {
     }
   })
 
-  const setOrderTask: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const setOrderTask: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+   = new Flow.Step(async (orderObject) => {
     try {
       const order = orderObject.order!
 
@@ -743,7 +758,7 @@ export namespace Functions {
     }
   })
 
-  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.orderSKU>) => {
+  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>) => {
   // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
