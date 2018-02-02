@@ -50,7 +50,7 @@ export class SampleOrderShop extends Orderable.Model.Orderable implements Ordera
   @property orderSKUs: Pring.ReferenceCollection<SampleOrderSKU> = new Pring.ReferenceCollection(this)
   @property paymentStatus: Orderable.Model.OrderShopPaymentStatus = Orderable.Model.OrderShopPaymentStatus.Unknown
 
-  // @property order: FirebaseFirestore.DocumentReference
+  @property order: FirebaseFirestore.DocumentReference
   @property user: FirebaseFirestore.DocumentReference
 }
 

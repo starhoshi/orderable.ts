@@ -87,6 +87,7 @@ it('order pay', async () => {
   orderShop.orderSKUs.insert(orderSKU2)
   orderShop.paymentStatus = Orderable.Model.OrderShopPaymentStatus.Created
   orderShop.user = user.reference
+  orderShop.order = order.reference
 
   order.orderSKUs.insert(orderSKU1)
   order.orderSKUs.insert(orderSKU2)
@@ -96,6 +97,7 @@ it('order pay', async () => {
 
   await order.save()
   console.log('order created', order.id)
+  console.log('ordershop', orderShop.id)
 
   order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
   await order.update()

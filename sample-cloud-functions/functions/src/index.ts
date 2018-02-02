@@ -21,12 +21,13 @@ console.log(functions.config())
 export const paySampleOrder = functions.firestore
   .document(`${Model.SampleOrder.getPath()}/{orderID}`)
   .onUpdate(async (event) =>  {
-    const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderSKU>(event, {
+    const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
       order: Model.SampleOrder,
       shop: Model.SampleShop,
       user: Model.SampleUser,
       sku: Model.SampleSKU,
       product: Model.SampleProduct,
+      orderShop: Model.SampleOrderShop,
       orderSKU: Model.SampleOrderSKU
     })
 
