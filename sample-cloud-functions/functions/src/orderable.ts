@@ -100,6 +100,13 @@ export namespace Model {
     getCollectionPath(): string {
       return `version/${this.getVersion()}/${this.getModelName()}`
     }
+
+    async get(id: string) {
+      return admin.firestore().collection(this.getCollectionPath()).doc(id).get().then(s => {
+        this.init(s)
+        return this
+      })
+    }
   }
 
   export class HasNeoTask extends Orderable {
@@ -181,7 +188,7 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export class OrderShop extends Pring.Base {
+  export class OrderShop extends Orderable {
     @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
     @property paymentStatus: OrderShopPaymentStatus = OrderShopPaymentStatus.Unknown
 
@@ -189,7 +196,7 @@ export namespace Model {
     @property user: FirebaseFirestore.DocumentReference
   }
 
-  export class OrderSKU extends Pring.Base {
+  export class OrderSKU extends Orderable {
     // @property orderShop: FirebaseFirestore.DocumentReference
     @property snapshotSKU?: SKU
     @property snapshotProduct?: Product
@@ -315,13 +322,19 @@ export namespace Functions {
     }
   }
 
-  export class OrderObject2<T extends Model.Order, A extends Model.User> implements Flow.Dependency {
+  export interface InitializableClass<T extends Model.Order> {
+    order: { new(): T }
+  }
+
+  export interface AssociatedType<T extends Model.Order> {
+    order: T
+  }
+
+  export class OrderObject2<O extends Model.Order, U extends Model.User> implements Flow.Dependency {
+    associatedType: AssociatedType<O>
+
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
-
-    orderType: T
-    orderType2?: T
-
     order?: Model.Order
     shops?: Model.Shop[]
     // shops?: T extends ShopProtocol
@@ -342,14 +355,13 @@ export namespace Functions {
           shop.init(shopSnapshot)
           return shop
         })
-      })
-      )
+      }))
     }
 
-    constructor(event: functions.Event<DeltaDocumentSnapshot>, type: { new(): T }) {
+    constructor(event: functions.Event<DeltaDocumentSnapshot>, type: InitializableClass<O>) {
       this.event = event
       this.orderID = event.params!.orderID!
-      this.orderType = new type()
+      this.associatedType = { order: new type.order() }
     }
   }
 
