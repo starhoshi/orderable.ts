@@ -18,7 +18,7 @@ Orderable.initialize({
 console.log(functions.config())
 
 // export const orderablePayOrder = Orderable.Functions.orderPaymentRequested
-export const payOrder = functions.firestore
+export const paySampleOrder = functions.firestore
   .document(`${Model.SampleOrder.getPath()}/{orderID}`)
   .onUpdate(event => {
     const orderObject = new Orderable.Functions.OrderObject2(event, {order: Model.SampleOrder})

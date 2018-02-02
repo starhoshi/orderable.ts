@@ -188,15 +188,15 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export class OrderShop extends Orderable {
-    @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
+  export class OrderShop<T extends Pring.Base & OrderSKU> extends Orderable {
+    @property orderSKUs: Pring.ReferenceCollection<T> = new Pring.ReferenceCollection(this)
     @property paymentStatus: OrderShopPaymentStatus = OrderShopPaymentStatus.Unknown
 
     // @property order: FirebaseFirestore.DocumentReference
     @property user: FirebaseFirestore.DocumentReference
   }
 
-  export class OrderSKU extends Orderable {
+  export class OrderSKU extends Pring.Base {
     // @property orderShop: FirebaseFirestore.DocumentReference
     @property snapshotSKU?: SKU
     @property snapshotProduct?: Product

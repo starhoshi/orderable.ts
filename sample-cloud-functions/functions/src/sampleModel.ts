@@ -46,7 +46,7 @@ export class SampleOrder extends Orderable.Model.Order {
   @property stripe?: SampleStripeCharge
 }
 
-export class SampleOrderShop extends Orderable.Model.OrderShop {
+export class SampleOrderShop extends Orderable.Model.OrderShop<SampleOrderSKU> {
   @property orderSKUs: Pring.ReferenceCollection<SampleOrderSKU> = new Pring.ReferenceCollection(this)
   @property paymentStatus: Orderable.Model.OrderShopPaymentStatus = Orderable.Model.OrderShopPaymentStatus.Unknown
 
