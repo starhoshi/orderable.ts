@@ -92,7 +92,7 @@ export class NeoTask extends Retrycf.NeoTask {
 }
 
 export namespace Model {
-  class Orderable extends Pring.Base {
+  export class Orderable extends Pring.Base {
     didFetchCompleted(): Boolean {
       return this.isSaved
     }
@@ -109,22 +109,22 @@ export namespace Model {
     }
   }
 
-  export class HasNeoTask extends Orderable {
-    @property neoTask?: HasNeoTask
+  export interface HasNeoTask extends Orderable {
+    neoTask?: HasNeoTask
   }
 
-  export class User extends Orderable {
-    @property stripeCustomerID?: string
+  export interface User extends Orderable {
+     stripeCustomerID?: string
   }
 
-  export class Shop extends Orderable {
-    @property name?: string
-    @property isActive: boolean = true
-    @property freePostageMinimumPrice: number = -1
+  export interface  Shop extends Orderable {
+    name?: string
+    isActive: boolean
+    freePostageMinimumPrice: number
   }
 
-  export class Product extends Orderable {
-    @property name?: string
+  export interface Product extends Orderable {
+    name?: string
   }
 
   export enum StockType {
@@ -133,17 +133,12 @@ export namespace Model {
     Infinite = 'infinite'
   }
 
-  export class SKU extends Orderable {
-    @property price: number = 0
-    @property stockType: StockType = StockType.Unknown
-    @property stock: number = 0
-    @property isPublished: boolean = true
-    @property isActive: boolean = true
-
-    // 在庫チェック
-    // hasStock(quantity: number): boolean {
-    //   return this.stock - quantity >= 0
-    // }
+  export interface SKU extends Orderable {
+    price: number
+    stockType: StockType
+    stock: number
+    isPublished: boolean
+    isActive: boolean
   }
 
   export enum OrderPaymentStatus {
@@ -154,33 +149,25 @@ export namespace Model {
     Paid = 4
   }
 
-  export class StripeCharge extends Pring.Base {
-    @property cardID?: string
-    @property customerID?: string
-    @property chargeID?: string
+  export interface StripeCharge extends Pring.Base {
+    cardID?: string
+    customerID?: string
+    chargeID?: string
   }
 
-  export class Order extends HasNeoTask {
-    @property user: FirebaseFirestore.DocumentReference
-    @property amount: number = 0
+  export interface Order extends HasNeoTask {
+    user: FirebaseFirestore.DocumentReference
+    amount: number
     // @property stripeCardID?: string
     // @property skuPriceSum: number = 0
     // @property postage: number = 0
-    @property paidDate: FirebaseFirestore.FieldValue
-    @property expirationDate: FirebaseFirestore.FieldValue = new Date().setHours(new Date().getHours() + 1)
-    @property currency?: string
-    @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
+    paidDate: FirebaseFirestore.FieldValue
+    expirationDate: FirebaseFirestore.FieldValue
+    currency?: string
+    orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
 
-    @property paymentStatus: OrderPaymentStatus = OrderPaymentStatus.Created
-    @property stripe?: StripeCharge
-
-    isCharged(): boolean {
-      if (this.stripe && this.stripe.chargeID) {
-        return true
-      }
-
-      return false
-    }
+    paymentStatus: OrderPaymentStatus
+    stripe?: StripeCharge
   }
 
   export enum OrderShopPaymentStatus {
@@ -188,26 +175,39 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export class OrderShop<T extends Pring.Base & OrderSKU> extends Orderable {
-    @property orderSKUs: Pring.ReferenceCollection<T> = new Pring.ReferenceCollection(this)
-    @property paymentStatus: OrderShopPaymentStatus = OrderShopPaymentStatus.Unknown
+  export interface OrderShop extends Orderable {
+    orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
+    paymentStatus: OrderShopPaymentStatus
 
     // @property order: FirebaseFirestore.DocumentReference
-    @property user: FirebaseFirestore.DocumentReference
+    user: FirebaseFirestore.DocumentReference
   }
 
-  export class OrderSKU extends Orderable {
-    // @property orderShop: FirebaseFirestore.DocumentReference
-    @property snapshotSKU?: SKU
-    @property snapshotProduct?: Product
-    @property quantity: number = 0
+  export interface OrderSKU<T extends SKU, P extends Product> extends Orderable {
+    snapshotSKU?: T
+    snapshotProduct?: P
+    quantity: number
 
     // @property order: FirebaseFirestore.DocumentReference
     // @property user: FirebaseFirestore.DocumentReference
-    @property sku: FirebaseFirestore.DocumentReference
+    sku: FirebaseFirestore.DocumentReference
     // @property product: FirebaseFirestore.DocumentReference
-    @property shop: FirebaseFirestore.DocumentReference
+    shop: FirebaseFirestore.DocumentReference
+
   }
+
+  // export class OrderSKU extends Orderable {
+  //   // @property orderShop: FirebaseFirestore.DocumentReference
+  //   @property snapshotSKU?: SKU
+  //   @property snapshotProduct?: Product
+  //   @property quantity: number = 0
+
+  //   // @property order: FirebaseFirestore.DocumentReference
+  //   // @property user: FirebaseFirestore.DocumentReference
+  //   @property sku: FirebaseFirestore.DocumentReference
+  //   // @property product: FirebaseFirestore.DocumentReference
+  //   @property shop: FirebaseFirestore.DocumentReference
+  // }
 }
 
 export enum StripeErrorType {
