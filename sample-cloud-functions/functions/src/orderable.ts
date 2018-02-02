@@ -296,24 +296,25 @@ export class StripeError extends Error {
 }
 
 export namespace Functions {
-  class OrderSKUObject {
-    orderSKU: Model.OrderSKU
-    sku: Model.SKU
+  class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
+    orderSKU: OrderSKU
+    sku: SKU
 
-    static async fetchFrom(order: Model.Order): Promise<OrderSKUObject[]> {
-      const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+    static async fetchFrom<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU>(order: Model.Order, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
+      // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+      const orderSKURefs = await order.orderSKUs.get(orderSKUType)
       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
-        return Model.OrderSKU.get(orderSKURef.id).then(s => {
-          const orderSKU = s as Model.OrderSKU
+        return new orderSKUType().get(orderSKURef.id).then(s => {
+          // const orderSKU = s as Model.OrderSKU
           const orderSKUObject = new OrderSKUObject()
-          orderSKUObject.orderSKU = orderSKU
+          orderSKUObject.orderSKU = s
           return orderSKUObject
         })
       }))
 
       await Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
         return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
-          const s = new Model.SKU()
+          const s = new skuType()
           s.init(skuSnapshop)
           orderSKUObjects[index].sku = s
         })
@@ -322,20 +323,54 @@ export namespace Functions {
     }
   }
 
-  export interface InitializableClass<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User> {
+  //   class OrderSKUObject {
+  //     orderSKU: Model.OrderSKU
+  //     sku: Model.SKU
+  //     static async fetchFrom(order: Model.Order): Promise<OrderSKUObject[]> {
+  //       const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+  //       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
+  //         return Model.OrderSKU.get(orderSKURef.id).then(s => {
+  //           const orderSKU = s as Model.OrderSKU
+  //           const orderSKUObject = new OrderSKUObject()
+  //           orderSKUObject.orderSKU = orderSKU
+  //           return orderSKUObject
+  //         })
+  //       }))
+  //       await Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
+  //         return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
+  //           const s = new Model.SKU()
+  //           s.init(skuSnapshop)
+  //           orderSKUObjects[index].sku = s
+  //         })
+  //       }))
+  //       return orderSKUObjects
+  //     }
+  //   }
+  export interface InitializableClass<
+    Order extends Model.Order,
+    Shop extends Model.Shop,
+    User extends Model.User,
+    SKU extends Model.SKU,
+    Product extends Model.Product,
+    OrderSKU extends Model.OrderSKU<SKU, Product>> {
     order: { new(): Order }
     shop: { new(): Shop }
     user: { new(): User }
+    sku: { new(): SKU }
+    product: { new(): Product }
+    orderSKU: { new(): OrderSKU }
   }
 
-  export interface AssociatedType<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User> {
-    order: Order
-    shop: Shop
-    user: User
-  }
+  export class OrderObject<
+    Order extends Model.Order,
+    Shop extends Model.Shop,
+    User extends Model.User,
+    SKU extends Model.SKU,
+    Product extends Model.Product,
+    OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
 
-  export class OrderObject2<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User> implements Flow.Dependency {
-    associatedType: AssociatedType<Order, Shop, User>
+    // associatedType: AssociatedType<Order, Shop, User, SKU, Product, OrderSKU>
+    initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderSKU>
 
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
@@ -344,36 +379,32 @@ export namespace Functions {
     // shops?: T extends ShopProtocol
     user?: Model.User
     // user?: U extends UserProtocol
-    orderSKUObjects?: OrderSKUObject[]
+    orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
     stripeCharge?: Stripe.charges.ICharge
     stripeCard?: Stripe.cards.ICard
 
-    static async fetchShopsFrom(orderSKUObjects: OrderSKUObject[]) {
-      return await Promise.all(orderSKUObjects.map(orderSKUObject => {
+    async getShops() {
+      this.shops = await Promise.all(this.orderSKUObjects!.map(orderSKUObject => {
         return orderSKUObject.orderSKU.shop
       }).filter((shopRef, index, self) => { // 重複排除
         return self.indexOf(shopRef) === index
       }).map(shopRef => {
         return shopRef.get().then(shopSnapshot => {
-          const shop = new Model.Shop()
+          const shop = new this.initializableClass.shop()
           shop.init(shopSnapshot)
           return shop
         })
       }))
     }
 
-    constructor(event: functions.Event<DeltaDocumentSnapshot>, type: InitializableClass<Order, Shop, User>) {
+    constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderSKU>) {
       this.event = event
       this.orderID = event.params!.orderID!
-      this.associatedType = {
-        order: new type.order(),
-        shop: new type.shop(),
-        user: new type.user()
-      }
+      this.initializableClass = initializableClass
     }
   }
 
-  export class OrderObject implements Flow.Dependency {
+  export class OrderObject2 implements Flow.Dependency {
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
     order?: Model.Order
@@ -454,34 +485,35 @@ export namespace Functions {
     minus = -1
   }
 
-  const prepareRequiredData: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      console.log('order start')
-      const order = <Model.Order>await Model.Order.get(orderObject.orderID)
-      console.log(order.rawValue())
-      const user = <Model.User>await Model.User.get(order.user.id)
-      console.log(user.rawValue())
-      const orderSKUObjects = await OrderSKUObject.fetchFrom(order)
-      const shops = await OrderObject.fetchShopsFrom(orderSKUObjects)
-      // TODO if stripe
-      const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
+  const prepareRequiredData: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
 
-      console.log('amount', order.amount)
-      console.log('stripe', order.stripe)
+        const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
+        orderObject.order = order
 
-      orderObject.order = order
-      orderObject.user = user
-      orderObject.orderSKUObjects = orderSKUObjects
-      orderObject.shops = shops
-      orderObject.stripeCard = stripeCard
+        const user = await new orderObject.initializableClass.user().get(order.user.id)
+        orderObject.user = user
 
-      return orderObject
-    } catch (error) {
-      // ここで起きるエラーは取得エラーのみのはずなので retry
-      const neoTask = await NeoTask.setRetry(orderObject.event, 'prepareRequiredData', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+        const orderSKUObjects = await OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+        orderObject.orderSKUObjects = orderSKUObjects
+
+        await orderObject.getShops()
+        console.log('shops', orderObject.shops)
+
+        const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
+        orderObject.stripeCard = stripeCard
+
+        console.log('amount', order.amount)
+        console.log('stripe', order.stripe)
+
+        return orderObject
+      } catch (error) {
+        // ここで起きるエラーは取得エラーのみのはずなので retry
+        const neoTask = await NeoTask.setRetry(orderObject.event, 'prepareRequiredData', error)
+        throw new FlowError(neoTask, error)
+      }
+    })
 
   const validateShopIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
     try {
@@ -711,7 +743,7 @@ export namespace Functions {
     }
   })
 
-  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject2: OrderObject2<Model.Order, Model.Shop, Model.User>) => {
+  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.orderSKU>) => {
   // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
@@ -737,12 +769,23 @@ export namespace Functions {
         throw Error('orderID must be non-null')
       }
 
-      const order = await orderObject2.associatedType.order.get(orderObject2.orderID)
-      console.log('func order', order.rawValue())
-      const user = await orderObject2.associatedType.user.get(order.user.id)
-      console.log('func order', user.rawValue())
+      // const order = await new orderObject2.initializableClass.order().get(orderObject2.orderID)
+      // orderObject2.order = order
+      // console.log('index order', order.rawValue())
+      // const user = await new orderObject2.initializableClass.user().get(order.user.id)
+      // orderObject2.user = user
+      // console.log('index user', user.rawValue())
+      // const orderSKUObjects = await OrderSKUObject.fetchFrom(order, orderObject2.initializableClass.orderSKU, orderObject2.initializableClass.sku)
+      // orderObject2.orderSKUObjects = orderSKUObjects
+      // console.log('orderSKUObjects', orderSKUObjects)
+      // console.log('orderObject2', orderObject2)
+      // await orderObject2.getShops()
+      // console.log('shops', orderObject2.shops)
 
-      const orderObject = new OrderObject(event.params.orderID, event)
+      // orderObject2.order.amount = 10000
+      // await orderObject2.order.update()
+
+      // const orderObject = new OrderObject(event.params.orderID, event)
       const flow = new Flow.Line([
         prepareRequiredData,
         validateShopIsActive,

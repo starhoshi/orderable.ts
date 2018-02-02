@@ -21,24 +21,20 @@ console.log(functions.config())
 export const paySampleOrder = functions.firestore
   .document(`${Model.SampleOrder.getPath()}/{orderID}`)
   .onUpdate(async (event) =>  {
-    const orderObject = new Orderable.Functions.OrderObject2<Model.SampleOrder, Model.SampleShop, Model.SampleUser>(event, {
+    const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderSKU>(event, {
       order: Model.SampleOrder,
       shop: Model.SampleShop,
-      user: Model.SampleUser
+      user: Model.SampleUser,
+      sku: Model.SampleSKU,
+      product: Model.SampleProduct,
+      orderSKU: Model.SampleOrderSKU
     })
 
     // const order = await Model.Order.get(orderObject.orderID)
-    const order = await orderObject.associatedType.order.get(orderObject.orderID)
-    console.log('index order', order.rawValue())
-    const user = await orderObject.associatedType.user.get(order.user.id)
-    console.log('index user', user.rawValue())
-    // const orderSKUObjects = await OrderSKUObject.fetchFrom(order)
     // const shops = await OrderObject.fetchShopsFrom(orderSKUObjects)
     // TODO if stripe
     // const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
 
-    orderObject.order = order
-    orderObject.user = user
     // orderObject.orderSKUObjects = orderSKUObjects
     // orderObject.shops = shops
     // orderObject.stripeCard = stripeCard
