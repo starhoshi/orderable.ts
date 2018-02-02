@@ -21,15 +21,19 @@ console.log(functions.config())
 export const paySampleOrder = functions.firestore
   .document(`${Model.SampleOrder.getPath()}/{orderID}`)
   .onUpdate(event => {
-    const orderObject = new Orderable.Functions.OrderObject2(event, {order: Model.SampleOrder})
+    const orderObject = new Orderable.Functions.OrderObject2<Model.SampleOrder, Model.SampleShop, Model.SampleUser>(event, {
+      order: Model.SampleOrder,
+      shop: Model.SampleShop,
+      user: Model.SampleUser
+    })
 
     // const a = orderObject.associatedType.order.get(orderObject.orderID)
 
-    admin.firestore().collection(orderObject.associatedType.order.getCollectionPath()).doc(orderObject.orderID).get().then(s => {
-      // orderObject.orderType2 = orderObject.orderType
-      let order = orderObject.associatedType.order
-      order.init(s)
-      console.log(order)
-    })
-    return Orderable.Functions.orderPaymentRequested(event)
+    // admin.firestore().collection(orderObject.associatedType.order.getCollectionPath()).doc(orderObject.orderID).get().then(s => {
+    //   // orderObject.orderType2 = orderObject.orderType
+    //   let order = orderObject.associatedType.order
+    //   order.init(s)
+    //   console.log(order)
+    // })
+    return Orderable.Functions.orderPaymentRequested(event, orderObject)
   })

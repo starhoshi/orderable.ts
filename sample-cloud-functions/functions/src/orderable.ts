@@ -322,16 +322,20 @@ export namespace Functions {
     }
   }
 
-  export interface InitializableClass<T extends Model.Order> {
-    order: { new(): T }
+  export interface InitializableClass<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User> {
+    order: { new(): Order }
+    shop: { new(): Shop }
+    user: { new(): User }
   }
 
-  export interface AssociatedType<T extends Model.Order> {
-    order: T
+  export interface AssociatedType<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User> {
+    order: Order
+    shop: Shop
+    user: User
   }
 
-  export class OrderObject2<O extends Model.Order, U extends Model.User> implements Flow.Dependency {
-    associatedType: AssociatedType<O>
+  export class OrderObject2<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User> implements Flow.Dependency {
+    associatedType: AssociatedType<Order, Shop, User>
 
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
@@ -358,10 +362,14 @@ export namespace Functions {
       }))
     }
 
-    constructor(event: functions.Event<DeltaDocumentSnapshot>, type: InitializableClass<O>) {
+    constructor(event: functions.Event<DeltaDocumentSnapshot>, type: InitializableClass<Order, Shop, User>) {
       this.event = event
       this.orderID = event.params!.orderID!
-      this.associatedType = { order: new type.order() }
+      this.associatedType = {
+        order: new type.order(),
+        shop: new type.shop(),
+        user: new type.user()
+      }
     }
   }
 
@@ -449,7 +457,8 @@ export namespace Functions {
   const prepareRequiredData: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
     try {
       console.log('order start')
-      const order = <Model.Order>await Model.Order.get(orderObject.orderID)
+      // const order = <Model.Order>await Model.Order.get(orderObject.orderID)
+      const order = await Model.Order.get(orderObject.orderID)
       console.log(order.rawValue())
       const user = <Model.User>await Model.User.get(order.user.id)
       console.log(user.rawValue())
@@ -703,7 +712,7 @@ export namespace Functions {
     }
   })
 
-  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>) => {
+  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject2: OrderObject2<Model.Order, Model.Shop, Model.User>) => {
   // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
