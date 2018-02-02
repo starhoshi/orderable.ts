@@ -457,8 +457,7 @@ export namespace Functions {
   const prepareRequiredData: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
     try {
       console.log('order start')
-      // const order = <Model.Order>await Model.Order.get(orderObject.orderID)
-      const order = await Model.Order.get(orderObject.orderID)
+      const order = <Model.Order>await Model.Order.get(orderObject.orderID)
       console.log(order.rawValue())
       const user = <Model.User>await Model.User.get(order.user.id)
       console.log(user.rawValue())
@@ -737,6 +736,11 @@ export namespace Functions {
       if (!event.params || !event.params.orderID) {
         throw Error('orderID must be non-null')
       }
+
+      const order = await orderObject2.associatedType.order.get(orderObject2.orderID)
+      console.log('func order', order.rawValue())
+      const user = await orderObject2.associatedType.user.get(order.user.id)
+      console.log('func order', user.rawValue())
 
       const orderObject = new OrderObject(event.params.orderID, event)
       const flow = new Flow.Line([
