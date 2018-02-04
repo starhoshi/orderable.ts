@@ -57,9 +57,9 @@ class Webhook {
       username: slackParams.username || 'cloud-functions',
       text: step,
       attachments: [attachments]
-    }, (error, response) => {
+    }, (e, response) => {
       if (response.status === 'fail') {
-        console.warn('slack error', error)
+        console.warn('slack error', e)
       }
     })
   }

@@ -13,38 +13,48 @@ const Stripe = require("stripe");
 const pring_1 = require("pring");
 const retrycf_1 = require("retrycf");
 const Flow = require("@1amageek/flow");
-const request = require("request");
+const Slack = require("slack-node");
 let stripe;
 let firestore;
 let slackParams = undefined;
+const slack = new Slack();
+let adminOptions;
 exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
     retrycf_1.Retrycf.initialize(options.adminOptions);
     firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
-    slackParams = options.slack;
-};
-class Slack {
-    constructor(params = slackParams) {
-        this.slackParams = undefined;
-        this.slackParams = params;
+    adminOptions = options.adminOptions;
+    if (options.slack) {
+        slackParams = options.slack;
+        slack.setWebhook(options.slack.url);
     }
-    post(text) {
+};
+class Webhook {
+    static postError(step, error, path) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.slackParams) {
+            if (!slackParams) {
                 return;
             }
-            const options = {
-                json: {
-                    channel: this.slackParams.channel,
-                    username: this.slackParams.username,
-                    text: text,
-                    icon_emoji: this.slackParams.iconEmoji
-                }
+            const attachments = {
+                color: 'danger',
+                ts: new Date().getTime() / 1000,
+                fields: [
+                    { title: 'step', value: step, short: true },
+                    { title: 'project_id', value: adminOptions.projectId || 'Unknown', short: true },
+                    { title: 'path', value: path },
+                    { title: 'error', value: error }
+                ]
             };
-            yield request.post(this.slackParams.url, options, (error, response, body) => {
-                if (error || response.statusCode !== 200) {
-                    throw `slack error: ${error}, response.statusCode: ${response.statusCode}, body: ${body}`;
+            slack.webhook({
+                channel: slackParams.channel,
+                icon_emoji: slackParams.iconEmoji,
+                username: slackParams.username || 'cloud-functions',
+                text: step,
+                attachments: [attachments]
+            }, (e, response) => {
+                if (response.status === 'fail') {
+                    console.warn('slack error', e);
                 }
             });
         });
@@ -72,13 +82,13 @@ class NeoTask extends retrycf_1.Retrycf.NeoTask {
         return __awaiter(this, void 0, void 0, function* () {
             const neoTask = yield NeoTask.setFatalIfRetryCountIsMax(event);
             if (neoTask) {
-                yield new Slack().post(`fatal error! step: retry_failed, error: ${JSON.stringify(neoTask.rawValue())}`);
+                Webhook.postError('retry error', JSON.stringify(neoTask.rawValue()), event.data.ref.path);
             }
         });
     }
     static setFatalAndPostToSlack(event, step, error) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield new Slack().post(`fatal error! step: ${step}, error: ${error}`);
+            Webhook.postError(step, error.toString(), event.data.ref.path);
             return NeoTask.setFatal(event, step, error);
         });
     }
@@ -514,8 +524,6 @@ var Functions;
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const order = orderObject.order;
-            // await Task.success(order.reference, order.rawValue())
             yield NeoTask.success(orderObject.event);
             return orderObject;
         }
@@ -532,15 +540,11 @@ var Functions;
             yield NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event);
             // status が payment requested に変更された時
             // もしくは should retry が true だった時にこの functions は実行される
-            // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
-            console.log('pre', event.data.previous.data().paymentStatus);
-            console.log('cur', event.data.data().paymentStatus);
+            // TODO: Retry
             if (event.data.previous.data().paymentStatus === Model.OrderPaymentStatus.Created && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
                 // 処理実行、リトライは実行されない
-                console.log('exec', event.data.previous.data().paymentStatus, event.data.data().paymentStatus);
             }
             else {
-                console.log('undefined');
                 return undefined;
             }
             if (event.data.data().paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
@@ -573,9 +577,6 @@ var Functions;
             if (error.constructor === retrycf_1.Retrycf.CompletedError) {
                 // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
                 return undefined;
-            }
-            else {
-                // await Task.failure(event.data.ref, TaskAction.resume, event.data.data(), new TaskError(error.toString()))
             }
             if (error.constructor !== FlowError) {
                 yield NeoTask.setFatalAndPostToSlack(event, 'orderPaymentRequested', error.toString());
