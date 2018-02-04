@@ -1,8 +1,6 @@
-// import * as functions from 'firebase-functions'
-// import * as admin from 'firebase-admin'
-// import * as Orderable from './orderable'
 import { Pring, property } from 'pring'
-import * as Orderable from '@star__hoshi/orderable'
+import * as Orderable from './orderable.develop'
+// import * as Orderable from '@star__hoshi/orderable'
 
 export class SampleUser extends Orderable.Model.Base implements Orderable.Model.User {
   @property stripeCustomerID?: string
