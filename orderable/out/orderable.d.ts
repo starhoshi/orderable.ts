@@ -36,23 +36,23 @@ export declare class NeoTask extends Retrycf.NeoTask {
     static setFatalAndPostToSlack(event: functions.Event<DeltaDocumentSnapshot>, step: string, error: any): Promise<Retrycf.NeoTask>;
 }
 export declare namespace Model {
-    class Orderable extends Pring.Base {
+    class Base extends Pring.Base {
         didFetchCompleted(): Boolean;
         getCollectionPath(): string;
         get(id: string): Promise<this>;
     }
-    interface HasNeoTask extends Orderable {
+    interface HasNeoTask extends Base {
         neoTask?: HasNeoTask | FirebaseFirestore.FieldValue;
     }
-    interface User extends Orderable {
+    interface User extends Base {
         stripeCustomerID?: string;
     }
-    interface Shop extends Orderable {
+    interface Shop extends Base {
         name?: string;
         isActive: boolean;
         freePostageMinimumPrice: number;
     }
-    interface Product extends Orderable {
+    interface Product extends Base {
         name?: string;
     }
     enum StockType {
@@ -60,7 +60,7 @@ export declare namespace Model {
         Finite = "finite",
         Infinite = "infinite",
     }
-    interface SKU extends Orderable {
+    interface SKU extends Base {
         price: number;
         stockType: StockType;
         stock: number;
@@ -94,12 +94,12 @@ export declare namespace Model {
         Created = 1,
         Paid = 2,
     }
-    interface OrderShop extends Orderable {
+    interface OrderShop extends Base {
         orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>;
         paymentStatus: OrderShopPaymentStatus;
         user: FirebaseFirestore.DocumentReference;
     }
-    interface OrderSKU<T extends SKU, P extends Product> extends Orderable {
+    interface OrderSKU<T extends SKU, P extends Product> extends Base {
         snapshotSKU?: T;
         snapshotProduct?: P;
         quantity: number;

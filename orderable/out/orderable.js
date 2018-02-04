@@ -86,7 +86,7 @@ class NeoTask extends retrycf_1.Retrycf.NeoTask {
 exports.NeoTask = NeoTask;
 var Model;
 (function (Model) {
-    class Orderable extends pring_1.Pring.Base {
+    class Base extends pring_1.Pring.Base {
         didFetchCompleted() {
             return this.isSaved;
         }
@@ -102,7 +102,7 @@ var Model;
             });
         }
     }
-    Model.Orderable = Orderable;
+    Model.Base = Base;
     let StockType;
     (function (StockType) {
         StockType["Unknown"] = "unknown";

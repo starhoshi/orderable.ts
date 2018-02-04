@@ -1,5 +1,4 @@
 import * as functions from 'firebase-functions'
-import * as admin from 'firebase-admin'
 import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
@@ -92,7 +91,7 @@ export class NeoTask extends Retrycf.NeoTask {
 }
 
 export namespace Model {
-  export class Orderable extends Pring.Base {
+  export class Base extends Pring.Base {
     didFetchCompleted(): Boolean {
       return this.isSaved
     }
@@ -102,28 +101,28 @@ export namespace Model {
     }
 
     async get(id: string) {
-      return admin.firestore().collection(this.getCollectionPath()).doc(id).get().then(s => {
+      return firestore.collection(this.getCollectionPath()).doc(id).get().then(s => {
         this.init(s)
         return this
       })
     }
   }
 
-  export interface HasNeoTask extends Orderable {
+  export interface HasNeoTask extends Base {
     neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
   }
 
-  export interface User extends Orderable {
+  export interface User extends Base {
     stripeCustomerID?: string
   }
 
-  export interface Shop extends Orderable {
+  export interface Shop extends Base {
     name?: string
     isActive: boolean
     freePostageMinimumPrice: number
   }
 
-  export interface Product extends Orderable {
+  export interface Product extends Base {
     name?: string
   }
 
@@ -133,7 +132,7 @@ export namespace Model {
     Infinite = 'infinite'
   }
 
-  export interface SKU extends Orderable {
+  export interface SKU extends Base {
     price: number
     stockType: StockType
     stock: number
@@ -171,13 +170,13 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export interface OrderShop extends Orderable {
+  export interface OrderShop extends Base {
     orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
     paymentStatus: OrderShopPaymentStatus
     user: FirebaseFirestore.DocumentReference
   }
 
-  export interface OrderSKU<T extends SKU, P extends Product> extends Orderable {
+  export interface OrderSKU<T extends SKU, P extends Product> extends Base {
     snapshotSKU?: T
     snapshotProduct?: P
     quantity: number
@@ -643,11 +642,11 @@ export namespace Functions {
   const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        await admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-          .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
+        await firestore.collection(new orderObject.initializableClass.orderShop().getCollectionPath())
+          .where('order', '==', firestore.collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
           .get()
           .then(snapshot => {
-            const batch = admin.firestore().batch()
+            const batch = firestore.batch()
 
             // OrderShopStatus が Create のだけ Paid に更新する
             snapshot.docs.filter(doc => {

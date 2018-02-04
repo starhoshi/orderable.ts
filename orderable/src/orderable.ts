@@ -91,7 +91,7 @@ export class NeoTask extends Retrycf.NeoTask {
 }
 
 export namespace Model {
-  export class Orderable extends Pring.Base {
+  export class Base extends Pring.Base {
     didFetchCompleted(): Boolean {
       return this.isSaved
     }
@@ -108,21 +108,21 @@ export namespace Model {
     }
   }
 
-  export interface HasNeoTask extends Orderable {
+  export interface HasNeoTask extends Base {
     neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
   }
 
-  export interface User extends Orderable {
+  export interface User extends Base {
     stripeCustomerID?: string
   }
 
-  export interface Shop extends Orderable {
+  export interface Shop extends Base {
     name?: string
     isActive: boolean
     freePostageMinimumPrice: number
   }
 
-  export interface Product extends Orderable {
+  export interface Product extends Base {
     name?: string
   }
 
@@ -132,7 +132,7 @@ export namespace Model {
     Infinite = 'infinite'
   }
 
-  export interface SKU extends Orderable {
+  export interface SKU extends Base {
     price: number
     stockType: StockType
     stock: number
@@ -170,13 +170,13 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export interface OrderShop extends Orderable {
+  export interface OrderShop extends Base {
     orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
     paymentStatus: OrderShopPaymentStatus
     user: FirebaseFirestore.DocumentReference
   }
 
-  export interface OrderSKU<T extends SKU, P extends Product> extends Orderable {
+  export interface OrderSKU<T extends SKU, P extends Product> extends Base {
     snapshotSKU?: T
     snapshotProduct?: P
     quantity: number
