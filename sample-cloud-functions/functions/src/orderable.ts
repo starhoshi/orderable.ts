@@ -158,14 +158,10 @@ export namespace Model {
   export interface Order extends HasNeoTask {
     user: FirebaseFirestore.DocumentReference
     amount: number
-    // @property stripeCardID?: string
-    // @property skuPriceSum: number = 0
-    // @property postage: number = 0
     paidDate: FirebaseFirestore.FieldValue
     expirationDate: FirebaseFirestore.FieldValue
     currency?: string
     orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
-
     paymentStatus: OrderPaymentStatus
     stripe?: StripeCharge
   }
@@ -178,8 +174,6 @@ export namespace Model {
   export interface OrderShop extends Orderable {
     orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
     paymentStatus: OrderShopPaymentStatus
-
-    // @property order: FirebaseFirestore.DocumentReference
     user: FirebaseFirestore.DocumentReference
   }
 
@@ -187,27 +181,9 @@ export namespace Model {
     snapshotSKU?: T
     snapshotProduct?: P
     quantity: number
-
-    // @property order: FirebaseFirestore.DocumentReference
-    // @property user: FirebaseFirestore.DocumentReference
     sku: FirebaseFirestore.DocumentReference
-    // @property product: FirebaseFirestore.DocumentReference
     shop: FirebaseFirestore.DocumentReference
-
   }
-
-  // export class OrderSKU extends Orderable {
-  //   // @property orderShop: FirebaseFirestore.DocumentReference
-  //   @property snapshotSKU?: SKU
-  //   @property snapshotProduct?: Product
-  //   @property quantity: number = 0
-
-  //   // @property order: FirebaseFirestore.DocumentReference
-  //   // @property user: FirebaseFirestore.DocumentReference
-  //   @property sku: FirebaseFirestore.DocumentReference
-  //   // @property product: FirebaseFirestore.DocumentReference
-  //   @property shop: FirebaseFirestore.DocumentReference
-  // }
 }
 
 export enum StripeErrorType {
@@ -323,29 +299,6 @@ export namespace Functions {
     }
   }
 
-  //   class OrderSKUObject {
-  //     orderSKU: Model.OrderSKU
-  //     sku: Model.SKU
-  //     static async fetchFrom(order: Model.Order): Promise<OrderSKUObject[]> {
-  //       const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
-  //       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
-  //         return Model.OrderSKU.get(orderSKURef.id).then(s => {
-  //           const orderSKU = s as Model.OrderSKU
-  //           const orderSKUObject = new OrderSKUObject()
-  //           orderSKUObject.orderSKU = orderSKU
-  //           return orderSKUObject
-  //         })
-  //       }))
-  //       await Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
-  //         return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
-  //           const s = new Model.SKU()
-  //           s.init(skuSnapshop)
-  //           orderSKUObjects[index].sku = s
-  //         })
-  //       }))
-  //       return orderSKUObjects
-  //     }
-  //   }
   export interface InitializableClass<
     Order extends Model.Order,
     Shop extends Model.Shop,
@@ -372,16 +325,13 @@ export namespace Functions {
     OrderShop extends Model.OrderShop,
     OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
 
-    // associatedType: AssociatedType<Order, Shop, User, SKU, Product, OrderSKU>
     initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>
 
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
     order?: Model.Order
     shops?: Model.Shop[]
-    // shops?: T extends ShopProtocol
     user?: Model.User
-    // user?: U extends UserProtocol
     orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
     stripeCharge?: Stripe.charges.ICharge
     stripeCard?: Stripe.cards.ICard
@@ -457,82 +407,6 @@ export namespace Functions {
       })
     }
   }
-
-  // export class OrderObject2 implements Flow.Dependency {
-  //   orderID: string
-  //   event: functions.Event<DeltaDocumentSnapshot>
-  //   order?: Model.Order
-  //   shops?: Model.Shop[]
-  //   // shops?: T extends ShopProtocol
-  //   user?: Model.User
-  //   // user?: U extends UserProtocol
-  //   orderSKUObjects?: OrderSKUObject[]
-  //   stripeCharge?: Stripe.charges.ICharge
-  //   stripeCard?: Stripe.cards.ICard
-
-  //   static async fetchShopsFrom(orderSKUObjects: OrderSKUObject[]) {
-  //     return await Promise.all(orderSKUObjects.map(orderSKUObject => {
-  //       return orderSKUObject.orderSKU.shop
-  //     }).filter((shopRef, index, self) => { // 重複排除
-  //       return self.indexOf(shopRef) === index
-  //     }).map(shopRef => {
-  //       return shopRef.get().then(shopSnapshot => {
-  //         const shop = new Model.Shop()
-  //         shop.init(shopSnapshot)
-  //         return shop
-  //       })
-  //     })
-  //     )
-  //   }
-
-  //   constructor(orderID: string, event: functions.Event<DeltaDocumentSnapshot>) {
-  //     this.orderID = orderID
-  //     this.event = event
-  //   }
-
-  //   updateStock(operator: Operator) {
-  //     const orderSKUObjects = this.orderSKUObjects
-  //     const order = this.order
-  //     if (!orderSKUObjects) { throw Error('orderSKUObjects must be non-null') }
-  //     if (!order) { throw Error('orderSKUObjects must be non-null') }
-
-  //     return firestore.runTransaction(async (transaction) => {
-  //       const promises: Promise<any>[] = []
-  //       for (const orderSKUObject of orderSKUObjects) {
-  //         const skuRef = firestore.collection(`version/1/sku`).doc(orderSKUObject.sku.id)
-  //         const t = transaction.get(skuRef).then(tsku => {
-  //           const quantity = orderSKUObject.orderSKU.quantity * operator
-  //           const newStock = tsku.data()!.stock + quantity
-
-  //           if (newStock >= 0) {
-  //             transaction.update(skuRef, { stock: newStock })
-  //           } else {
-  //             throw new Retrycf.ValidationError(ValidationErrorType.OutOfStock,
-  //               `${orderSKUObject.orderSKU.snapshotProduct!.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
-  //           }
-  //         })
-  //         promises.push(t)
-  //       }
-
-  //       // // 重複実行された時に、2回目の実行を弾く
-  //       const step = 'validateAndDecreaseStock'
-  //       // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
-  //       const orderRef = firestore.doc(order.getPath())
-  //       const orderPromise = transaction.get(orderRef).then(tref => {
-  //         if (Retrycf.NeoTask.isCompleted(this.event, 'validateAndDecreaseStock')) {
-  //           throw new Retrycf.CompletedError('validateAndDecreaseStock')
-  //         } else {
-  //           const neoTask = new Retrycf.NeoTask(this.event.data)
-  //           neoTask.completed[step] = true
-  //           transaction.update(orderRef, { neoTask: neoTask.rawValue() })
-  //         }
-  //       })
-  //       promises.push(orderPromise)
-
-  //       return Promise.all(promises)
-  //     })
-  //   }
-  // }
 
   enum Operator {
     plus = +1,
@@ -747,11 +621,14 @@ export namespace Functions {
 
         order.paymentStatus = Model.OrderPaymentStatus.Paid
         order.stripe!.chargeID = charge.id
+        order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
         // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
         // await order.update()
         await order.reference.update({
           paymentStatus: Model.OrderPaymentStatus.Paid,
-          chargeID: charge.id
+          chargeID: charge.id,
+          paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
+          updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
         })
         console.log('charge completed')
 
@@ -766,21 +643,22 @@ export namespace Functions {
   const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        const order = orderObject.order!
-
         await admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-          .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(order.id))
+          .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
           .get()
           .then(snapshot => {
             const batch = admin.firestore().batch()
 
-            // OrderShopStatus が Create のだけ Paid に更新する。
+            // OrderShopStatus が Create のだけ Paid に更新する
             snapshot.docs.filter(doc => {
               const orderShop = new orderObject.initializableClass.orderShop()
               orderShop.init(doc)
               return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
             }).forEach(doc => {
-              batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid })
+              batch.update(doc.ref, {
+                paymentStatus: Model.OrderShopPaymentStatus.Paid,
+                updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+              })
             })
             return batch.commit()
           })
