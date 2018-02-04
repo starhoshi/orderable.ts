@@ -7,7 +7,7 @@ iOS 側は [starhoshi/Orderable](https://github.com/starhoshi/Orderable) を利�
 
 ## Installation
 
-yarn を使ってください。 npm では依存性の解決ができずエラーになります。  
+yarn を使ってください。 npm では依存性の解決ができずエラーになります。  
 また、 typescript を使うことを推奨します。
 
 ```
@@ -93,7 +93,7 @@ firebase deploy --only functions:paySampleOrder
 
 ### 4. Start payment
 
-order.paymentStatus が PaymentRequested になると購入処理が実行されます。  
+order.paymentStatus が PaymentRequested になると購入処理が実行されます。  
 下記は TypeScript での例ですが、実際にはクライアント側([starhoshi/Orderable](https://github.com/starhoshi/Orderable))でやるべき処理です。
 
 ```ts
