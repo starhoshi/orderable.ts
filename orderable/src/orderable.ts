@@ -19,6 +19,8 @@ export const initialize = (options: { adminOptions: any, stripeToken: string, sl
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
   slackParams = options.slack
+
+  console.log('initialized', firestore)
 }
 
 export interface SlackParams {

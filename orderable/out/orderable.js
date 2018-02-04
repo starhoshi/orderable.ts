@@ -24,6 +24,7 @@ exports.initialize = (options) => {
     firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
     slackParams = options.slack;
+    console.log('initialized', firestore);
 };
 class Slack {
     constructor(params = slackParams) {
