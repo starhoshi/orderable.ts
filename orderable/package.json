@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/jest": "^22.1.1",
     "@types/request": "^2.47.0",
+    "@types/slack-node": "^0.1.2",
     "@types/stripe": "^5.0.4",
     "firebase-tools": "^3.17.4",
     "jest": "^22.1.4",
@@ -51,6 +52,7 @@
     "pring": "^0.5.1",
     "request": "^2.83.0",
     "retrycf": "^0.0.34",
+    "slack-node": "^0.1.8",
     "stripe": "^5.4.0"
   }
 }
