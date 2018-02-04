@@ -42,7 +42,7 @@ export declare namespace Model {
         get(id: string): Promise<this>;
     }
     interface HasNeoTask extends Orderable {
-        neoTask?: HasNeoTask;
+        neoTask?: HasNeoTask | FirebaseFirestore.FieldValue;
     }
     interface User extends Orderable {
         stripeCustomerID?: string;

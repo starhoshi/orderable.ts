@@ -110,7 +110,7 @@ export namespace Model {
   }
 
   export interface HasNeoTask extends Orderable {
-    neoTask?: HasNeoTask
+    neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
   }
 
   export interface User extends Orderable {
@@ -272,7 +272,7 @@ export class StripeError extends Error {
 }
 
 export namespace Functions {
-  class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
+  export class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
     orderSKU: OrderSKU
     sku: SKU
 
@@ -408,7 +408,7 @@ export namespace Functions {
     }
   }
 
-  enum Operator {
+  export enum Operator {
     plus = +1,
     minus = -1
   }

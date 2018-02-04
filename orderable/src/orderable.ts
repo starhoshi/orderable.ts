@@ -110,7 +110,7 @@ export namespace Model {
   }
 
   export interface HasNeoTask extends Orderable {
-    neoTask?: HasNeoTask
+    neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
   }
 
   export interface User extends Orderable {
