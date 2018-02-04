@@ -1,3 +1,4 @@
+import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
 import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
@@ -7,17 +8,25 @@ import { Retrycf } from 'retrycf'
 import * as Flow from '@1amageek/flow'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as request from 'request'
+import * as Slack from 'slack-node'
 
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
 let slackParams: SlackParams | undefined = undefined
+const slack = new Slack()
+let adminOptions: any
 
 export const initialize = (options: { adminOptions: any, stripeToken: string, slack?: SlackParams }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
-  slackParams = options.slack
+  adminOptions = options.adminOptions
+
+  if (options.slack) {
+    slackParams = options.slack
+    slack.setWebhook(options.slack.url)
+  }
 }
 
 export interface SlackParams {
@@ -27,30 +36,30 @@ export interface SlackParams {
   iconEmoji?: string
 }
 
-class Slack {
-  slackParams: SlackParams | undefined = undefined
+class Webhook {
+  static async postError(step: string, error: any, path: string) {
+    if (!slackParams) { return }
 
-  constructor(params = slackParams) {
-    this.slackParams = params
-  }
-
-  async post(text: string) {
-    if (!this.slackParams) {
-      return
+    const attachments = {
+      color: 'danger',
+      ts: new Date().getTime() / 1000,
+      fields: [
+        { title: 'step', value: step, short: true },
+        { title: 'project_id', value: adminOptions.projectId || 'Unknown', short: true },
+        { title: 'path', value: path },
+        { title: 'error', value: error }
+      ]
     }
 
-    const options = {
-      json: {
-        channel: this.slackParams.channel,
-        username: this.slackParams.username,
-        text: text,
-        icon_emoji: this.slackParams.iconEmoji
-      }
-    }
-
-    await request.post(this.slackParams.url, options, (error, response, body) => {
-      if (error || response.statusCode !== 200) {
-        throw `slack error: ${error}, response.statusCode: ${response.statusCode}, body: ${body}`
+    slack.webhook({
+      channel: slackParams.channel,
+      icon_emoji: slackParams.iconEmoji,
+      username: slackParams.username || 'cloud-functions',
+      text: step,
+      attachments: [attachments]
+    }, (error, response) => {
+      if (response.status === 'fail') {
+        console.warn('slack error', error)
       }
     })
   }
@@ -77,15 +86,15 @@ export class FlowError extends Error {
 }
 
 export class NeoTask extends Retrycf.NeoTask {
-  static async  setFatalAndPostToSlackIfRetryCountIsMax(event: functions.Event<DeltaDocumentSnapshot>) {
+  static async setFatalAndPostToSlackIfRetryCountIsMax(event: functions.Event<DeltaDocumentSnapshot>) {
     const neoTask = await NeoTask.setFatalIfRetryCountIsMax(event)
     if (neoTask) {
-      await new Slack().post(`fatal error! step: retry_failed, error: ${JSON.stringify(neoTask.rawValue())}`)
+      Webhook.postError('retry error', JSON.stringify(neoTask.rawValue()), event.data.ref.path)
     }
   }
 
   static async setFatalAndPostToSlack(event: functions.Event<DeltaDocumentSnapshot>, step: string, error: any) {
-    await new Slack().post(`fatal error! step: ${step}, error: ${error}`)
+    Webhook.postError(step, error.toString(), event.data.ref.path)
     return NeoTask.setFatal(event, step, error)
   }
 }
@@ -415,7 +424,6 @@ export namespace Functions {
   const prepareRequiredData: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-
         const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
         orderObject.order = order
 
@@ -673,10 +681,6 @@ export namespace Functions {
   const setOrderTask: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        const order = orderObject.order!
-
-        // await Task.success(order.reference, order.rawValue())
-
         await NeoTask.success(orderObject.event)
 
         return orderObject
@@ -695,14 +699,10 @@ export namespace Functions {
 
       // status が payment requested に変更された時
       // もしくは should retry が true だった時にこの functions は実行される
-      // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
-      console.log('pre', event.data.previous.data().paymentStatus)
-      console.log('cur', event.data.data().paymentStatus)
+      // TODO: Retry
       if (event.data.previous.data().paymentStatus === Model.OrderPaymentStatus.Created && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
         // 処理実行、リトライは実行されない
-        console.log('exec', event.data.previous.data().paymentStatus, event.data.data().paymentStatus)
       } else {
-        console.log('undefined')
         return undefined
       }
       if (event.data.data().paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
@@ -737,8 +737,6 @@ export namespace Functions {
       if (error.constructor === Retrycf.CompletedError) {
         // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
         return undefined
-      } else {
-        // await Task.failure(event.data.ref, TaskAction.resume, event.data.data(), new TaskError(error.toString()))
       }
 
       if (error.constructor !== FlowError) {
@@ -749,4 +747,3 @@ export namespace Functions {
     }
   }
 }
-
