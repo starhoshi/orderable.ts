@@ -8,7 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const admin = require("firebase-admin");
 const FirebaseFirestore = require("@google-cloud/firestore");
 const Stripe = require("stripe");
 const pring_1 = require("pring");
@@ -24,7 +23,6 @@ exports.initialize = (options) => {
     firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
     slackParams = options.slack;
-    console.log('initialized', firestore);
 };
 class Slack {
     constructor(params = slackParams) {
@@ -97,7 +95,7 @@ var Model;
         }
         get(id) {
             return __awaiter(this, void 0, void 0, function* () {
-                return admin.firestore().collection(this.getCollectionPath()).doc(id).get().then(s => {
+                return firestore.collection(this.getCollectionPath()).doc(id).get().then(s => {
                     this.init(s);
                     return this;
                 });
@@ -488,11 +486,11 @@ var Functions;
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            yield admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-                .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
+            yield firestore.collection(new orderObject.initializableClass.orderShop().getCollectionPath())
+                .where('order', '==', firestore.collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
-                const batch = admin.firestore().batch();
+                const batch = firestore.batch();
                 // OrderShopStatus が Create のだけ Paid に更新する
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();

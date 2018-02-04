@@ -14,7 +14,7 @@
   "dependencies": {
     "@1amageek/flow": "^0.2.1",
     "@google-cloud/firestore": "^0.11.2",
-    "@star__hoshi/orderable": "^0.0.19",
+    "@star__hoshi/orderable": "^0.0.20",
     "firebase-admin": "^5.8.2",
     "firebase-functions": "^0.8.1",
     "pring": "^0.5.2",

@@ -1,5 +1,4 @@
 import * as functions from 'firebase-functions'
-import * as admin from 'firebase-admin'
 import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
@@ -19,8 +18,6 @@ export const initialize = (options: { adminOptions: any, stripeToken: string, sl
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
   slackParams = options.slack
-
-  console.log('initialized', firestore)
 }
 
 export interface SlackParams {
@@ -104,7 +101,7 @@ export namespace Model {
     }
 
     async get(id: string) {
-      return admin.firestore().collection(this.getCollectionPath()).doc(id).get().then(s => {
+      return firestore.collection(this.getCollectionPath()).doc(id).get().then(s => {
         this.init(s)
         return this
       })
@@ -645,11 +642,11 @@ export namespace Functions {
   const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        await admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-          .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
+        await firestore.collection(new orderObject.initializableClass.orderShop().getCollectionPath())
+          .where('order', '==', firestore.collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
           .get()
           .then(snapshot => {
-            const batch = admin.firestore().batch()
+            const batch = firestore.batch()
 
             // OrderShopStatus が Create のだけ Paid に更新する
             snapshot.docs.filter(doc => {
