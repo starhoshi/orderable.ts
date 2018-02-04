@@ -114,10 +114,10 @@ export namespace Model {
   }
 
   export interface User extends Orderable {
-     stripeCustomerID?: string
+    stripeCustomerID?: string
   }
 
-  export interface  Shop extends Orderable {
+  export interface Shop extends Orderable {
     name?: string
     isActive: boolean
     freePostageMinimumPrice: number
@@ -571,247 +571,247 @@ export namespace Functions {
 
   const validateShopIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const shops = orderObject.shops!
+      try {
+        const order = orderObject.order!
+        const shops = orderObject.shops!
 
-      // 決済済みだったらスキップして良い
-      if (orderObject.isCharged()) {
-        return orderObject
-      }
-
-      shops.forEach((shop, index) => {
-        if (!shop.isActive) {
-          throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
-            `ショップ「${shop.name}」は現在ご利用いただけません。`)
+        // 決済済みだったらスキップして良い
+        if (orderObject.isCharged()) {
+          return orderObject
         }
-      })
 
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
+        shops.forEach((shop, index) => {
+          if (!shop.isActive) {
+            throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
+              `ショップ「${shop.name}」は現在ご利用いただけません。`)
+          }
+        })
+
+        return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
       }
-
-      throw (error)
-    }
-  })
+    })
 
   const validateSKUIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
-   = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const orderSKUObjects = orderObject.orderSKUObjects!
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+        const orderSKUObjects = orderObject.orderSKUObjects!
 
-      // 決済済みだったらスキップして良い
-      if (orderObject.isCharged()) {
-        return orderObject
-      }
-
-      orderSKUObjects.forEach((orderSKUObject, index) => {
-        if (!orderSKUObject.sku.isActive) {
-          throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
-            `商品「${orderSKUObject.orderSKU.snapshotProduct!.name}」は現在ご利用いただけません。`)
+        // 決済済みだったらスキップして良い
+        if (orderObject.isCharged()) {
+          return orderObject
         }
-      })
 
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
+        orderSKUObjects.forEach((orderSKUObject, index) => {
+          if (!orderSKUObject.sku.isActive) {
+            throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
+              `商品「${orderSKUObject.orderSKU.snapshotProduct!.name}」は現在ご利用いただけません。`)
+          }
+        })
+
+        return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
       }
-
-      throw (error)
-    }
-  })
+    })
 
   const validateCardExpired: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
-   = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const stripeCard = orderObject.stripeCard!
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+        const stripeCard = orderObject.stripeCard!
 
-      // 決済済みだったらスキップ
-      if (orderObject.isCharged()) {
+        // 決済済みだったらスキップ
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        const now = new Date(new Date().getFullYear(), new Date().getMonth())
+        const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
+
+        if (expiredDate < now) {
+          throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
+        }
+
         return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
       }
-
-      const now = new Date(new Date().getFullYear(), new Date().getMonth())
-      const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
-
-      if (expiredDate < now) {
-        throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
-      }
-
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
+    })
 
   const validateAndDecreaseStock: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
+      try {
+        const order = orderObject.order!
 
-      // 決済済みだったらスキップして良い
-      if (orderObject.isCharged()) {
+        // 決済済みだったらスキップして良い
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        await orderObject.updateStock(Operator.minus)
+
         return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
       }
-
-      await orderObject.updateStock(Operator.minus)
-
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
+    })
 
   const stripeCharge: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const user = orderObject.user!
-      const currency = order.currency!
+      try {
+        const order = orderObject.order!
+        const user = orderObject.user!
+        const currency = order.currency!
 
-      // 決済済み
-      if (orderObject.isCharged()) {
-        return orderObject
-      }
-
-      const charge = await stripe.charges.create(
-        {
-          amount: order.amount,
-          currency: currency,
-          customer: order.stripe!.customerID, // TODO: if stripe
-          source: order.stripe!.cardID, // TODO: if stripe
-          transfer_group: order.id,
-          metadata: {
-            orderID: order.id
-            // , rawValue: order.rawValue()
-          }
-        },
-        {
-          idempotency_key: order.id
+        // 決済済み
+        if (orderObject.isCharged()) {
+          return orderObject
         }
-      ).catch(e => {
-        throw new StripeError(e)
-      })
 
-      orderObject.stripeCharge = charge
+        const charge = await stripe.charges.create(
+          {
+            amount: order.amount,
+            currency: currency,
+            customer: order.stripe!.customerID, // TODO: if stripe
+            source: order.stripe!.cardID, // TODO: if stripe
+            transfer_group: order.id,
+            metadata: {
+              orderID: order.id
+              // , rawValue: order.rawValue()
+            }
+          },
+          {
+            idempotency_key: order.id
+          }
+        ).catch(e => {
+          throw new StripeError(e)
+        })
 
-      return orderObject
-    } catch (error) {
-      // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
-      await orderObject.updateStock(Operator.plus)
-      await NeoTask.clearComplete(orderObject.event)
+        orderObject.stripeCharge = charge
 
-      if (error.constructor === StripeError) {
-        const stripeError = new StripeError(error)
-        const neoTask = await stripeError.setNeoTask(orderObject.event, 'stripeCharge')
-        throw new FlowError(neoTask, error)
+        return orderObject
+      } catch (error) {
+        // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
+        await orderObject.updateStock(Operator.plus)
+        await NeoTask.clearComplete(orderObject.event)
+
+        if (error.constructor === StripeError) {
+          const stripeError = new StripeError(error)
+          const neoTask = await stripeError.setNeoTask(orderObject.event, 'stripeCharge')
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
       }
-
-      throw (error)
-    }
-  })
+    })
 
   /// ここでこけたらおわり、 charge が浮いている状態になる。
   const updateOrder: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
-   = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
 
-      // 決済済み
-      if (orderObject.isCharged()) {
+        // 決済済み
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        const charge = orderObject.stripeCharge!
+
+        order.paymentStatus = Model.OrderPaymentStatus.Paid
+        order.stripe!.chargeID = charge.id
+        // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
+        // await order.update()
+        await order.reference.update({
+          paymentStatus: Model.OrderPaymentStatus.Paid,
+          chargeID: charge.id
+        })
+        console.log('charge completed')
+
         return orderObject
+      } catch (error) {
+        // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
+        const neoTask = await NeoTask.setFatalAndPostToSlack(orderObject.event, 'updateOrder', error)
+        throw new FlowError(neoTask, error)
       }
-
-      const charge = orderObject.stripeCharge!
-
-      order.paymentStatus = Model.OrderPaymentStatus.Paid
-      order.stripe!.chargeID = charge.id
-      // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
-      // await order.update()
-      await order.reference.update({
-        paymentStatus: Model.OrderPaymentStatus.Paid,
-        chargeID: charge.id
-      })
-      console.log('charge completed')
-
-      return orderObject
-    } catch (error) {
-      // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
-      const neoTask = await NeoTask.setFatalAndPostToSlack(orderObject.event, 'updateOrder', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+    })
 
   const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
-   = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
 
-      await admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-        .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(order.id))
-        .get()
-        .then(snapshot => {
-          const batch = admin.firestore().batch()
+        await admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
+          .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(order.id))
+          .get()
+          .then(snapshot => {
+            const batch = admin.firestore().batch()
 
-          // OrderShopStatus が Create のだけ Paid に更新する。
-          snapshot.docs.filter(doc => {
-            const orderShop = new orderObject.initializableClass.orderShop()
-            orderShop.init(doc)
-            return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
-          }).forEach(doc => {
-            batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid })
+            // OrderShopStatus が Create のだけ Paid に更新する。
+            snapshot.docs.filter(doc => {
+              const orderShop = new orderObject.initializableClass.orderShop()
+              orderShop.init(doc)
+              return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
+            }).forEach(doc => {
+              batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid })
+            })
+            return batch.commit()
           })
-          return batch.commit()
-        })
 
-      return orderObject
-    } catch (error) {
-      // 失敗する可能性があるのは batch の失敗だけなので retry
-      const neoTask = await NeoTask.setRetry(orderObject.event, 'updateOrderShops', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+        return orderObject
+      } catch (error) {
+        // 失敗する可能性があるのは batch の失敗だけなので retry
+        const neoTask = await NeoTask.setRetry(orderObject.event, 'updateOrderShops', error)
+        throw new FlowError(neoTask, error)
+      }
+    })
 
   const setOrderTask: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
-   = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
 
-      // await Task.success(order.reference, order.rawValue())
+        // await Task.success(order.reference, order.rawValue())
 
-      await NeoTask.success(orderObject.event)
+        await NeoTask.success(orderObject.event)
 
-      return orderObject
-    } catch (error) {
-      // 失敗する可能性があるのは update の失敗だけなので retry
-      const neoTask = await NeoTask.setRetry(orderObject.event, 'setOrderTask', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+        return orderObject
+      } catch (error) {
+        // 失敗する可能性があるのは update の失敗だけなので retry
+        const neoTask = await NeoTask.setRetry(orderObject.event, 'setOrderTask', error)
+        throw new FlowError(neoTask, error)
+      }
+    })
 
   export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
-  // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+    // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
       await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
@@ -819,8 +819,8 @@ export namespace Functions {
       // status が payment requested に変更された時
       // もしくは should retry が true だった時にこの functions は実行される
       // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
-        console.log('pre', event.data.previous.data().paymentStatus)
-        console.log('cur', event.data.data().paymentStatus)
+      console.log('pre', event.data.previous.data().paymentStatus)
+      console.log('cur', event.data.data().paymentStatus)
       if (event.data.previous.data().paymentStatus === Model.OrderPaymentStatus.Created && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
         // 処理実行、リトライは実行されない
         console.log('exec', event.data.previous.data().paymentStatus, event.data.data().paymentStatus)
