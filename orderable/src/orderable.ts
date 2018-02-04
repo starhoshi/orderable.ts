@@ -11,9 +11,9 @@ import * as request from 'request'
 
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
-let slackParams: SlackParams
+let slackParams: SlackParams | undefined = undefined
 
-export const initialize = (options: { adminOptions: any, stripeToken: string, slack: SlackParams }) => {
+export const initialize = (options: { adminOptions: any, stripeToken: string, slack?: SlackParams }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
@@ -22,45 +22,34 @@ export const initialize = (options: { adminOptions: any, stripeToken: string, sl
 }
 
 export interface SlackParams {
-  enabled: boolean
-  url?: string
-  channel?: string
+  url: string
+  channel: string
   username?: string
   iconEmoji?: string
 }
 
 class Slack {
-  enabled: boolean = true
-  url: string
-  channel: string
-  username: string
-  iconEmoji: string
+  slackParams: SlackParams | undefined = undefined
 
-  constructor(params: SlackParams = slackParams) {
-    this.enabled = params.enabled || slackParams.enabled
-    if (this.enabled) {
-      this.url = params.url!
-      this.channel = params.channel!
-      this.username = params.username || 'cloud-functions-police'
-      this.iconEmoji = params.iconEmoji || ':warning:'
-    }
+  constructor(params = slackParams) {
+    this.slackParams = params
   }
 
   async post(text: string) {
-    if (!this.enabled) {
+    if (!this.slackParams) {
       return
     }
 
     const options = {
       json: {
-        channel: this.channel,
-        username: this.username,
+        channel: this.slackParams.channel,
+        username: this.slackParams.username,
         text: text,
-        icon_emoji: this.iconEmoji
+        icon_emoji: this.slackParams.iconEmoji
       }
     }
 
-    await request.post(this.url, options, (error, response, body) => {
+    await request.post(this.slackParams.url, options, (error, response, body) => {
       if (error || response.statusCode !== 200) {
         throw `slack error: ${error}, response.statusCode: ${response.statusCode}, body: ${body}`
       }
@@ -103,20 +92,39 @@ export class NeoTask extends Retrycf.NeoTask {
 }
 
 export namespace Model {
-  export class HasNeoTask extends Pring.Base {
-    @property neoTask?: HasNeoTask
+  export class Orderable extends Pring.Base {
+    didFetchCompleted(): Boolean {
+      return this.isSaved
+    }
+
+    getCollectionPath(): string {
+      return `version/${this.getVersion()}/${this.getModelName()}`
+    }
+
+    async get(id: string) {
+      return admin.firestore().collection(this.getCollectionPath()).doc(id).get().then(s => {
+        this.init(s)
+        return this
+      })
+    }
   }
 
-  export class User extends Pring.Base { }
-
-  export class Shop extends Pring.Base {
-    @property name?: string
-    @property isActive: boolean = true
-    @property freePostageMinimumPrice: number = -1
+  export interface HasNeoTask extends Orderable {
+    neoTask?: HasNeoTask
   }
 
-  export class Product extends Pring.Base {
-    @property name?: string
+  export interface User extends Orderable {
+    stripeCustomerID?: string
+  }
+
+  export interface Shop extends Orderable {
+    name?: string
+    isActive: boolean
+    freePostageMinimumPrice: number
+  }
+
+  export interface Product extends Orderable {
+    name?: string
   }
 
   export enum StockType {
@@ -125,17 +133,12 @@ export namespace Model {
     Infinite = 'infinite'
   }
 
-  export class SKU extends Pring.Base {
-    @property price: number = 0
-    @property stockType: StockType = StockType.Unknown
-    @property stock: number = 0
-    @property isPublished: boolean = true
-    @property isActive: boolean = true
-
-    // 在庫チェック
-    // hasStock(quantity: number): boolean {
-    //   return this.stock - quantity >= 0
-    // }
+  export interface SKU extends Orderable {
+    price: number
+    stockType: StockType
+    stock: number
+    isPublished: boolean
+    isActive: boolean
   }
 
   export enum OrderPaymentStatus {
@@ -146,33 +149,21 @@ export namespace Model {
     Paid = 4
   }
 
-  export class StripeCharge extends Pring.Base {
-    @property cardID?: string
-    @property customerID?: string
-    @property chargeID?: string
+  export interface StripeCharge extends Pring.Base {
+    cardID?: string
+    customerID?: string
+    chargeID?: string
   }
 
-  export class Order extends HasNeoTask {
-    @property user: FirebaseFirestore.DocumentReference
-    @property amount: number = 0
-    // @property stripeCardID?: string
-    // @property skuPriceSum: number = 0
-    // @property postage: number = 0
-    @property paidDate: FirebaseFirestore.FieldValue
-    @property expirationDate: FirebaseFirestore.FieldValue = new Date().setHours(new Date().getHours() + 1)
-    @property currency?: string
-    @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
-
-    @property paymentStatus: OrderPaymentStatus = OrderPaymentStatus.Created
-    @property stripe?: StripeCharge
-
-    isCharged(): boolean {
-      if (this.stripe && this.stripe.chargeID) {
-        return true
-      }
-
-      return false
-    }
+  export interface Order extends HasNeoTask {
+    user: FirebaseFirestore.DocumentReference
+    amount: number
+    paidDate: FirebaseFirestore.FieldValue
+    expirationDate: FirebaseFirestore.FieldValue
+    currency?: string
+    orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
+    paymentStatus: OrderPaymentStatus
+    stripe?: StripeCharge
   }
 
   export enum OrderShopPaymentStatus {
@@ -180,25 +171,18 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export class OrderShop extends Pring.Base {
-    @property orderSKUs: Pring.ReferenceCollection<OrderSKU> = new Pring.ReferenceCollection(this)
-    @property paymentStatus: OrderShopPaymentStatus = OrderShopPaymentStatus.Unknown
-
-    // @property order: FirebaseFirestore.DocumentReference
-    @property user: FirebaseFirestore.DocumentReference
+  export interface OrderShop extends Orderable {
+    orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
+    paymentStatus: OrderShopPaymentStatus
+    user: FirebaseFirestore.DocumentReference
   }
 
-  export class OrderSKU extends Pring.Base {
-    // @property orderShop: FirebaseFirestore.DocumentReference
-    @property snapshotSKU?: SKU
-    @property snapshotProduct?: Product
-    @property quantity: number = 0
-
-    // @property order: FirebaseFirestore.DocumentReference
-    // @property user: FirebaseFirestore.DocumentReference
-    @property sku: FirebaseFirestore.DocumentReference
-    // @property product: FirebaseFirestore.DocumentReference
-    @property shop: FirebaseFirestore.DocumentReference
+  export interface OrderSKU<T extends SKU, P extends Product> extends Orderable {
+    snapshotSKU?: T
+    snapshotProduct?: P
+    quantity: number
+    sku: FirebaseFirestore.DocumentReference
+    shop: FirebaseFirestore.DocumentReference
   }
 }
 
@@ -288,24 +272,25 @@ export class StripeError extends Error {
 }
 
 export namespace Functions {
-  class OrderSKUObject {
-    orderSKU: Model.OrderSKU
-    sku: Model.SKU
+  export class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
+    orderSKU: OrderSKU
+    sku: SKU
 
-    static async fetchFrom(order: Model.Order): Promise<OrderSKUObject[]> {
-      const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+    static async fetchFrom<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU>(order: Model.Order, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
+      // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+      const orderSKURefs = await order.orderSKUs.get(orderSKUType)
       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
-        return Model.OrderSKU.get(orderSKURef.id).then(s => {
-          const orderSKU = s as Model.OrderSKU
+        return new orderSKUType().get(orderSKURef.id).then(s => {
+          // const orderSKU = s as Model.OrderSKU
           const orderSKUObject = new OrderSKUObject()
-          orderSKUObject.orderSKU = orderSKU
+          orderSKUObject.orderSKU = s
           return orderSKUObject
         })
       }))
 
       await Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
         return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
-          const s = new Model.SKU()
+          const s = new skuType()
           s.init(skuSnapshop)
           orderSKUObjects[index].sku = s
         })
@@ -314,50 +299,83 @@ export namespace Functions {
     }
   }
 
-  class OrderObject implements Flow.Dependency {
+  export interface InitializableClass<
+    Order extends Model.Order,
+    Shop extends Model.Shop,
+    User extends Model.User,
+    SKU extends Model.SKU,
+    Product extends Model.Product,
+    OrderShop extends Model.OrderShop,
+    OrderSKU extends Model.OrderSKU<SKU, Product>> {
+    order: { new(): Order }
+    shop: { new(): Shop }
+    user: { new(): User }
+    sku: { new(): SKU }
+    product: { new(): Product }
+    orderShop: { new(): OrderShop }
+    orderSKU: { new(): OrderSKU }
+  }
+
+  export class OrderObject<
+    Order extends Model.Order,
+    Shop extends Model.Shop,
+    User extends Model.User,
+    SKU extends Model.SKU,
+    Product extends Model.Product,
+    OrderShop extends Model.OrderShop,
+    OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
+
+    initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>
+
     orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
     order?: Model.Order
     shops?: Model.Shop[]
-    // shops?: T extends ShopProtocol
     user?: Model.User
-    // user?: U extends UserProtocol
-    orderSKUObjects?: OrderSKUObject[]
+    orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
     stripeCharge?: Stripe.charges.ICharge
     stripeCard?: Stripe.cards.ICard
 
-    static async fetchShopsFrom(orderSKUObjects: OrderSKUObject[]) {
-      return await Promise.all(orderSKUObjects.map(orderSKUObject => {
+    async getShops() {
+      this.shops = await Promise.all(this.orderSKUObjects!.map(orderSKUObject => {
         return orderSKUObject.orderSKU.shop
       }).filter((shopRef, index, self) => { // 重複排除
         return self.indexOf(shopRef) === index
       }).map(shopRef => {
         return shopRef.get().then(shopSnapshot => {
-          const shop = new Model.Shop()
+          const shop = new this.initializableClass.shop()
           shop.init(shopSnapshot)
           return shop
         })
-      })
-      )
+      }))
     }
 
-    constructor(orderID: string, event: functions.Event<DeltaDocumentSnapshot>) {
-      this.orderID = orderID
+    constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>) {
       this.event = event
+      this.orderID = event.params!.orderID!
+      this.initializableClass = initializableClass
+    }
+
+    isCharged(): boolean {
+      if (this.order && this.order.stripe && this.order.stripe.chargeID) {
+        return true
+      }
+      return false
     }
 
     updateStock(operator: Operator) {
       const orderSKUObjects = this.orderSKUObjects
-      if (!orderSKUObjects) {
-        throw Error('orderSKUObjects must be non-null')
-      }
+      const order = this.order
+      if (!orderSKUObjects) { throw Error('orderSKUObjects must be non-null') }
+      if (!order) { throw Error('orderSKUObjects must be non-null') }
 
       return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
         for (const orderSKUObject of orderSKUObjects) {
-          const skuRef = firestore.collection(`version/1/sku`).doc(orderSKUObject.sku.id)
+          const skuRef = firestore.collection(new this.initializableClass.sku().getCollectionPath()).doc(orderSKUObject.sku.id)
           const t = transaction.get(skuRef).then(tsku => {
             const quantity = orderSKUObject.orderSKU.quantity * operator
+            console.log(tsku.data())
             const newStock = tsku.data()!.stock + quantity
 
             if (newStock >= 0) {
@@ -370,280 +388,308 @@ export namespace Functions {
           promises.push(t)
         }
 
-        // 重複実行された時に、2回目の実行を弾く
-        console.log('mark ref', this.event.data.ref)
-        promises.push(NeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
+        // // 重複実行された時に、2回目の実行を弾く
+        const step = 'validateAndDecreaseStock'
+        // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
+        const orderRef = firestore.doc(order.getPath())
+        const orderPromise = transaction.get(orderRef).then(tref => {
+          if (Retrycf.NeoTask.isCompleted(this.event, 'validateAndDecreaseStock')) {
+            throw new Retrycf.CompletedError('validateAndDecreaseStock')
+          } else {
+            const neoTask = new Retrycf.NeoTask(this.event.data)
+            neoTask.completed[step] = true
+            transaction.update(orderRef, { neoTask: neoTask.rawValue() })
+          }
+        })
+        promises.push(orderPromise)
 
         return Promise.all(promises)
       })
     }
   }
 
-  enum Operator {
+  export enum Operator {
     plus = +1,
     minus = -1
   }
 
-  const prepareRequiredData: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = <Model.Order>await Model.Order.get(orderObject.orderID)
-      const user = await order.user.get().then(s => {
-        const u = new Model.User()
-        u.init(s)
-        return u
-      })
-      const orderSKUObjects = await OrderSKUObject.fetchFrom(order)
-      const shops = await OrderObject.fetchShopsFrom(orderSKUObjects)
-      // TODO if stripe
-      const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
+  const prepareRequiredData: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
 
-      console.log('amount', order.amount)
-      console.log('stripe', order.stripe)
+        const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
+        orderObject.order = order
 
-      orderObject.order = order
-      orderObject.user = user
-      orderObject.orderSKUObjects = orderSKUObjects
-      orderObject.shops = shops
-      orderObject.stripeCard = stripeCard
+        const user = await new orderObject.initializableClass.user().get(order.user.id)
+        orderObject.user = user
 
-      return orderObject
-    } catch (error) {
-      // ここで起きるエラーは取得エラーのみのはずなので retry
-      const neoTask = await NeoTask.setRetry(orderObject.event, 'prepareRequiredData', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+        const orderSKUObjects = await OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+        orderObject.orderSKUObjects = orderSKUObjects
 
-  const validateShopIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const shops = orderObject.shops!
+        await orderObject.getShops()
+        console.log('shops', orderObject.shops)
 
-      // 決済済みだったらスキップして良い
-      if (order.isCharged()) {
+        const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
+        orderObject.stripeCard = stripeCard
+
+        console.log('amount', order.amount)
+        console.log('stripe', order.stripe)
+
         return orderObject
+      } catch (error) {
+        // ここで起きるエラーは取得エラーのみのはずなので retry
+        const neoTask = await NeoTask.setRetry(orderObject.event, 'prepareRequiredData', error)
+        throw new FlowError(neoTask, error)
       }
+    })
 
-      shops.forEach((shop, index) => {
-        if (!shop.isActive) {
-          throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
-            `ショップ「${shop.name}」は現在ご利用いただけません。`)
+  const validateShopIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+        const shops = orderObject.shops!
+
+        // 決済済みだったらスキップして良い
+        if (orderObject.isCharged()) {
+          return orderObject
         }
-      })
 
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
-
-  const validateSKUIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const orderSKUObjects = orderObject.orderSKUObjects!
-
-      // 決済済みだったらスキップして良い
-      if (order.isCharged()) {
-        return orderObject
-      }
-
-      orderSKUObjects.forEach((orderSKUObject, index) => {
-        if (!orderSKUObject.sku.isActive) {
-          throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
-            `商品「${orderSKUObject.orderSKU.snapshotProduct!.name}」は現在ご利用いただけません。`)
-        }
-      })
-
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
-
-  const validateCardExpired: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const stripeCard = orderObject.stripeCard!
-
-      // 決済済みだったらスキップ
-      if (order.isCharged()) {
-        return orderObject
-      }
-
-      const now = new Date(new Date().getFullYear(), new Date().getMonth())
-      const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
-
-      if (expiredDate < now) {
-        throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
-      }
-
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
-
-  const validateAndDecreaseStock: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-
-      // 決済済みだったらスキップして良い
-      if (order.isCharged()) {
-        return orderObject
-      }
-
-      await orderObject.updateStock(Operator.minus)
-
-      return orderObject
-    } catch (error) {
-      if (error.constructor === Retrycf.ValidationError) {
-        const validationError = error as Retrycf.ValidationError
-        const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
-
-  const stripeCharge: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-      const user = orderObject.user!
-      const currency = order.currency!
-
-      // 決済済み
-      if (order.isCharged()) {
-        return orderObject
-      }
-
-      const charge = await stripe.charges.create(
-        {
-          amount: order.amount,
-          currency: currency,
-          customer: order.stripe!.customerID, // TODO: if stripe
-          source: order.stripe!.cardID, // TODO: if stripe
-          transfer_group: order.id,
-          metadata: {
-            orderID: order.id,
-            rawValue: order.rawValue()
+        shops.forEach((shop, index) => {
+          if (!shop.isActive) {
+            throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
+              `ショップ「${shop.name}」は現在ご利用いただけません。`)
           }
-        },
-        {
-          idempotency_key: order.id
-        }
-      ).catch(e => {
-        throw new StripeError(e)
-      })
-
-      orderObject.stripeCharge = charge
-
-      return orderObject
-    } catch (error) {
-      // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
-      await orderObject.updateStock(Operator.plus)
-      await NeoTask.clearComplete(orderObject.event)
-
-      if (error.constructor === StripeError) {
-        const stripeError = new StripeError(error)
-        const neoTask = await stripeError.setNeoTask(orderObject.event, 'stripeCharge')
-        throw new FlowError(neoTask, error)
-      }
-
-      throw (error)
-    }
-  })
-
-  /// ここでこけたらおわり、 charge が浮いている状態になる。
-  const updateOrder: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-
-      // 決済済み
-      if (order.isCharged()) {
-        return orderObject
-      }
-
-      const charge = orderObject.stripeCharge!
-
-      order.paymentStatus = Model.OrderPaymentStatus.Paid
-      order.stripe!.chargeID = charge.id
-      await order.update()
-      console.log('charge completed')
-
-      return orderObject
-    } catch (error) {
-      // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
-      const neoTask = await NeoTask.setFatalAndPostToSlack(orderObject.event, 'updateOrder', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
-
-  const updateOrderShops: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
-
-      await admin.firestore().collection('version/1/ordershop')
-        .where('order', '==', admin.firestore().collection(`version/1/order`).doc(order.id))
-        .get()
-        .then(snapshot => {
-          const batch = admin.firestore().batch()
-
-          // OrderShopStatus が Create のだけ Paid に更新する。
-          snapshot.docs.filter(doc => {
-            const orderShop = new Model.OrderShop()
-            orderShop.init(doc)
-            return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
-          }).forEach(doc => {
-            batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid })
-          })
-          return batch.commit()
         })
 
-      return orderObject
-    } catch (error) {
-      // 失敗する可能性があるのは batch の失敗だけなので retry
-      const neoTask = await NeoTask.setRetry(orderObject.event, 'updateOrderShops', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+        return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
 
-  const setOrderTask: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
-    try {
-      const order = orderObject.order!
+        throw (error)
+      }
+    })
 
-      // await Task.success(order.reference, order.rawValue())
+  const validateSKUIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+        const orderSKUObjects = orderObject.orderSKUObjects!
 
-      await NeoTask.success(orderObject.event)
+        // 決済済みだったらスキップして良い
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
 
-      return orderObject
-    } catch (error) {
-      // 失敗する可能性があるのは update の失敗だけなので retry
-      const neoTask = await NeoTask.setRetry(orderObject.event, 'setOrderTask', error)
-      throw new FlowError(neoTask, error)
-    }
-  })
+        orderSKUObjects.forEach((orderSKUObject, index) => {
+          if (!orderSKUObject.sku.isActive) {
+            throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
+              `商品「${orderSKUObject.orderSKU.snapshotProduct!.name}」は現在ご利用いただけません。`)
+          }
+        })
 
-  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>) => {
-  // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+        return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
+      }
+    })
+
+  const validateCardExpired: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+        const stripeCard = orderObject.stripeCard!
+
+        // 決済済みだったらスキップ
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        const now = new Date(new Date().getFullYear(), new Date().getMonth())
+        const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
+
+        if (expiredDate < now) {
+          throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
+        }
+
+        return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
+      }
+    })
+
+  const validateAndDecreaseStock: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+
+        // 決済済みだったらスキップして良い
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        await orderObject.updateStock(Operator.minus)
+
+        return orderObject
+      } catch (error) {
+        if (error.constructor === Retrycf.ValidationError) {
+          const validationError = error as Retrycf.ValidationError
+          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
+      }
+    })
+
+  const stripeCharge: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+        const user = orderObject.user!
+        const currency = order.currency!
+
+        // 決済済み
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        const charge = await stripe.charges.create(
+          {
+            amount: order.amount,
+            currency: currency,
+            customer: order.stripe!.customerID, // TODO: if stripe
+            source: order.stripe!.cardID, // TODO: if stripe
+            transfer_group: order.id,
+            metadata: {
+              orderID: order.id
+              // , rawValue: order.rawValue()
+            }
+          },
+          {
+            idempotency_key: order.id
+          }
+        ).catch(e => {
+          throw new StripeError(e)
+        })
+
+        orderObject.stripeCharge = charge
+
+        return orderObject
+      } catch (error) {
+        // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
+        await orderObject.updateStock(Operator.plus)
+        await NeoTask.clearComplete(orderObject.event)
+
+        if (error.constructor === StripeError) {
+          const stripeError = new StripeError(error)
+          const neoTask = await stripeError.setNeoTask(orderObject.event, 'stripeCharge')
+          throw new FlowError(neoTask, error)
+        }
+
+        throw (error)
+      }
+    })
+
+  /// ここでこけたらおわり、 charge が浮いている状態になる。
+  const updateOrder: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+
+        // 決済済み
+        if (orderObject.isCharged()) {
+          return orderObject
+        }
+
+        const charge = orderObject.stripeCharge!
+
+        order.paymentStatus = Model.OrderPaymentStatus.Paid
+        order.stripe!.chargeID = charge.id
+        order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
+        // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
+        // await order.update()
+        await order.reference.update({
+          paymentStatus: Model.OrderPaymentStatus.Paid,
+          chargeID: charge.id,
+          paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
+          updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+        })
+        console.log('charge completed')
+
+        return orderObject
+      } catch (error) {
+        // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
+        const neoTask = await NeoTask.setFatalAndPostToSlack(orderObject.event, 'updateOrder', error)
+        throw new FlowError(neoTask, error)
+      }
+    })
+
+  const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        await admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
+          .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
+          .get()
+          .then(snapshot => {
+            const batch = admin.firestore().batch()
+
+            // OrderShopStatus が Create のだけ Paid に更新する
+            snapshot.docs.filter(doc => {
+              const orderShop = new orderObject.initializableClass.orderShop()
+              orderShop.init(doc)
+              return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
+            }).forEach(doc => {
+              batch.update(doc.ref, {
+                paymentStatus: Model.OrderShopPaymentStatus.Paid,
+                updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+              })
+            })
+            return batch.commit()
+          })
+
+        return orderObject
+      } catch (error) {
+        // 失敗する可能性があるのは batch の失敗だけなので retry
+        const neoTask = await NeoTask.setRetry(orderObject.event, 'updateOrderShops', error)
+        throw new FlowError(neoTask, error)
+      }
+    })
+
+  const setOrderTask: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+
+        // await Task.success(order.reference, order.rawValue())
+
+        await NeoTask.success(orderObject.event)
+
+        return orderObject
+      } catch (error) {
+        // 失敗する可能性があるのは update の失敗だけなので retry
+        const neoTask = await NeoTask.setRetry(orderObject.event, 'setOrderTask', error)
+        throw new FlowError(neoTask, error)
+      }
+    })
+
+  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
+    // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
       await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
@@ -651,8 +697,15 @@ export namespace Functions {
       // status が payment requested に変更された時
       // もしくは should retry が true だった時にこの functions は実行される
       // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
-      //   return undefined
-      // }
+      console.log('pre', event.data.previous.data().paymentStatus)
+      console.log('cur', event.data.data().paymentStatus)
+      if (event.data.previous.data().paymentStatus === Model.OrderPaymentStatus.Created && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
+        // 処理実行、リトライは実行されない
+        console.log('exec', event.data.previous.data().paymentStatus, event.data.data().paymentStatus)
+      } else {
+        console.log('undefined')
+        return undefined
+      }
       if (event.data.data().paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
         return undefined
       }
@@ -661,7 +714,6 @@ export namespace Functions {
         throw Error('orderID must be non-null')
       }
 
-      const orderObject = new OrderObject(event.params.orderID, event)
       const flow = new Flow.Line([
         prepareRequiredData,
         validateShopIsActive,

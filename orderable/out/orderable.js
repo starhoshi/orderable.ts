@@ -1,10 +1,4 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -23,7 +17,7 @@ const Flow = require("@1amageek/flow");
 const request = require("request");
 let stripe;
 let firestore;
-let slackParams;
+let slackParams = undefined;
 exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
     retrycf_1.Retrycf.initialize(options.adminOptions);
@@ -33,29 +27,23 @@ exports.initialize = (options) => {
 };
 class Slack {
     constructor(params = slackParams) {
-        this.enabled = true;
-        this.enabled = params.enabled || slackParams.enabled;
-        if (this.enabled) {
-            this.url = params.url;
-            this.channel = params.channel;
-            this.username = params.username || 'cloud-functions-police';
-            this.iconEmoji = params.iconEmoji || ':warning:';
-        }
+        this.slackParams = undefined;
+        this.slackParams = params;
     }
     post(text) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.enabled) {
+            if (!this.slackParams) {
                 return;
             }
             const options = {
                 json: {
-                    channel: this.channel,
-                    username: this.username,
+                    channel: this.slackParams.channel,
+                    username: this.slackParams.username,
                     text: text,
-                    icon_emoji: this.iconEmoji
+                    icon_emoji: this.slackParams.iconEmoji
                 }
             };
-            yield request.post(this.url, options, (error, response, body) => {
+            yield request.post(this.slackParams.url, options, (error, response, body) => {
                 if (error || response.statusCode !== 200) {
                     throw `slack error: ${error}, response.statusCode: ${response.statusCode}, body: ${body}`;
                 }
@@ -99,74 +87,29 @@ class NeoTask extends retrycf_1.Retrycf.NeoTask {
 exports.NeoTask = NeoTask;
 var Model;
 (function (Model) {
-    class HasNeoTask extends pring_1.Pring.Base {
-    }
-    __decorate([
-        pring_1.property
-    ], HasNeoTask.prototype, "neoTask", void 0);
-    Model.HasNeoTask = HasNeoTask;
-    class User extends pring_1.Pring.Base {
-    }
-    Model.User = User;
-    class Shop extends pring_1.Pring.Base {
-        constructor() {
-            super(...arguments);
-            this.isActive = true;
-            this.freePostageMinimumPrice = -1;
+    class Orderable extends pring_1.Pring.Base {
+        didFetchCompleted() {
+            return this.isSaved;
+        }
+        getCollectionPath() {
+            return `version/${this.getVersion()}/${this.getModelName()}`;
+        }
+        get(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return admin.firestore().collection(this.getCollectionPath()).doc(id).get().then(s => {
+                    this.init(s);
+                    return this;
+                });
+            });
         }
     }
-    __decorate([
-        pring_1.property
-    ], Shop.prototype, "name", void 0);
-    __decorate([
-        pring_1.property
-    ], Shop.prototype, "isActive", void 0);
-    __decorate([
-        pring_1.property
-    ], Shop.prototype, "freePostageMinimumPrice", void 0);
-    Model.Shop = Shop;
-    class Product extends pring_1.Pring.Base {
-    }
-    __decorate([
-        pring_1.property
-    ], Product.prototype, "name", void 0);
-    Model.Product = Product;
+    Model.Orderable = Orderable;
     let StockType;
     (function (StockType) {
         StockType["Unknown"] = "unknown";
         StockType["Finite"] = "finite";
         StockType["Infinite"] = "infinite";
     })(StockType = Model.StockType || (Model.StockType = {}));
-    class SKU extends pring_1.Pring.Base {
-        constructor() {
-            super(...arguments);
-            this.price = 0;
-            this.stockType = StockType.Unknown;
-            this.stock = 0;
-            this.isPublished = true;
-            this.isActive = true;
-            // 在庫チェック
-            // hasStock(quantity: number): boolean {
-            //   return this.stock - quantity >= 0
-            // }
-        }
-    }
-    __decorate([
-        pring_1.property
-    ], SKU.prototype, "price", void 0);
-    __decorate([
-        pring_1.property
-    ], SKU.prototype, "stockType", void 0);
-    __decorate([
-        pring_1.property
-    ], SKU.prototype, "stock", void 0);
-    __decorate([
-        pring_1.property
-    ], SKU.prototype, "isPublished", void 0);
-    __decorate([
-        pring_1.property
-    ], SKU.prototype, "isActive", void 0);
-    Model.SKU = SKU;
     let OrderPaymentStatus;
     (function (OrderPaymentStatus) {
         OrderPaymentStatus[OrderPaymentStatus["Unknown"] = 0] = "Unknown";
@@ -175,103 +118,12 @@ var Model;
         OrderPaymentStatus[OrderPaymentStatus["WaitingForPayment"] = 3] = "WaitingForPayment";
         OrderPaymentStatus[OrderPaymentStatus["Paid"] = 4] = "Paid";
     })(OrderPaymentStatus = Model.OrderPaymentStatus || (Model.OrderPaymentStatus = {}));
-    class StripeCharge extends pring_1.Pring.Base {
-    }
-    __decorate([
-        pring_1.property
-    ], StripeCharge.prototype, "cardID", void 0);
-    __decorate([
-        pring_1.property
-    ], StripeCharge.prototype, "customerID", void 0);
-    __decorate([
-        pring_1.property
-    ], StripeCharge.prototype, "chargeID", void 0);
-    Model.StripeCharge = StripeCharge;
-    class Order extends HasNeoTask {
-        constructor() {
-            super(...arguments);
-            this.amount = 0;
-            this.expirationDate = new Date().setHours(new Date().getHours() + 1);
-            this.orderSKUs = new pring_1.Pring.ReferenceCollection(this);
-            this.paymentStatus = OrderPaymentStatus.Created;
-        }
-        isCharged() {
-            if (this.stripe && this.stripe.chargeID) {
-                return true;
-            }
-            return false;
-        }
-    }
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "user", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "amount", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "paidDate", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "expirationDate", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "currency", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "orderSKUs", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "paymentStatus", void 0);
-    __decorate([
-        pring_1.property
-    ], Order.prototype, "stripe", void 0);
-    Model.Order = Order;
     let OrderShopPaymentStatus;
     (function (OrderShopPaymentStatus) {
         OrderShopPaymentStatus[OrderShopPaymentStatus["Unknown"] = 0] = "Unknown";
         OrderShopPaymentStatus[OrderShopPaymentStatus["Created"] = 1] = "Created";
         OrderShopPaymentStatus[OrderShopPaymentStatus["Paid"] = 2] = "Paid";
     })(OrderShopPaymentStatus = Model.OrderShopPaymentStatus || (Model.OrderShopPaymentStatus = {}));
-    class OrderShop extends pring_1.Pring.Base {
-        constructor() {
-            super(...arguments);
-            this.orderSKUs = new pring_1.Pring.ReferenceCollection(this);
-            this.paymentStatus = OrderShopPaymentStatus.Unknown;
-        }
-    }
-    __decorate([
-        pring_1.property
-    ], OrderShop.prototype, "orderSKUs", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderShop.prototype, "paymentStatus", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderShop.prototype, "user", void 0);
-    Model.OrderShop = OrderShop;
-    class OrderSKU extends pring_1.Pring.Base {
-        constructor() {
-            super(...arguments);
-            this.quantity = 0;
-        }
-    }
-    __decorate([
-        pring_1.property
-    ], OrderSKU.prototype, "snapshotSKU", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderSKU.prototype, "snapshotProduct", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderSKU.prototype, "quantity", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderSKU.prototype, "sku", void 0);
-    __decorate([
-        pring_1.property
-    ], OrderSKU.prototype, "shop", void 0);
-    Model.OrderSKU = OrderSKU;
 })(Model = exports.Model || (exports.Model = {}));
 var StripeErrorType;
 (function (StripeErrorType) {
@@ -350,20 +202,21 @@ exports.StripeError = StripeError;
 var Functions;
 (function (Functions) {
     class OrderSKUObject {
-        static fetchFrom(order) {
+        static fetchFrom(order, orderSKUType, skuType) {
             return __awaiter(this, void 0, void 0, function* () {
-                const orderSKURefs = yield order.orderSKUs.get(Model.OrderSKU);
+                // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+                const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
-                    return Model.OrderSKU.get(orderSKURef.id).then(s => {
-                        const orderSKU = s;
+                    return new orderSKUType().get(orderSKURef.id).then(s => {
+                        // const orderSKU = s as Model.OrderSKU
                         const orderSKUObject = new OrderSKUObject();
-                        orderSKUObject.orderSKU = orderSKU;
+                        orderSKUObject.orderSKU = s;
                         return orderSKUObject;
                     });
                 }));
                 yield Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
                     return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
-                        const s = new Model.SKU();
+                        const s = new skuType();
                         s.init(skuSnapshop);
                         orderSKUObjects[index].sku = s;
                     });
@@ -372,37 +225,50 @@ var Functions;
             });
         }
     }
+    Functions.OrderSKUObject = OrderSKUObject;
     class OrderObject {
-        static fetchShopsFrom(orderSKUObjects) {
+        constructor(event, initializableClass) {
+            this.event = event;
+            this.orderID = event.params.orderID;
+            this.initializableClass = initializableClass;
+        }
+        getShops() {
             return __awaiter(this, void 0, void 0, function* () {
-                return yield Promise.all(orderSKUObjects.map(orderSKUObject => {
+                this.shops = yield Promise.all(this.orderSKUObjects.map(orderSKUObject => {
                     return orderSKUObject.orderSKU.shop;
                 }).filter((shopRef, index, self) => {
                     return self.indexOf(shopRef) === index;
                 }).map(shopRef => {
                     return shopRef.get().then(shopSnapshot => {
-                        const shop = new Model.Shop();
+                        const shop = new this.initializableClass.shop();
                         shop.init(shopSnapshot);
                         return shop;
                     });
                 }));
             });
         }
-        constructor(orderID, event) {
-            this.orderID = orderID;
-            this.event = event;
+        isCharged() {
+            if (this.order && this.order.stripe && this.order.stripe.chargeID) {
+                return true;
+            }
+            return false;
         }
         updateStock(operator) {
             const orderSKUObjects = this.orderSKUObjects;
+            const order = this.order;
             if (!orderSKUObjects) {
+                throw Error('orderSKUObjects must be non-null');
+            }
+            if (!order) {
                 throw Error('orderSKUObjects must be non-null');
             }
             return firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = firestore.collection(`version/1/sku`).doc(orderSKUObject.sku.id);
+                    const skuRef = firestore.collection(new this.initializableClass.sku().getCollectionPath()).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
+                        console.log(tsku.data());
                         const newStock = tsku.data().stock + quantity;
                         if (newStock >= 0) {
                             transaction.update(skuRef, { stock: newStock });
@@ -413,37 +279,45 @@ var Functions;
                     });
                     promises.push(t);
                 }
-                // 重複実行された時に、2回目の実行を弾く
-                console.log('mark ref', this.event.data.ref);
-                promises.push(NeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'));
+                // // 重複実行された時に、2回目の実行を弾く
+                const step = 'validateAndDecreaseStock';
+                // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
+                const orderRef = firestore.doc(order.getPath());
+                const orderPromise = transaction.get(orderRef).then(tref => {
+                    if (retrycf_1.Retrycf.NeoTask.isCompleted(this.event, 'validateAndDecreaseStock')) {
+                        throw new retrycf_1.Retrycf.CompletedError('validateAndDecreaseStock');
+                    }
+                    else {
+                        const neoTask = new retrycf_1.Retrycf.NeoTask(this.event.data);
+                        neoTask.completed[step] = true;
+                        transaction.update(orderRef, { neoTask: neoTask.rawValue() });
+                    }
+                });
+                promises.push(orderPromise);
                 return Promise.all(promises);
             }));
         }
     }
+    Functions.OrderObject = OrderObject;
     let Operator;
     (function (Operator) {
         Operator[Operator["plus"] = 1] = "plus";
         Operator[Operator["minus"] = -1] = "minus";
-    })(Operator || (Operator = {}));
+    })(Operator = Functions.Operator || (Functions.Operator = {}));
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const order = yield Model.Order.get(orderObject.orderID);
-            const user = yield order.user.get().then(s => {
-                const u = new Model.User();
-                u.init(s);
-                return u;
-            });
-            const orderSKUObjects = yield OrderSKUObject.fetchFrom(order);
-            const shops = yield OrderObject.fetchShopsFrom(orderSKUObjects);
-            // TODO if stripe
+            const order = yield new orderObject.initializableClass.order().get(orderObject.orderID);
+            orderObject.order = order;
+            const user = yield new orderObject.initializableClass.user().get(order.user.id);
+            orderObject.user = user;
+            const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
+            orderObject.orderSKUObjects = orderSKUObjects;
+            yield orderObject.getShops();
+            console.log('shops', orderObject.shops);
             const stripeCard = yield stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
+            orderObject.stripeCard = stripeCard;
             console.log('amount', order.amount);
             console.log('stripe', order.stripe);
-            orderObject.order = order;
-            orderObject.user = user;
-            orderObject.orderSKUObjects = orderSKUObjects;
-            orderObject.shops = shops;
-            orderObject.stripeCard = stripeCard;
             return orderObject;
         }
         catch (error) {
@@ -457,7 +331,7 @@ var Functions;
             const order = orderObject.order;
             const shops = orderObject.shops;
             // 決済済みだったらスキップして良い
-            if (order.isCharged()) {
+            if (orderObject.isCharged()) {
                 return orderObject;
             }
             shops.forEach((shop, index) => {
@@ -481,7 +355,7 @@ var Functions;
             const order = orderObject.order;
             const orderSKUObjects = orderObject.orderSKUObjects;
             // 決済済みだったらスキップして良い
-            if (order.isCharged()) {
+            if (orderObject.isCharged()) {
                 return orderObject;
             }
             orderSKUObjects.forEach((orderSKUObject, index) => {
@@ -505,7 +379,7 @@ var Functions;
             const order = orderObject.order;
             const stripeCard = orderObject.stripeCard;
             // 決済済みだったらスキップ
-            if (order.isCharged()) {
+            if (orderObject.isCharged()) {
                 return orderObject;
             }
             const now = new Date(new Date().getFullYear(), new Date().getMonth());
@@ -528,7 +402,7 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済みだったらスキップして良い
-            if (order.isCharged()) {
+            if (orderObject.isCharged()) {
                 return orderObject;
             }
             yield orderObject.updateStock(Operator.minus);
@@ -549,7 +423,7 @@ var Functions;
             const user = orderObject.user;
             const currency = order.currency;
             // 決済済み
-            if (order.isCharged()) {
+            if (orderObject.isCharged()) {
                 return orderObject;
             }
             const charge = yield stripe.charges.create({
@@ -559,8 +433,8 @@ var Functions;
                 source: order.stripe.cardID,
                 transfer_group: order.id,
                 metadata: {
-                    orderID: order.id,
-                    rawValue: order.rawValue()
+                    orderID: order.id
+                    // , rawValue: order.rawValue()
                 }
             }, {
                 idempotency_key: order.id
@@ -587,13 +461,21 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済み
-            if (order.isCharged()) {
+            if (orderObject.isCharged()) {
                 return orderObject;
             }
             const charge = orderObject.stripeCharge;
             order.paymentStatus = Model.OrderPaymentStatus.Paid;
             order.stripe.chargeID = charge.id;
-            yield order.update();
+            order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
+            // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
+            // await order.update()
+            yield order.reference.update({
+                paymentStatus: Model.OrderPaymentStatus.Paid,
+                chargeID: charge.id,
+                paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
+                updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+            });
             console.log('charge completed');
             return orderObject;
         }
@@ -605,19 +487,21 @@ var Functions;
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const order = orderObject.order;
-            yield admin.firestore().collection('version/1/ordershop')
-                .where('order', '==', admin.firestore().collection(`version/1/order`).doc(order.id))
+            yield admin.firestore().collection(new orderObject.initializableClass.orderShop().getCollectionPath())
+                .where('order', '==', admin.firestore().collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
                 const batch = admin.firestore().batch();
-                // OrderShopStatus が Create のだけ Paid に更新する。
+                // OrderShopStatus が Create のだけ Paid に更新する
                 snapshot.docs.filter(doc => {
-                    const orderShop = new Model.OrderShop();
+                    const orderShop = new orderObject.initializableClass.orderShop();
                     orderShop.init(doc);
                     return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created;
                 }).forEach(doc => {
-                    batch.update(doc.ref, { paymentStatus: Model.OrderShopPaymentStatus.Paid });
+                    batch.update(doc.ref, {
+                        paymentStatus: Model.OrderShopPaymentStatus.Paid,
+                        updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+                    });
                 });
                 return batch.commit();
             });
@@ -642,7 +526,7 @@ var Functions;
             throw new FlowError(neoTask, error);
         }
     }));
-    Functions.orderPaymentRequested = (event) => __awaiter(this, void 0, void 0, function* () {
+    Functions.orderPaymentRequested = (event, orderObject) => __awaiter(this, void 0, void 0, function* () {
         // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
         try {
             const shouldRetry = NeoTask.shouldRetry(event.data);
@@ -650,15 +534,22 @@ var Functions;
             // status が payment requested に変更された時
             // もしくは should retry が true だった時にこの functions は実行される
             // if (ValueChanges.for('status', event.data) !== ValueChangesResult.updated && !shouldRetry) {
-            //   return undefined
-            // }
+            console.log('pre', event.data.previous.data().paymentStatus);
+            console.log('cur', event.data.data().paymentStatus);
+            if (event.data.previous.data().paymentStatus === Model.OrderPaymentStatus.Created && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
+                // 処理実行、リトライは実行されない
+                console.log('exec', event.data.previous.data().paymentStatus, event.data.data().paymentStatus);
+            }
+            else {
+                console.log('undefined');
+                return undefined;
+            }
             if (event.data.data().paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
                 return undefined;
             }
             if (!event.params || !event.params.orderID) {
                 throw Error('orderID must be non-null');
             }
-            const orderObject = new OrderObject(event.params.orderID, event);
             const flow = new Flow.Line([
                 prepareRequiredData,
                 validateShopIsActive,
