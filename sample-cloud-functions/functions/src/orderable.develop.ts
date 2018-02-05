@@ -102,16 +102,12 @@ export class NeoTask extends Retrycf.NeoTask {
 
 export namespace Model {
   export class Base extends Pring.Base {
-    didFetchCompleted(): Boolean {
-      return this.isSaved
-    }
-
-    getCollectionPath(): string {
+    get collectionPath(): string {
       return `version/${this.getVersion()}/${this.getModelName()}`
     }
 
     async get(id: string) {
-      return firestore.collection(this.getCollectionPath()).doc(id).get().then(s => {
+      return firestore.collection(this.collectionPath).doc(id).get().then(s => {
         this.init(s)
         return this
       })
@@ -370,14 +366,14 @@ export namespace Functions {
       this.initializableClass = initializableClass
     }
 
-    isCharged(): boolean {
+    get isCharged(): boolean {
       if (this.order && this.order.stripe && this.order.stripe.chargeID) {
         return true
       }
       return false
     }
 
-    paymentAgencyType() {
+    get paymentAgencyType() {
       if (!this.order) {
         return PaymentAgencyType.Unknown
       }
@@ -398,7 +394,7 @@ export namespace Functions {
       return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
         for (const orderSKUObject of orderSKUObjects) {
-          const skuRef = firestore.collection(new this.initializableClass.sku().getCollectionPath()).doc(orderSKUObject.sku.id)
+          const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id)
           const t = transaction.get(skuRef).then(tsku => {
             const quantity = orderSKUObject.orderSKU.quantity * operator
             console.log(tsku.data())
@@ -453,7 +449,7 @@ export namespace Functions {
 
         await orderObject.getShops()
 
-        if (orderObject.paymentAgencyType() === PaymentAgencyType.Stripe) {
+        if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
           const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
           orderObject.stripeCard = stripeCard
           console.log('stripe', order.stripe)
@@ -474,7 +470,7 @@ export namespace Functions {
         const shops = orderObject.shops!
 
         // 決済済みだったらスキップして良い
-        if (orderObject.isCharged()) {
+        if (orderObject.isCharged) {
           return orderObject
         }
 
@@ -504,7 +500,7 @@ export namespace Functions {
         const orderSKUObjects = orderObject.orderSKUObjects!
 
         // 決済済みだったらスキップして良い
-        if (orderObject.isCharged()) {
+        if (orderObject.isCharged) {
           return orderObject
         }
 
@@ -533,11 +529,11 @@ export namespace Functions {
         const order = orderObject.order!
 
         // 決済済みだったらスキップ
-        if (orderObject.isCharged()) {
+        if (orderObject.isCharged) {
           return orderObject
         }
 
-        switch (orderObject.paymentAgencyType()) {
+        switch (orderObject.paymentAgencyType) {
           case PaymentAgencyType.Stripe:
             const stripeCard = orderObject.stripeCard!
             const now = new Date(new Date().getFullYear(), new Date().getMonth())
@@ -569,7 +565,7 @@ export namespace Functions {
         const order = orderObject.order!
 
         // 決済済みだったらスキップして良い
-        if (orderObject.isCharged()) {
+        if (orderObject.isCharged) {
           return orderObject
         }
 
@@ -615,11 +611,11 @@ export namespace Functions {
         const user = orderObject.user!
 
         // 決済済み
-        if (orderObject.isCharged()) {
+        if (orderObject.isCharged) {
           return orderObject
         }
 
-        switch (orderObject.paymentAgencyType()) {
+        switch (orderObject.paymentAgencyType) {
           case PaymentAgencyType.Stripe:
             orderObject.stripeCharge = await stripeCharge(order)
             break
@@ -650,11 +646,11 @@ export namespace Functions {
         const order = orderObject.order!
 
         // 決済済み
-        if (orderObject.isCharged()) {
+        if (orderObject.isCharged) {
           return orderObject
         }
 
-        switch (orderObject.paymentAgencyType()) {
+        switch (orderObject.paymentAgencyType) {
           case PaymentAgencyType.Stripe:
             const charge = orderObject.stripeCharge!
 
@@ -687,8 +683,8 @@ export namespace Functions {
   const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        await firestore.collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-          .where('order', '==', firestore.collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
+        await firestore.collection(new orderObject.initializableClass.orderShop().collectionPath)
+          .where('order', '==', firestore.collection(new orderObject.initializableClass.order().collectionPath).doc(orderObject.orderID))
           .get()
           .then(snapshot => {
             const batch = firestore.batch()
