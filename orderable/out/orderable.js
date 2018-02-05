@@ -573,7 +573,7 @@ var Functions;
             // status が payment requested に変更された時
             // もしくは should retry が true だった時にこの functions は実行される
             // TODO: Retry
-            if (event.data.previous.data().paymentStatus === Model.OrderPaymentStatus.Created && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
+            if (event.data.previous.data().paymentStatus !== event.data.data().paymentStatus && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
                 // 処理実行、リトライは実行されない
             }
             else {
