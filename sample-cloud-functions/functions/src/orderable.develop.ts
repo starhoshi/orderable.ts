@@ -325,7 +325,7 @@ export namespace Functions {
     orderSKU: { new(): OrderSKU }
   }
 
-  enum PaymentAgencyType {
+  export enum PaymentAgencyType {
     Unknown,
     Stripe
   }

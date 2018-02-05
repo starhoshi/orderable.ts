@@ -68,6 +68,7 @@ var ValidationErrorType;
     ValidationErrorType["StripeCardError"] = "StripeCardError";
     ValidationErrorType["StripeInvalidRequestError"] = "StripeInvalidRequestError";
     ValidationErrorType["StripeCardExpired"] = "StripeCardExpired";
+    ValidationErrorType["PaymentInfoNotFound"] = "PaymentInfoNotFound";
 })(ValidationErrorType = exports.ValidationErrorType || (exports.ValidationErrorType = {}));
 class FlowError extends Error {
     constructor(task, error) {
@@ -235,6 +236,11 @@ var Functions;
         }
     }
     Functions.OrderSKUObject = OrderSKUObject;
+    let PaymentAgencyType;
+    (function (PaymentAgencyType) {
+        PaymentAgencyType[PaymentAgencyType["Unknown"] = 0] = "Unknown";
+        PaymentAgencyType[PaymentAgencyType["Stripe"] = 1] = "Stripe";
+    })(PaymentAgencyType = Functions.PaymentAgencyType || (Functions.PaymentAgencyType = {}));
     class OrderObject {
         constructor(event, initializableClass) {
             this.event = event;
@@ -261,6 +267,15 @@ var Functions;
                 return true;
             }
             return false;
+        }
+        paymentAgencyType() {
+            if (!this.order) {
+                return PaymentAgencyType.Unknown;
+            }
+            if (this.order.stripe) {
+                return PaymentAgencyType.Stripe;
+            }
+            return PaymentAgencyType.Unknown;
         }
         updateStock(operator) {
             const orderSKUObjects = this.orderSKUObjects;
@@ -322,11 +337,11 @@ var Functions;
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
             orderObject.orderSKUObjects = orderSKUObjects;
             yield orderObject.getShops();
-            console.log('shops', orderObject.shops);
-            const stripeCard = yield stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
-            orderObject.stripeCard = stripeCard;
-            console.log('amount', order.amount);
-            console.log('stripe', order.stripe);
+            if (orderObject.paymentAgencyType() === PaymentAgencyType.Stripe) {
+                const stripeCard = yield stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
+                orderObject.stripeCard = stripeCard;
+                console.log('stripe', order.stripe);
+            }
             return orderObject;
         }
         catch (error) {
@@ -383,18 +398,24 @@ var Functions;
             throw (error);
         }
     }));
-    const validateCardExpired = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const validatePaymentMethod = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            const stripeCard = orderObject.stripeCard;
             // 決済済みだったらスキップ
             if (orderObject.isCharged()) {
                 return orderObject;
             }
-            const now = new Date(new Date().getFullYear(), new Date().getMonth());
-            const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1);
-            if (expiredDate < now) {
-                throw new retrycf_1.Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。');
+            switch (orderObject.paymentAgencyType()) {
+                case PaymentAgencyType.Stripe:
+                    const stripeCard = orderObject.stripeCard;
+                    const now = new Date(new Date().getFullYear(), new Date().getMonth());
+                    const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1);
+                    if (expiredDate < now) {
+                        throw new retrycf_1.Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。');
+                    }
+                    break;
+                default:
+                    throw new retrycf_1.Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound, '決済情報が登録されていません。');
             }
             return orderObject;
         }
@@ -426,31 +447,37 @@ var Functions;
             throw (error);
         }
     }));
-    const stripeCharge = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const stripeCharge = (order) => __awaiter(this, void 0, void 0, function* () {
+        return yield stripe.charges.create({
+            amount: order.amount,
+            currency: order.currency,
+            customer: order.stripe.customerID,
+            source: order.stripe.cardID,
+            transfer_group: order.id,
+            metadata: {
+                orderID: order.id
+                // , rawValue: order.rawValue()
+            }
+        }, {
+            idempotency_key: order.id
+        }).catch(e => {
+            throw new StripeError(e);
+        });
+    });
+    const payment = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             const user = orderObject.user;
-            const currency = order.currency;
             // 決済済み
             if (orderObject.isCharged()) {
                 return orderObject;
             }
-            const charge = yield stripe.charges.create({
-                amount: order.amount,
-                currency: currency,
-                customer: order.stripe.customerID,
-                source: order.stripe.cardID,
-                transfer_group: order.id,
-                metadata: {
-                    orderID: order.id
-                    // , rawValue: order.rawValue()
-                }
-            }, {
-                idempotency_key: order.id
-            }).catch(e => {
-                throw new StripeError(e);
-            });
-            orderObject.stripeCharge = charge;
+            switch (orderObject.paymentAgencyType()) {
+                case PaymentAgencyType.Stripe:
+                    orderObject.stripeCharge = yield stripeCharge(order);
+                    break;
+                default:
+            }
             return orderObject;
         }
         catch (error) {
@@ -459,7 +486,7 @@ var Functions;
             yield NeoTask.clearComplete(orderObject.event);
             if (error.constructor === StripeError) {
                 const stripeError = new StripeError(error);
-                const neoTask = yield stripeError.setNeoTask(orderObject.event, 'stripeCharge');
+                const neoTask = yield stripeError.setNeoTask(orderObject.event, 'payment');
                 throw new FlowError(neoTask, error);
             }
             throw (error);
@@ -473,18 +500,23 @@ var Functions;
             if (orderObject.isCharged()) {
                 return orderObject;
             }
-            const charge = orderObject.stripeCharge;
-            order.paymentStatus = Model.OrderPaymentStatus.Paid;
-            order.stripe.chargeID = charge.id;
-            order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
-            // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
-            // await order.update()
-            yield order.reference.update({
-                paymentStatus: Model.OrderPaymentStatus.Paid,
-                chargeID: charge.id,
-                paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
-                updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
-            });
+            switch (orderObject.paymentAgencyType()) {
+                case PaymentAgencyType.Stripe:
+                    const charge = orderObject.stripeCharge;
+                    order.paymentStatus = Model.OrderPaymentStatus.Paid;
+                    order.stripe.chargeID = charge.id;
+                    order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
+                    // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
+                    // await order.update()
+                    yield order.reference.update({
+                        paymentStatus: Model.OrderPaymentStatus.Paid,
+                        stripe: { chargeID: charge.id },
+                        paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
+                        updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+                    });
+                    break;
+                default:
+            }
             console.log('charge completed');
             return orderObject;
         }
@@ -557,9 +589,9 @@ var Functions;
                 prepareRequiredData,
                 validateShopIsActive,
                 validateSKUIsActive,
-                validateCardExpired,
+                validatePaymentMethod,
                 validateAndDecreaseStock,
-                stripeCharge,
+                payment,
                 updateOrder,
                 updateOrderShops,
                 setOrderTask

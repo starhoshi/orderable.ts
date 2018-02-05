@@ -1,6 +1,5 @@
 /// <reference types="stripe" />
 import * as functions from 'firebase-functions';
-import { Event } from 'firebase-functions';
 import * as FirebaseFirestore from '@google-cloud/firestore';
 import * as Stripe from 'stripe';
 import { Pring } from 'pring';
@@ -25,6 +24,7 @@ export declare enum ValidationErrorType {
     StripeCardError = "StripeCardError",
     StripeInvalidRequestError = "StripeInvalidRequestError",
     StripeCardExpired = "StripeCardExpired",
+    PaymentInfoNotFound = "PaymentInfoNotFound",
 }
 export declare class FlowError extends Error {
     task: Retrycf.INeoTask;
@@ -158,6 +158,10 @@ export declare namespace Functions {
             new (): OrderSKU;
         };
     }
+    enum PaymentAgencyType {
+        Unknown = 0,
+        Stripe = 1,
+    }
     class OrderObject<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
         initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
         orderID: string;
@@ -171,11 +175,12 @@ export declare namespace Functions {
         getShops(): Promise<void>;
         constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>);
         isCharged(): boolean;
+        paymentAgencyType(): PaymentAgencyType;
         updateStock(operator: Operator): Promise<any[]>;
     }
     enum Operator {
         plus = 1,
         minus = -1,
     }
-    const orderPaymentRequested: (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => Promise<void>;
+    const orderPaymentRequested: (event: functions.Event<functions.firestore.DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => Promise<void>;
 }
