@@ -9,20 +9,20 @@ export class FirebaseHelper {
     if (!this._shared) {
       this._shared = new FirebaseHelper()
 
-      const serviceAccount = require('../../../sandbox-329fc-firebase-adminsdk.json')
+      const serviceAccount = require('../../../../../sandbox-329fc-firebase-adminsdk.json')
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       })
 
       Pring.initialize({
         projectId: 'sandbox-329fc',
-        keyFilename: './sandbox-329fc-firebase-adminsdk.json'
+        keyFilename: '../../sandbox-329fc-firebase-adminsdk.json'
       })
 
       Orderable.initialize({
         adminOptions: {
           projectId: 'sandbox-329fc',
-          keyFilename: './sandbox-329fc-firebase-adminsdk.json'
+          keyFilename: '../../sandbox-329fc-firebase-adminsdk.json'
         },
         stripeToken: '',
         slack: undefined
