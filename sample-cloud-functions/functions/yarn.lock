@@ -232,18 +232,6 @@
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
 
-"@star__hoshi/orderable@^0.0.22":
-  version "0.0.22"
-  resolved "https://registry.yarnpkg.com/@star__hoshi/orderable/-/orderable-0.0.22.tgz#f7a26f3ee0afb28506334bfaa119b11db22ed315"
-  dependencies:
-    "@1amageek/flow" "^0.2.1"
-    firebase-admin "^5.8.2"
-    firebase-functions "^0.8.1"
-    pring "^0.5.1"
-    request "^2.83.0"
-    retrycf "^0.0.34"
-    stripe "^5.4.0"
-
 "@types/body-parser@*":
   version "1.16.8"
   resolved "https://registry.yarnpkg.com/@types/body-parser/-/body-parser-1.16.8.tgz#687ec34140624a3bec2b1a8ea9268478ae8f3be3"
@@ -2008,7 +1996,7 @@ find-up@^2.0.0, find-up@^2.1.0:
   dependencies:
     locate-path "^2.0.0"
 
-firebase-admin@^5.8.1, firebase-admin@^5.8.2:
+firebase-admin@^5.8.2:
   version "5.8.2"
   resolved "https://registry.yarnpkg.com/firebase-admin/-/firebase-admin-5.8.2.tgz#4c390df3b6fd32567d8d4558ac04974bebd15749"
   dependencies:
@@ -4322,14 +4310,6 @@ pretty-format@^22.1.0:
     ansi-regex "^3.0.0"
     ansi-styles "^3.2.0"
 
-pring@^0.4.1:
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/pring/-/pring-0.4.1.tgz#db32b9cfaed1feddfffd52521d8ece1b50db5894"
-  dependencies:
-    "@google-cloud/firestore" "^0.11.1"
-    firebase-functions "^0.8.1"
-    reflect-metadata "^0.1.10"
-
 pring@^0.5.1, pring@^0.5.2:
   version "0.5.2"
   resolved "https://registry.yarnpkg.com/pring/-/pring-0.5.2.tgz#3ae20b7fc012ff4e09a9ffda181245355cfcfc77"
@@ -4754,14 +4734,6 @@ retry-request@^3.0.0, retry-request@^3.1.0, retry-request@^3.3.1:
   dependencies:
     request "^2.81.0"
     through2 "^2.0.0"
-
-retrycf@^0.0.34:
-  version "0.0.34"
-  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.0.34.tgz#c24ca7c4203da54c07da98618f054e83d5fd784d"
-  dependencies:
-    firebase-admin "^5.8.1"
-    firebase-functions "^0.8.1"
-    pring "^0.4.1"
 
 retrycf@^0.0.36:
   version "0.0.36"
