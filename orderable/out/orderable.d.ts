@@ -37,8 +37,7 @@ export declare class NeoTask extends Retrycf.NeoTask {
 }
 export declare namespace Model {
     class Base extends Pring.Base {
-        didFetchCompleted(): Boolean;
-        getCollectionPath(): string;
+        readonly collectionPath: string;
         get(id: string): Promise<this>;
     }
     interface HasNeoTask extends Base {
@@ -174,8 +173,8 @@ export declare namespace Functions {
         stripeCard?: Stripe.cards.ICard;
         getShops(): Promise<void>;
         constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>);
-        isCharged(): boolean;
-        paymentAgencyType(): PaymentAgencyType;
+        readonly isCharged: boolean;
+        readonly paymentAgencyType: PaymentAgencyType;
         updateStock(operator: Operator): Promise<any[]>;
     }
     enum Operator {

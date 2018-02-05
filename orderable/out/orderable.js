@@ -98,15 +98,12 @@ exports.NeoTask = NeoTask;
 var Model;
 (function (Model) {
     class Base extends pring_1.Pring.Base {
-        didFetchCompleted() {
-            return this.isSaved;
-        }
-        getCollectionPath() {
+        get collectionPath() {
             return `version/${this.getVersion()}/${this.getModelName()}`;
         }
         get(id) {
             return __awaiter(this, void 0, void 0, function* () {
-                return firestore.collection(this.getCollectionPath()).doc(id).get().then(s => {
+                return firestore.collection(this.collectionPath).doc(id).get().then(s => {
                     this.init(s);
                     return this;
                 });
@@ -262,13 +259,13 @@ var Functions;
                 }));
             });
         }
-        isCharged() {
+        get isCharged() {
             if (this.order && this.order.stripe && this.order.stripe.chargeID) {
                 return true;
             }
             return false;
         }
-        paymentAgencyType() {
+        get paymentAgencyType() {
             if (!this.order) {
                 return PaymentAgencyType.Unknown;
             }
@@ -289,7 +286,7 @@ var Functions;
             return firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = firestore.collection(new this.initializableClass.sku().getCollectionPath()).doc(orderSKUObject.sku.id);
+                    const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
                         console.log(tsku.data());
@@ -337,7 +334,7 @@ var Functions;
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
             orderObject.orderSKUObjects = orderSKUObjects;
             yield orderObject.getShops();
-            if (orderObject.paymentAgencyType() === PaymentAgencyType.Stripe) {
+            if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
                 const stripeCard = yield stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
                 orderObject.stripeCard = stripeCard;
                 console.log('stripe', order.stripe);
@@ -355,7 +352,7 @@ var Functions;
             const order = orderObject.order;
             const shops = orderObject.shops;
             // 決済済みだったらスキップして良い
-            if (orderObject.isCharged()) {
+            if (orderObject.isCharged) {
                 return orderObject;
             }
             shops.forEach((shop, index) => {
@@ -379,7 +376,7 @@ var Functions;
             const order = orderObject.order;
             const orderSKUObjects = orderObject.orderSKUObjects;
             // 決済済みだったらスキップして良い
-            if (orderObject.isCharged()) {
+            if (orderObject.isCharged) {
                 return orderObject;
             }
             orderSKUObjects.forEach((orderSKUObject, index) => {
@@ -402,10 +399,10 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済みだったらスキップ
-            if (orderObject.isCharged()) {
+            if (orderObject.isCharged) {
                 return orderObject;
             }
-            switch (orderObject.paymentAgencyType()) {
+            switch (orderObject.paymentAgencyType) {
                 case PaymentAgencyType.Stripe:
                     const stripeCard = orderObject.stripeCard;
                     const now = new Date(new Date().getFullYear(), new Date().getMonth());
@@ -432,7 +429,7 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済みだったらスキップして良い
-            if (orderObject.isCharged()) {
+            if (orderObject.isCharged) {
                 return orderObject;
             }
             yield orderObject.updateStock(Operator.minus);
@@ -469,10 +466,10 @@ var Functions;
             const order = orderObject.order;
             const user = orderObject.user;
             // 決済済み
-            if (orderObject.isCharged()) {
+            if (orderObject.isCharged) {
                 return orderObject;
             }
-            switch (orderObject.paymentAgencyType()) {
+            switch (orderObject.paymentAgencyType) {
                 case PaymentAgencyType.Stripe:
                     orderObject.stripeCharge = yield stripeCharge(order);
                     break;
@@ -497,10 +494,10 @@ var Functions;
         try {
             const order = orderObject.order;
             // 決済済み
-            if (orderObject.isCharged()) {
+            if (orderObject.isCharged) {
                 return orderObject;
             }
-            switch (orderObject.paymentAgencyType()) {
+            switch (orderObject.paymentAgencyType) {
                 case PaymentAgencyType.Stripe:
                     const charge = orderObject.stripeCharge;
                     order.paymentStatus = Model.OrderPaymentStatus.Paid;
@@ -528,8 +525,8 @@ var Functions;
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            yield firestore.collection(new orderObject.initializableClass.orderShop().getCollectionPath())
-                .where('order', '==', firestore.collection(new orderObject.initializableClass.order().getCollectionPath()).doc(orderObject.orderID))
+            yield firestore.collection(new orderObject.initializableClass.orderShop().collectionPath)
+                .where('order', '==', firestore.collection(new orderObject.initializableClass.order().collectionPath).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
                 const batch = firestore.batch();
