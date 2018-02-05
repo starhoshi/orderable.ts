@@ -98,3 +98,4 @@ sample-cloud-functions/functions/out
 
 # Test
 orderable/out/__tests__
+.envrc
