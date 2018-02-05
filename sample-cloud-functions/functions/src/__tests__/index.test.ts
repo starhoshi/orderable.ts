@@ -7,24 +7,7 @@ import { FirebaseHelper } from './helper/firebase'
 import * as Model from '../sampleModel'
 
 beforeAll(() => {
-  const serviceAccount = require('../../sandbox-329fc-firebase-adminsdk.json')
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  })
-
-  Pring.initialize({
-    projectId: 'sandbox-329fc',
-    keyFilename: './sandbox-329fc-firebase-adminsdk.json'
-  })
-
-  Orderable.initialize({
-    adminOptions: {
-      projectId: 'sandbox-329fc',
-      keyFilename: './sandbox-329fc-firebase-adminsdk.json'
-    },
-    stripeToken: '',
-    slack: undefined
-  })
+  const _ = FirebaseHelper.shared
 })
 
 it('order pay', async () => {
