@@ -71,7 +71,8 @@ export enum ValidationErrorType {
   OutOfStock = 'OutOfStock',
   StripeCardError = 'StripeCardError',
   StripeInvalidRequestError = 'StripeInvalidRequestError',
-  StripeCardExpired = 'StripeCardExpired'
+  StripeCardExpired = 'StripeCardExpired',
+  PaymentInfoNotFound = 'PaymentInfoNotFound'
 }
 
 export class FlowError extends Error {
@@ -324,6 +325,11 @@ export namespace Functions {
     orderSKU: { new(): OrderSKU }
   }
 
+  enum PaymentAgencyType {
+    Unknown,
+    Stripe
+  }
+
   export class OrderObject<
     Order extends Model.Order,
     Shop extends Model.Shop,
@@ -369,6 +375,18 @@ export namespace Functions {
         return true
       }
       return false
+    }
+
+    paymentAgencyType() {
+      if (!this.order) {
+        return PaymentAgencyType.Unknown
+      }
+
+      if (this.order.stripe) {
+        return PaymentAgencyType.Stripe
+      }
+
+      return PaymentAgencyType.Unknown
     }
 
     updateStock(operator: Operator) {
@@ -434,13 +452,12 @@ export namespace Functions {
         orderObject.orderSKUObjects = orderSKUObjects
 
         await orderObject.getShops()
-        console.log('shops', orderObject.shops)
 
-        const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
-        orderObject.stripeCard = stripeCard
-
-        console.log('amount', order.amount)
-        console.log('stripe', order.stripe)
+        if (orderObject.paymentAgencyType() === PaymentAgencyType.Stripe) {
+          const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
+          orderObject.stripeCard = stripeCard
+          console.log('stripe', order.stripe)
+        }
 
         return orderObject
       } catch (error) {
@@ -510,22 +527,28 @@ export namespace Functions {
       }
     })
 
-  const validateCardExpired: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const validatePaymentMethod: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
-        const stripeCard = orderObject.stripeCard!
 
         // 決済済みだったらスキップ
         if (orderObject.isCharged()) {
           return orderObject
         }
 
-        const now = new Date(new Date().getFullYear(), new Date().getMonth())
-        const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
+        switch (orderObject.paymentAgencyType()) {
+          case PaymentAgencyType.Stripe:
+            const stripeCard = orderObject.stripeCard!
+            const now = new Date(new Date().getFullYear(), new Date().getMonth())
+            const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
 
-        if (expiredDate < now) {
-          throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
+            if (expiredDate < now) {
+              throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
+            }
+            break
+          default:
+            throw new Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound, '決済情報が登録されていません。')
         }
 
         return orderObject
@@ -564,38 +587,45 @@ export namespace Functions {
       }
     })
 
-  const stripeCharge: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const stripeCharge = async (order: Model.Order) => {
+    return await stripe.charges.create(
+      {
+        amount: order.amount,
+        currency: order.currency!,
+        customer: order.stripe!.customerID, // TODO: if stripe
+        source: order.stripe!.cardID, // TODO: if stripe
+        transfer_group: order.id,
+        metadata: {
+          orderID: order.id
+          // , rawValue: order.rawValue()
+        }
+      },
+      {
+        idempotency_key: order.id
+      }
+    ).catch(e => {
+      throw new StripeError(e)
+    })
+  }
+
+  const payment: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
         const user = orderObject.user!
-        const currency = order.currency!
 
         // 決済済み
         if (orderObject.isCharged()) {
           return orderObject
         }
 
-        const charge = await stripe.charges.create(
-          {
-            amount: order.amount,
-            currency: currency,
-            customer: order.stripe!.customerID, // TODO: if stripe
-            source: order.stripe!.cardID, // TODO: if stripe
-            transfer_group: order.id,
-            metadata: {
-              orderID: order.id
-              // , rawValue: order.rawValue()
-            }
-          },
-          {
-            idempotency_key: order.id
-          }
-        ).catch(e => {
-          throw new StripeError(e)
-        })
-
-        orderObject.stripeCharge = charge
+        switch (orderObject.paymentAgencyType()) {
+          case PaymentAgencyType.Stripe:
+            orderObject.stripeCharge = await stripeCharge(order)
+            break
+          default:
+          // nothing to do
+        }
 
         return orderObject
       } catch (error) {
@@ -605,7 +635,7 @@ export namespace Functions {
 
         if (error.constructor === StripeError) {
           const stripeError = new StripeError(error)
-          const neoTask = await stripeError.setNeoTask(orderObject.event, 'stripeCharge')
+          const neoTask = await stripeError.setNeoTask(orderObject.event, 'payment')
           throw new FlowError(neoTask, error)
         }
 
@@ -624,19 +654,26 @@ export namespace Functions {
           return orderObject
         }
 
-        const charge = orderObject.stripeCharge!
+        switch (orderObject.paymentAgencyType()) {
+          case PaymentAgencyType.Stripe:
+            const charge = orderObject.stripeCharge!
 
-        order.paymentStatus = Model.OrderPaymentStatus.Paid
-        order.stripe!.chargeID = charge.id
-        order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
-        // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
-        // await order.update()
-        await order.reference.update({
-          paymentStatus: Model.OrderPaymentStatus.Paid,
-          chargeID: charge.id,
-          paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
-          updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
-        })
+            order.paymentStatus = Model.OrderPaymentStatus.Paid
+            order.stripe!.chargeID = charge.id
+            order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
+            // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
+            // await order.update()
+            await order.reference.update({
+              paymentStatus: Model.OrderPaymentStatus.Paid,
+              stripe: { chargeID: charge.id },
+              paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
+              updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+            })
+            break
+          default:
+          // nothing to do
+        }
+
         console.log('charge completed')
 
         return orderObject
@@ -717,9 +754,9 @@ export namespace Functions {
         prepareRequiredData,
         validateShopIsActive,
         validateSKUIsActive,
-        validateCardExpired,
+        validatePaymentMethod,
         validateAndDecreaseStock,
-        stripeCharge,
+        payment,
         updateOrder,
         updateOrderShops,
         setOrderTask
