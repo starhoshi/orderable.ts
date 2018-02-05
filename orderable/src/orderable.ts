@@ -724,8 +724,9 @@ export namespace Functions {
       }
     })
 
-  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
-    // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+  export const orderPaymentRequested = async (orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
+  // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+    const event = orderObject.event
     try {
       const shouldRetry = NeoTask.shouldRetry(event.data)
       await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)

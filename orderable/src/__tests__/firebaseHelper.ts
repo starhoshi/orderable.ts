@@ -1,7 +1,9 @@
 import * as admin from 'firebase-admin'
+import * as functions from 'firebase-functions'
 import { Pring } from 'pring'
 import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
+import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 
 export class FirebaseHelper {
   private static _shared?: FirebaseHelper
@@ -25,12 +27,28 @@ export class FirebaseHelper {
           projectId: 'sandbox-329fc',
           keyFilename: '../sandbox-329fc-firebase-adminsdk.json'
         },
-        stripeToken: process.env.STRIPE as string,
+        stripeToken: process.env.stripe as string,
         slack: undefined
       })
     }
 
     return this._shared
+  }
+
+  static makeEvent(ref: FirebaseFirestore.DocumentReference, data: any, previousData: any) {
+    return <functions.Event<DeltaDocumentSnapshot>>{
+      data: {
+        exists: true,
+        ref: ref,
+        id: '',
+        createTime: '',
+        updateTime: '',
+        readTime: '',
+        previous: { data: () => { return previousData } },
+        data: () => { return data },
+        get: (key: string) => { return undefined }
+      }
+    }
   }
 
   static makeOrder = async () => {

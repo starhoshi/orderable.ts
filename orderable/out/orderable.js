@@ -562,8 +562,9 @@ var Functions;
             throw new FlowError(neoTask, error);
         }
     }));
-    Functions.orderPaymentRequested = (event, orderObject) => __awaiter(this, void 0, void 0, function* () {
+    Functions.orderPaymentRequested = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+        const event = orderObject.event;
         try {
             const shouldRetry = NeoTask.shouldRetry(event.data);
             yield NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event);

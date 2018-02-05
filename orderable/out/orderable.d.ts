@@ -181,5 +181,5 @@ export declare namespace Functions {
         plus = 1,
         minus = -1,
     }
-    const orderPaymentRequested: (event: functions.Event<functions.firestore.DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => Promise<void>;
+    const orderPaymentRequested: (orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => Promise<void>;
 }

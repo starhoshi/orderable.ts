@@ -18,21 +18,8 @@ it('test', async () => {
   const newOrder = oldOrder.rawValue()
   newOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
 
-  const event: functions.Event<DeltaDocumentSnapshot> = {
-    params: { orderID: oldOrder.id },
-    data: {
-      exists: true,
-      ref: oldOrder.reference,
-      id: '',
-      createTime: '',
-      updateTime: '',
-      readTime: '',
-      previous: { data: () => { return oldOrder.rawValue() } },
-      data: () => { return newOrder },
-      get: (key: string) => { return undefined }
-    }
-  }
-
+  const event = FirebaseHelper.makeEvent(oldOrder.reference, oldOrder.rawValue(), newOrder)
+  event.params = { orderID: oldOrder.id }
   const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
     order: Model.SampleOrder,
     shop: Model.SampleShop,
@@ -43,7 +30,6 @@ it('test', async () => {
     orderSKU: Model.SampleOrderSKU
   })
 
-  await Orderable.Functions.orderPaymentRequested(event, orderObject)
+  await Orderable.Functions.orderPaymentRequested(orderObject)
   expect(true)
-
 })
