@@ -163,9 +163,10 @@ export declare namespace Functions {
     }
     class OrderObject<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
         initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
-        orderID: string;
         event: functions.Event<DeltaDocumentSnapshot>;
-        order?: Model.Order;
+        orderID: string;
+        order: Model.Order;
+        previousOrder: Model.Order;
         shops?: Model.Shop[];
         user?: Model.User;
         orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[];

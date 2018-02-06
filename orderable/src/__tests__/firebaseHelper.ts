@@ -50,7 +50,7 @@ export class Firebase {
       data: {
         exists: true,
         ref: ref,
-        id: '',
+        id: ref.id,
         createTime: '',
         updateTime: '',
         readTime: '',

@@ -243,6 +243,10 @@ var Functions;
             this.event = event;
             this.orderID = event.params.orderID;
             this.initializableClass = initializableClass;
+            this.order = new initializableClass.order();
+            this.order.init(event.data);
+            this.previousOrder = new initializableClass.order();
+            this.previousOrder.init(event.data.previous);
         }
         getShops() {
             return __awaiter(this, void 0, void 0, function* () {
@@ -289,7 +293,6 @@ var Functions;
                     const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
-                        console.log(tsku.data());
                         const newStock = tsku.data().stock + quantity;
                         if (newStock >= 0) {
                             transaction.update(skuRef, { stock: newStock });
@@ -305,11 +308,9 @@ var Functions;
                 const orderRef = firestore.doc(order.getPath());
                 const orderPromise = transaction.get(orderRef).then(tref => {
                     if (retrycf_1.Retrycf.NeoTask.isCompleted(this.event, step)) {
-                        console.log('completed');
                         throw new retrycf_1.Retrycf.CompletedError(step);
                     }
                     else {
-                        console.log('else');
                         const neoTask = new retrycf_1.Retrycf.NeoTask(this.event.data);
                         neoTask.completed[step] = true;
                         transaction.update(orderRef, { neoTask: neoTask.rawValue() });
@@ -328,8 +329,9 @@ var Functions;
     })(Operator = Functions.Operator || (Functions.Operator = {}));
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const order = yield new orderObject.initializableClass.order().get(orderObject.orderID);
-            orderObject.order = order;
+            const order = orderObject.order;
+            // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
+            // orderObject.order = order
             const user = yield new orderObject.initializableClass.user().get(order.user.id);
             orderObject.user = user;
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);

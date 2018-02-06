@@ -337,9 +337,10 @@ export namespace Functions {
 
     initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>
 
-    orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
-    order?: Model.Order
+    orderID: string
+    order: Model.Order
+    previousOrder: Model.Order
     shops?: Model.Shop[]
     user?: Model.User
     orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
@@ -364,6 +365,10 @@ export namespace Functions {
       this.event = event
       this.orderID = event.params!.orderID!
       this.initializableClass = initializableClass
+      this.order = new initializableClass.order()
+      this.order.init(event.data)
+      this.previousOrder = new initializableClass.order()
+      this.previousOrder.init(event.data.previous)
     }
 
     get isCharged(): boolean {
@@ -436,8 +441,9 @@ export namespace Functions {
   const prepareRequiredData: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
-        orderObject.order = order
+        const order = orderObject.order!
+        // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
+        // orderObject.order = order
 
         const user = await new orderObject.initializableClass.user().get(order.user.id)
         orderObject.user = user
