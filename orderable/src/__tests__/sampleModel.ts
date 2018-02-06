@@ -14,6 +14,13 @@ export class SampleShop extends Orderable.Model.Base implements Orderable.Model.
 
 export class SampleProduct extends Orderable.Model.Base implements Orderable.Model.Product {
   @property name?: string
+
+  static async default() {
+    const p = new SampleProduct()
+    p.name = 'sample product'
+    await p.save()
+    return p
+  }
 }
 
 export class SampleSKU extends Orderable.Model.Base implements Orderable.Model.SKU {
@@ -22,12 +29,27 @@ export class SampleSKU extends Orderable.Model.Base implements Orderable.Model.S
   @property stock: number = 0
   @property isPublished: boolean = true
   @property isActive: boolean = true
+
+  static async default() {
+    const sku = new SampleSKU()
+    sku.price = 1000
+    sku.stockType = Orderable.Model.StockType.Finite
+    sku.stock = 100
+    await sku.save()
+    return sku
+  }
 }
 
 export class SampleStripeCharge extends Orderable.Model.Base implements Orderable.Model.StripeCharge {
   @property cardID?: string
   @property customerID?: string
   @property chargeID?: string
+  static default() {
+    const stripeCharge = new SampleStripeCharge()
+    stripeCharge.cardID = 'card_1BnhthKZcOra3JxsKaxABsRj'
+    stripeCharge.customerID = 'cus_CC65RZ8Gf6zi7V'
+    return stripeCharge
+  }
 }
 
 export class SampleOrder extends Orderable.Model.Base implements Orderable.Model.Order {
@@ -42,6 +64,20 @@ export class SampleOrder extends Orderable.Model.Base implements Orderable.Model
 
   @property paymentStatus: Orderable.Model.OrderPaymentStatus = Orderable.Model.OrderPaymentStatus.Created
   @property stripe?: SampleStripeCharge
+
+  static async default(user: SampleUser, orderSKUs: SampleOrderSKU[]) {
+    const o = new SampleOrder()
+    o.user = user.reference
+    o.amount = 1000
+    o.currency = 'jpy'
+    o.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+    o.stripe = SampleStripeCharge.default()
+    orderSKUs.forEach(s => {
+      o.orderSKUs.insert(s)
+    })
+    await o.save()
+    return o
+  }
 }
 
 export class SampleOrderShop extends Orderable.Model.Base implements Orderable.Model.OrderShop {
@@ -63,4 +99,15 @@ export class SampleOrderSKU extends Orderable.Model.Base implements Orderable.Mo
   @property sku: FirebaseFirestore.DocumentReference
   // @property product: FirebaseFirestore.DocumentReference
   @property shop: FirebaseFirestore.DocumentReference
+
+  static async default(sku: SampleSKU, product: SampleProduct, shop: SampleShop) {
+    const oSKU = new SampleOrderSKU()
+    oSKU.snapshotSKU = sku.rawValue()
+    oSKU.snapshotProduct = product.rawValue()
+    oSKU.quantity = 1
+    oSKU.sku = sku.reference
+    oSKU.shop = shop.reference
+    await oSKU.save()
+    return oSKU
+  }
 }

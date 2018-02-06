@@ -5,24 +5,24 @@ import { Pring } from 'pring'
 import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
-import { FirebaseHelper } from './firebaseHelper'
+import * as Helper from './firebaseHelper'
 
 beforeAll(() => {
-  const _ = FirebaseHelper.shared
+  const _ = Helper.Firebase.shared
 })
 
 describe('OrderObject', () => {
-  describe('isCharged', () => {
-    let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
-    beforeEach(() => {
-      const event = FirebaseHelper.makeEvent({} as any, {}, {})
-      event.params = { orderID: '' }
-      orderObject = FirebaseHelper.orderObject(event)
-      const order = new Model.SampleOrder()
-      orderObject.order = order
-      orderObject.order.stripe = undefined
-    })
+  let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
+  beforeEach(() => {
+    const event = Helper.Firebase.makeEvent({} as any, {}, {})
+    event.params = { orderID: '' }
+    orderObject = Helper.Firebase.orderObject(event)
+    const order = new Model.SampleOrder()
+    orderObject.order = order
+    orderObject.order.stripe = undefined
+  })
 
+  describe('isCharged', () => {
     test('return true when charge completed', () => {
       orderObject.order!.stripe = new Model.SampleStripeCharge()
       orderObject.order!.stripe!.chargeID = 'test'
@@ -43,16 +43,94 @@ describe('OrderObject', () => {
       expect(orderObject.isCharged).toBeFalsy()
     })
   })
+
+  describe('paymentAgencyType', () => {
+    test('return Stripe when exist stripe', () => {
+      orderObject.order!.stripe = new Model.SampleStripeCharge()
+
+      expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
+    })
+
+    test('return Unknown when stripe is undefined', () => {
+      orderObject.order!.stripe = undefined
+
+      expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
+    })
+
+    test('return Unknown when order is undefined', () => {
+      orderObject.order = undefined
+
+      expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
+    })
+  })
+
+  describe('updateStock', () => {
+    jest.setTimeout(20000)
+    let model: Helper.Model
+
+    beforeEach(async () => {
+      model = await Helper.Firebase.makeModel()
+      orderObject.order = model.order
+    })
+
+    describe('finite', async () => {
+      const stock = 100
+      beforeEach(async () => {
+        for (const sku of model.skus) {
+          sku.stock = stock
+          sku.stockType = Orderable.Model.StockType.Finite
+          await sku.update()
+        }
+        let quantity = 0
+        for (const orderSKU of model.orderSKUs) {
+          quantity += 1
+          orderSKU.quantity = quantity
+          await orderSKU.update()
+        }
+        const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+        orderObject.orderSKUObjects = orderSKUObjects
+      })
+
+      test('stock decremented', async () => {
+        await orderObject.updateStock(Orderable.Functions.Operator.minus)
+
+        let quantity = 0
+        for (const orderSKU of model.orderSKUs) {
+          quantity += 1
+          const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+          const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+          expect(sku.stock).toEqual(stock - quantity)
+        }
+
+        expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
+      })
+
+      test('stock incremented', async () => {
+        await orderObject.updateStock(Orderable.Functions.Operator.plus)
+
+        let quantity = 0
+        for (const orderSKU of model.orderSKUs) {
+          quantity += 1
+          const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+          const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+          expect(sku.stock).toEqual(stock + quantity)
+        }
+
+        expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
+      })
+    })
+  })
 })
 
 test('pay order', async () => {
   jest.setTimeout(20000)
 
-  const oldOrder = await FirebaseHelper.makeOrder()
+  const model = await Helper.Firebase.makeModel()
+  const oldOrder = model.order
   const newOrder = oldOrder.rawValue()
   newOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
 
-  const event = FirebaseHelper.makeEvent(oldOrder.reference, oldOrder.rawValue(), newOrder)
+  const event = Helper.Firebase.makeEvent(oldOrder.reference, oldOrder.rawValue(), newOrder)
   event.params = { orderID: oldOrder.id }
   const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
     order: Model.SampleOrder,

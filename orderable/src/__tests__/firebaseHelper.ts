@@ -5,12 +5,22 @@ import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 
-export class FirebaseHelper {
-  private static _shared?: FirebaseHelper
+export interface Model {
+  user: Model.SampleUser,
+  shop: Model.SampleShop,
+  products: Model.SampleProduct[],
+  skus: Model.SampleSKU[],
+  order: Model.SampleOrder,
+  orderShops: Model.SampleOrderShop[],
+  orderSKUs: Model.SampleOrderSKU[]
+}
+
+export class Firebase {
+  private static _shared?: Firebase
   private constructor() { }
-  static get shared(): FirebaseHelper {
+  static get shared(): Firebase {
     if (!this._shared) {
-      this._shared = new FirebaseHelper()
+      this._shared = new Firebase()
 
       const serviceAccount = require('../../../sandbox-329fc-firebase-adminsdk.json')
       admin.initializeApp({
@@ -63,7 +73,7 @@ export class FirebaseHelper {
     })
   }
 
-  static makeOrder = async () => {
+  static makeModel = async () => {
     const user = new Model.SampleUser()
     user.stripeCustomerID = 'cus_CC65RZ8Gf6zi7V'
     await user.save()
@@ -126,12 +136,14 @@ export class FirebaseHelper {
     order.orderSKUs.insert(orderSKU1)
     order.orderSKUs.insert(orderSKU2)
 
-    console.log('orderSKU1', orderSKU1.id)
     await orderShop.save()
 
     await order.save()
 
-    return order
+    return <Model>{
+      user: user, shop: shop, products: [product1, product2], skus: [sku1, sku2],
+      order: order, orderShops: [orderShop], orderSKUs: [orderSKU1, orderSKU2]
+    }
   }
 
   /// 指定した DocumentReference を observe する。 `timeout` を超えたらエラーを返す
