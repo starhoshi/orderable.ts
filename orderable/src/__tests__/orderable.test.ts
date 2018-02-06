@@ -11,7 +11,41 @@ beforeAll(() => {
   const _ = FirebaseHelper.shared
 })
 
-it('test', async () => {
+describe('OrderObject', () => {
+  describe('isCharged', () => {
+    let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
+    beforeEach(() => {
+      const event = FirebaseHelper.makeEvent({} as any, {}, {})
+      event.params = { orderID: '' }
+      orderObject = FirebaseHelper.orderObject(event)
+      const order = new Model.SampleOrder()
+      orderObject.order = order
+      orderObject.order.stripe = undefined
+    })
+
+    test('return true when charge completed', () => {
+      orderObject.order!.stripe = new Model.SampleStripeCharge()
+      orderObject.order!.stripe!.chargeID = 'test'
+
+      expect(orderObject.isCharged).toBeTruthy()
+    })
+
+    test('return false when stripe is undefined', () => {
+      orderObject.order!.stripe = undefined
+
+      expect(orderObject.isCharged).toBeFalsy()
+    })
+
+    test('return false when stripe.chargeID is undefined', () => {
+      orderObject.order!.stripe = new Model.SampleStripeCharge()
+      orderObject.order!.stripe!.chargeID = undefined
+
+      expect(orderObject.isCharged).toBeFalsy()
+    })
+  })
+})
+
+test('pay order', async () => {
   jest.setTimeout(20000)
 
   const oldOrder = await FirebaseHelper.makeOrder()
@@ -32,4 +66,18 @@ it('test', async () => {
 
   await Orderable.Functions.orderPaymentRequested(orderObject)
   expect(true)
+})
+
+// TODO
+describe('OrderSKUObject', async () => {
+  test('fetchFrom', async () => {
+    expect(true)
+  })
+})
+
+// TODO
+describe('StripeError', async () => {
+  test('StripeCardError', async () => {
+    expect(true)
+  })
 })

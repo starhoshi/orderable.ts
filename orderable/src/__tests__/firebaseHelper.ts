@@ -51,6 +51,18 @@ export class FirebaseHelper {
     }
   }
 
+  static orderObject(event: functions.Event<DeltaDocumentSnapshot>) {
+    return new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+      order: Model.SampleOrder,
+      shop: Model.SampleShop,
+      user: Model.SampleUser,
+      sku: Model.SampleSKU,
+      product: Model.SampleProduct,
+      orderShop: Model.SampleOrderShop,
+      orderSKU: Model.SampleOrderSKU
+    })
+  }
+
   static makeOrder = async () => {
     const user = new Model.SampleUser()
     user.stripeCustomerID = 'cus_CC65RZ8Gf6zi7V'
