@@ -37,7 +37,7 @@ export class Firebase {
           projectId: 'sandbox-329fc',
           keyFilename: '../sandbox-329fc-firebase-adminsdk.json'
         },
-        stripeToken: process.env.stripe as string,
+        stripeToken: process.env.STRIPE as string,
         slack: undefined
       })
     }

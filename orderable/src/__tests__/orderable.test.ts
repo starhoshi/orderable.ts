@@ -98,7 +98,7 @@ describe('OrderObject', () => {
         })
 
         test('stock decremented', async () => {
-          await orderObject.updateStock(Orderable.Functions.Operator.minus)
+          await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
 
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
@@ -110,7 +110,7 @@ describe('OrderObject', () => {
         })
 
         test('stock incremented', async () => {
-          await orderObject.updateStock(Orderable.Functions.Operator.plus)
+          await orderObject.updateStock(Orderable.Functions.Operator.plus, 'step')
 
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
@@ -123,7 +123,7 @@ describe('OrderObject', () => {
       })
 
       describe('Exception Scenarios', () => {
-        beforeEach(async () => {
+        test('ValidationError.OutOfStock when sku is out of stock', async () => {
           let quantity = 10000000000000
           for (const orderSKU of model.orderSKUs) {
             orderSKU.quantity = quantity
@@ -131,16 +131,43 @@ describe('OrderObject', () => {
           }
           const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
           orderObject.orderSKUObjects = orderSKUObjects
-        })
 
-        test('ValidationError.OutOfStock when sku is out of stock', async () => {
           expect.hasAssertions()
           try {
-            await orderObject.updateStock(Orderable.Functions.Operator.minus)
+            await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
           } catch (e) {
             expect(e).toBeInstanceOf(Retrycf.ValidationError)
             const validationError = e as Retrycf.ValidationError
             expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
+
+            // check stock did not decrement
+            for (const sku of model.skus) {
+              const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
+              expect(updatedSKU.stock).toEqual(sku.stock)
+            }
+          }
+        })
+
+        test('CompletedError when already this stap completed', async () => {
+          const step = 'step'
+
+          const neoTask = new Retrycf.NeoTask(orderObject.event.data)
+          await model.order.reference.update({ neoTask: { completed: { [step]: true } } })
+
+          const event = Helper.Firebase.makeEvent({} as any, { neoTask: { completed: { [step]: true } } }, {})
+          event.params = { orderID: '' }
+          orderObject = Helper.Firebase.orderObject(event)
+          orderObject.order = model.order
+          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          orderObject.orderSKUObjects = orderSKUObjects
+
+          expect.hasAssertions()
+          try {
+            await orderObject.updateStock(Orderable.Functions.Operator.minus, step)
+          } catch (e) {
+            expect(e).toBeInstanceOf(Retrycf.CompletedError)
+            const completedError = e as Retrycf.CompletedError
+            expect(completedError.step).toEqual(step)
 
             // check stock did not decrement
             for (const sku of model.skus) {
@@ -162,7 +189,7 @@ test('pay order', async () => {
   const newOrder = oldOrder.rawValue()
   newOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
 
-  const event = Helper.Firebase.makeEvent(oldOrder.reference, oldOrder.rawValue(), newOrder)
+  const event = Helper.Firebase.makeEvent(oldOrder.reference, newOrder, oldOrder.rawValue())
   event.params = { orderID: oldOrder.id }
   const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
     order: Model.SampleOrder,

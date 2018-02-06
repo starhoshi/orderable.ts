@@ -385,7 +385,7 @@ export namespace Functions {
       return PaymentAgencyType.Unknown
     }
 
-    updateStock(operator: Operator) {
+    updateStock(operator: Operator, step: string) {
       const orderSKUObjects = this.orderSKUObjects
       const order = this.order
       if (!orderSKUObjects) { throw Error('orderSKUObjects must be non-null') }
@@ -402,9 +402,7 @@ export namespace Functions {
 
             if (newStock >= 0) {
               transaction.update(skuRef, { stock: newStock })
-              console.log('success')
             } else {
-              console.log('error')
               throw new Retrycf.ValidationError(ValidationErrorType.OutOfStock,
                 `${orderSKUObject.orderSKU.snapshotProduct!.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
             }
@@ -413,13 +411,14 @@ export namespace Functions {
         }
 
         // // 重複実行された時に、2回目の実行を弾く
-        const step = 'validateAndDecreaseStock'
         // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
         const orderRef = firestore.doc(order.getPath())
         const orderPromise = transaction.get(orderRef).then(tref => {
-          if (Retrycf.NeoTask.isCompleted(this.event, 'validateAndDecreaseStock')) {
-            throw new Retrycf.CompletedError('validateAndDecreaseStock')
+          if (Retrycf.NeoTask.isCompleted(this.event, step)) {
+            console.log('completed')
+            throw new Retrycf.CompletedError(step)
           } else {
+            console.log('else')
             const neoTask = new Retrycf.NeoTask(this.event.data)
             neoTask.completed[step] = true
             transaction.update(orderRef, { neoTask: neoTask.rawValue() })
@@ -571,7 +570,7 @@ export namespace Functions {
           return orderObject
         }
 
-        await orderObject.updateStock(Operator.minus)
+        await orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock')
 
         return orderObject
       } catch (error) {
@@ -628,7 +627,7 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
-        await orderObject.updateStock(Operator.plus)
+        await orderObject.updateStock(Operator.plus, 'payment')
         await NeoTask.clearComplete(orderObject.event)
 
         if (error.constructor === StripeError) {
