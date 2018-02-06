@@ -402,7 +402,9 @@ export namespace Functions {
 
             if (newStock >= 0) {
               transaction.update(skuRef, { stock: newStock })
+              console.log('success')
             } else {
+              console.log('error')
               throw new Retrycf.ValidationError(ValidationErrorType.OutOfStock,
                 `${orderSKUObject.orderSKU.snapshotProduct!.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
             }

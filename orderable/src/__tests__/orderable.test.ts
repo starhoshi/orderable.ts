@@ -6,6 +6,7 @@ import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Helper from './firebaseHelper'
+import { Retrycf } from 'retrycf'
 
 beforeAll(() => {
   const _ = Helper.Firebase.shared
@@ -20,6 +21,10 @@ describe('OrderObject', () => {
     const order = new Model.SampleOrder()
     orderObject.order = order
     orderObject.order.stripe = undefined
+  })
+
+  describe('getShops', () => {
+    expect('TODO')
   })
 
   describe('isCharged', () => {
@@ -74,49 +79,76 @@ describe('OrderObject', () => {
     })
 
     describe('finite', async () => {
-      const stock = 100
-      beforeEach(async () => {
-        for (const sku of model.skus) {
-          sku.stock = stock
-          sku.stockType = Orderable.Model.StockType.Finite
-          await sku.update()
-        }
-        let quantity = 0
-        for (const orderSKU of model.orderSKUs) {
-          quantity += 1
-          orderSKU.quantity = quantity
-          await orderSKU.update()
-        }
-        const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-        orderObject.orderSKUObjects = orderSKUObjects
+      describe('Nominal Scenarios', () => {
+        const stock = 100
+        beforeEach(async () => {
+          for (const sku of model.skus) {
+            sku.stock = stock
+            sku.stockType = Orderable.Model.StockType.Finite
+            await sku.update()
+          }
+          let quantity = 0
+          for (const orderSKU of model.orderSKUs) {
+            quantity += 1
+            orderSKU.quantity = quantity
+            await orderSKU.update()
+          }
+          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          orderObject.orderSKUObjects = orderSKUObjects
+        })
+
+        test('stock decremented', async () => {
+          await orderObject.updateStock(Orderable.Functions.Operator.minus)
+
+          let quantity = 0
+          for (const orderSKU of model.orderSKUs) {
+            quantity += 1
+            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+            const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+            expect(sku.stock).toEqual(stock - quantity)
+          }
+        })
+
+        test('stock incremented', async () => {
+          await orderObject.updateStock(Orderable.Functions.Operator.plus)
+
+          let quantity = 0
+          for (const orderSKU of model.orderSKUs) {
+            quantity += 1
+            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+            const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+            expect(sku.stock).toEqual(stock + quantity)
+          }
+        })
       })
 
-      test('stock decremented', async () => {
-        await orderObject.updateStock(Orderable.Functions.Operator.minus)
+      describe('Exception Scenarios', () => {
+        beforeEach(async () => {
+          let quantity = 10000000000000
+          for (const orderSKU of model.orderSKUs) {
+            orderSKU.quantity = quantity
+            await orderSKU.update()
+          }
+          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          orderObject.orderSKUObjects = orderSKUObjects
+        })
 
-        let quantity = 0
-        for (const orderSKU of model.orderSKUs) {
-          quantity += 1
-          const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-          const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-          expect(sku.stock).toEqual(stock - quantity)
-        }
+        test('ValidationError.OutOfStock when sku is out of stock', async () => {
+          expect.hasAssertions()
+          try {
+            await orderObject.updateStock(Orderable.Functions.Operator.minus)
+          } catch (e) {
+            expect(e).toBeInstanceOf(Retrycf.ValidationError)
+            const validationError = e as Retrycf.ValidationError
+            expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
-        expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
-      })
-
-      test('stock incremented', async () => {
-        await orderObject.updateStock(Orderable.Functions.Operator.plus)
-
-        let quantity = 0
-        for (const orderSKU of model.orderSKUs) {
-          quantity += 1
-          const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-          const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-          expect(sku.stock).toEqual(stock + quantity)
-        }
-
-        expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
+            // check stock did not decrement
+            for (const sku of model.skus) {
+              const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
+              expect(updatedSKU.stock).toEqual(sku.stock)
+            }
+          }
+        })
       })
     })
   })
