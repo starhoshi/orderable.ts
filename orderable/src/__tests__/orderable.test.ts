@@ -71,7 +71,7 @@ describe('OrderObject', () => {
 
   describe('updateStock', () => {
     jest.setTimeout(20000)
-    let model: Helper.Model
+    let model: Helper.SampleModel
 
     beforeEach(async () => {
       model = await Helper.Firebase.makeModel()

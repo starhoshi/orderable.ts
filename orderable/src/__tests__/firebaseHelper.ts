@@ -5,7 +5,7 @@ import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 
-export interface Model {
+export interface SampleModel {
   user: Model.SampleUser,
   shop: Model.SampleShop,
   products: Model.SampleProduct[],
@@ -140,7 +140,7 @@ export class Firebase {
 
     await order.save()
 
-    return <Model>{
+    return <SampleModel>{
       user: user, shop: shop, products: [product1, product2], skus: [sku1, sku2],
       order: order, orderShops: [orderShop], orderSKUs: [orderSKU1, orderSKU2]
     }

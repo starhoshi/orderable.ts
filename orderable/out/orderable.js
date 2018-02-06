@@ -274,7 +274,7 @@ var Functions;
             }
             return PaymentAgencyType.Unknown;
         }
-        updateStock(operator) {
+        updateStock(operator, step) {
             const orderSKUObjects = this.orderSKUObjects;
             const order = this.order;
             if (!orderSKUObjects) {
@@ -301,14 +301,15 @@ var Functions;
                     promises.push(t);
                 }
                 // // 重複実行された時に、2回目の実行を弾く
-                const step = 'validateAndDecreaseStock';
                 // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
                 const orderRef = firestore.doc(order.getPath());
                 const orderPromise = transaction.get(orderRef).then(tref => {
-                    if (retrycf_1.Retrycf.NeoTask.isCompleted(this.event, 'validateAndDecreaseStock')) {
-                        throw new retrycf_1.Retrycf.CompletedError('validateAndDecreaseStock');
+                    if (retrycf_1.Retrycf.NeoTask.isCompleted(this.event, step)) {
+                        console.log('completed');
+                        throw new retrycf_1.Retrycf.CompletedError(step);
                     }
                     else {
+                        console.log('else');
                         const neoTask = new retrycf_1.Retrycf.NeoTask(this.event.data);
                         neoTask.completed[step] = true;
                         transaction.update(orderRef, { neoTask: neoTask.rawValue() });
@@ -432,7 +433,7 @@ var Functions;
             if (orderObject.isCharged) {
                 return orderObject;
             }
-            yield orderObject.updateStock(Operator.minus);
+            yield orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock');
             return orderObject;
         }
         catch (error) {
@@ -479,7 +480,7 @@ var Functions;
         }
         catch (error) {
             // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
-            yield orderObject.updateStock(Operator.plus);
+            yield orderObject.updateStock(Operator.plus, 'payment');
             yield NeoTask.clearComplete(orderObject.event);
             if (error.constructor === StripeError) {
                 const stripeError = new StripeError(error);
