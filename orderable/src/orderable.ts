@@ -397,7 +397,6 @@ export namespace Functions {
           const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id)
           const t = transaction.get(skuRef).then(tsku => {
             const quantity = orderSKUObject.orderSKU.quantity * operator
-            console.log(tsku.data())
             const newStock = tsku.data()!.stock + quantity
 
             if (newStock >= 0) {
@@ -415,10 +414,8 @@ export namespace Functions {
         const orderRef = firestore.doc(order.getPath())
         const orderPromise = transaction.get(orderRef).then(tref => {
           if (Retrycf.NeoTask.isCompleted(this.event, step)) {
-            console.log('completed')
             throw new Retrycf.CompletedError(step)
           } else {
-            console.log('else')
             const neoTask = new Retrycf.NeoTask(this.event.data)
             neoTask.completed[step] = true
             transaction.update(orderRef, { neoTask: neoTask.rawValue() })
