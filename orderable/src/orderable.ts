@@ -87,16 +87,17 @@ export class FlowError extends Error {
 }
 
 export class NeoTask extends Retrycf.NeoTask {
-  static async setFatalAndPostToSlackIfRetryCountIsMax(event: functions.Event<DeltaDocumentSnapshot>) {
-    const neoTask = await NeoTask.setFatalIfRetryCountIsMax(event)
-    if (neoTask) {
-      Webhook.postError('retry error', JSON.stringify(neoTask.rawValue()), event.data.ref.path)
+  static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T) {
+    model = await NeoTask.setFatalIfRetryCountIsMax(model)
+    if (model.neoTask && model.neoTask.fatal) {
+      Webhook.postError('retry error', JSON.stringify(model.neoTask.rawValue()), model.reference.path)
     }
+    return model
   }
 
-  static async setFatalAndPostToSlack(event: functions.Event<DeltaDocumentSnapshot>, step: string, error: any) {
-    Webhook.postError(step, error.toString(), event.data.ref.path)
-    return NeoTask.setFatal(event, step, error)
+  static async setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any) {
+    Webhook.postError(step, error.toString(), model.reference.path)
+    return NeoTask.setFatal(model, step, error)
   }
 }
 
@@ -732,7 +733,7 @@ export namespace Functions {
   // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(orderObject.order)
-      await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
+      orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order)
 
       // status が payment requested に変更された時
       // もしくは should retry が true だった時にこの functions は実行される

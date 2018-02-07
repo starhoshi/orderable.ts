@@ -297,12 +297,12 @@
   resolved "https://registry.yarnpkg.com/@types/mime/-/mime-2.0.0.tgz#5a7306e367c539b9f6543499de8dd519fac37a8b"
 
 "@types/node@*":
-  version "9.4.0"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-9.4.0.tgz#b85a0bcf1e1cc84eb4901b7e96966aedc6f078d1"
+  version "9.4.1"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-9.4.1.tgz#0f636f7837e15d2d73a7f6f3ea0e322eb2a5ab65"
 
 "@types/node@^8.0.53", "@types/node@^8.5.5":
-  version "8.5.9"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-8.5.9.tgz#7155cfb4ae405bca4dd8df1a214c339e939109bf"
+  version "8.5.10"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-8.5.10.tgz#49bd3637125dea5f55d7d1e8f51efd6cb835e1f7"
 
 "@types/request@*", "@types/request@^2.47.0":
   version "2.47.0"
@@ -4719,9 +4719,9 @@ retry-request@^3.0.0, retry-request@^3.1.0, retry-request@^3.3.1:
     request "^2.81.0"
     through2 "^2.0.0"
 
-retrycf@^0.1.0:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.1.0.tgz#4e4b18aad532990fa42ec58cce7f41e653af4985"
+retrycf@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.1.1.tgz#0664397add85e09a409730863558334f27db91b6"
   dependencies:
     "@google-cloud/firestore" "^0.11.2"
     firebase-admin "^5.8.2"
