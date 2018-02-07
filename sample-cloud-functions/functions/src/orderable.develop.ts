@@ -101,35 +101,36 @@ export class NeoTask extends Retrycf.NeoTask {
   }
 }
 
-export namespace Model {
-  export class Base extends Pring.Base {
-    get collectionPath(): string {
-      return `version/${this.getVersion()}/${this.getModelName()}`
-    }
-
-    async get(id: string) {
-      return firestore.collection(this.collectionPath).doc(id).get().then(s => {
-        this.init(s)
-        return this
-      })
-    }
+export class PringUtil {
+  static collectionPath<T extends Pring.Base>(model: T): string {
+    return `version/${model.getVersion()}/${model.getModelName()}`
   }
 
+  static async get<T extends Pring.Base>(klass: { new(): T }, id: string) {
+    const model = new klass()
+    return firestore.collection(PringUtil.collectionPath(model)).doc(id).get().then(s => {
+      model.init(s)
+      return model
+    })
+  }
+}
+
+export namespace Model {
   // export interface HasNeoTask extends Base {
   //   neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
   // }
 
-  export interface User extends Base {
+  export interface User extends Pring.Base {
     stripeCustomerID?: string
   }
 
-  export interface Shop extends Base {
+  export interface Shop extends Pring.Base {
     name?: string
     isActive: boolean
     freePostageMinimumPrice: number
   }
 
-  export interface Product extends Base {
+  export interface Product extends Pring.Base {
     name?: string
   }
 
@@ -139,7 +140,7 @@ export namespace Model {
     Infinite = 'infinite'
   }
 
-  export interface SKU extends Base {
+  export interface SKU extends Pring.Base {
     price: number
     stockType: StockType
     stock: number
@@ -161,7 +162,7 @@ export namespace Model {
     chargeID?: string
   }
 
-  export interface Order extends Base {
+  export interface Order extends Pring.Base {
     user: FirebaseFirestore.DocumentReference
     amount: number
     paidDate: FirebaseFirestore.FieldValue
@@ -177,13 +178,13 @@ export namespace Model {
     Created = 1,
     Paid = 2
   }
-  export interface OrderShop extends Base {
+  export interface OrderShop extends Pring.Base {
     orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
     paymentStatus: OrderShopPaymentStatus
     user: FirebaseFirestore.DocumentReference
   }
 
-  export interface OrderSKU<T extends SKU, P extends Product> extends Base {
+  export interface OrderSKU<T extends SKU, P extends Product> extends Pring.Base {
     snapshotSKU?: T
     snapshotProduct?: P
     quantity: number
@@ -292,10 +293,11 @@ export namespace Functions {
       console.log(order.orderSKUs)
       const orderSKURefs = await order.orderSKUs.get(orderSKUType)
       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
-        return new orderSKUType().get(orderSKURef.id).then(s => {
-          // const orderSKU = s as Model.OrderSKU
+        // return new orderSKUType().get(orderSKURef.id).then(s => {
+        return PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
+          const orderSKU = s as OrderSKU
           const orderSKUObject = new OrderSKUObject()
-          orderSKUObject.orderSKU = s
+          orderSKUObject.orderSKU = orderSKU
           return orderSKUObject
         })
       }))
@@ -406,7 +408,7 @@ export namespace Functions {
       return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
         for (const orderSKUObject of orderSKUObjects) {
-          const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id)
+          const skuRef = firestore.collection(PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id)
           const t = transaction.get(skuRef).then(tsku => {
             const quantity = orderSKUObject.orderSKU.quantity * operator
             const newStock = tsku.data()!.stock + quantity
@@ -455,7 +457,8 @@ export namespace Functions {
         // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
         // orderObject.order = order
 
-        const user = await new orderObject.initializableClass.user().get(order.user.id)
+        // const user = await new orderObject.initializableClass.user().get(order.user.id)
+        const user = await PringUtil.get(orderObject.initializableClass.user, order.user.id)
         orderObject.user = user
 
         const orderSKUObjects = await OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
@@ -697,8 +700,10 @@ export namespace Functions {
   const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        await firestore.collection(new orderObject.initializableClass.orderShop().collectionPath)
-          .where('order', '==', firestore.collection(new orderObject.initializableClass.order().collectionPath).doc(orderObject.orderID))
+        const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
+        const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
+        await firestore.collection(orderShopColRef)
+          .where('order', '==', firestore.collection(orderColRef).doc(orderObject.orderID))
           .get()
           .then(snapshot => {
             const batch = firestore.batch()
