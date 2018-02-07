@@ -232,9 +232,9 @@
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
 
-"@star__hoshi/orderable@0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@star__hoshi/orderable/-/orderable-0.3.0.tgz#f3b7e8bc3fe33cc0ec9b88dac2f55cc219611dc9"
+"@star__hoshi/orderable@0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@star__hoshi/orderable/-/orderable-0.3.1.tgz#bc2626136f7f4628d72a258be7bd655592fceff8"
   dependencies:
     "@1amageek/flow" "^0.2.1"
     firebase-admin "^5.8.2"
