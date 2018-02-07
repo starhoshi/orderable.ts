@@ -45,7 +45,7 @@ export class Firebase {
     return this._shared
   }
 
-  static makeOrderEvent(ref: FirebaseFirestore.DocumentReference, data: any, previousData: any) {
+  makeOrderEvent(ref: FirebaseFirestore.DocumentReference, data: any, previousData: any) {
     return <functions.Event<DeltaDocumentSnapshot>>{
       params: { orderID: ref.id },
       data: {
@@ -62,7 +62,7 @@ export class Firebase {
     }
   }
 
-  static orderObject(event: functions.Event<DeltaDocumentSnapshot>) {
+  orderObject(event: functions.Event<DeltaDocumentSnapshot>) {
     return new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
       order: Model.SampleOrder,
       shop: Model.SampleShop,
@@ -74,7 +74,7 @@ export class Firebase {
     })
   }
 
-  static makeModel = async () => {
+  makeModel = async () => {
     const user = new Model.SampleUser()
     user.stripeCustomerID = 'cus_CC65RZ8Gf6zi7V'
     await user.save()
@@ -148,7 +148,7 @@ export class Firebase {
   }
 
   /// 指定した DocumentReference を observe する。 `timeout` を超えたらエラーを返す
-  static observe(documentRef: FirebaseFirestore.DocumentReference, callback: (data: any, resolve: any, reject: any) => void) {
+  observe(documentRef: FirebaseFirestore.DocumentReference, callback: (data: any, resolve: any, reject: any) => void) {
     const timeout = 30000
 
     var timer: NodeJS.Timer
