@@ -4,6 +4,7 @@ import { Pring, property } from 'pring'
 import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
+import * as Retrycf from 'retrycf'
 
 export interface SampleModel {
   user: Model.SampleUser,
@@ -135,8 +136,10 @@ export class Firebase {
     dataSet.shops = dataSet.shops || Firebase.shared.defaultShops
     dataSet.order = dataSet.order || Firebase.shared.defaultOrder
 
+    const promises1: Promise<any>[] = []
+
     const user = new Model.SampleUser()
-    await user.save()
+    promises1.push(user.save())
 
     let productsForReturn: Model.SampleProduct[] = []
     let skusForReturn: Model.SampleSKU[] = []
@@ -144,25 +147,29 @@ export class Firebase {
     for (const shop of dataSet.shops) {
       const sh = new Model.SampleShop()
       sh.name = shop.name || 'shop'
-      await sh.save()
+      promises1.push(sh.save())
 
       let products: {product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number}[] = []
       for (const sku of shop.skus) {
         const p = new Model.SampleProduct()
         p.name = sku.name || 'product'
-        await p.save()
+        promises1.push(p.save())
 
         const sk = new Model.SampleSKU()
         sk.price = sku.price || 1000
         sk.stockType = sku.stockType || Orderable.Model.StockType.Infinite
         sk.stock = sku.stock || 100
-        await sk.save()
+        promises1.push(sk.save())
         products.push({ product: p, sku: sk, quantity: sku.quantity || 1 })
         productsForReturn.push(p)
         skusForReturn.push(sk)
       }
       shops.push({shop: sh, products: products})
     }
+
+    await Promise.all(promises1)
+
+    const promises2: Promise<any>[] = []
 
     const stripeCharge = new Model.SampleStripeCharge()
     if (dataSet.order.stripe) {
@@ -198,10 +205,13 @@ export class Firebase {
         orderSKUsForReturn.push(orderSKU)
       }
 
-      await orderShop.save()
+      // await orderShop.save()
+      promises2.push(orderShop.save())
       orderShopsForReturn.push(orderShop)
     }
-    await order.save()
+    // await order.save()
+    promises2.push(order.save())
+    await Promise.all(promises2)
 
     const preOrder = order.rawValue()
     preOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
@@ -214,6 +224,29 @@ export class Firebase {
       order: order,
       orderShops: orderShopsForReturn,
       orderSKUs: orderSKUsForReturn
+    }
+  }
+
+  async expectOrder(model: SampleModel) {
+      const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
+      expect(order.neoTask!.completed).toEqual({'validateAndDecreaseStock': true})
+      expect(order.stripe!.chargeID).toBeTruthy()
+  }
+
+  async expectStock(model: SampleModel) {
+    let index = 0
+    for (const sku of model.skus) {
+      const fetchedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
+      expect(fetchedSKU.stock).toEqual(sku.stock - model.orderSKUs[index].quantity)
+      index += 1
+    }
+  }
+
+  async expectOrderShop(model: SampleModel) {
+    for (const orderShop of model.orderShops) {
+      const fetchedOrderShop = await Model.SampleOrderShop.get(orderShop.id) as Model.SampleOrderShop
+      expect(fetchedOrderShop.paymentStatus).toEqual(Orderable.Model.OrderShopPaymentStatus.Paid)
     }
   }
 

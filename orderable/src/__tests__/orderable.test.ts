@@ -220,27 +220,35 @@ describe('OrderObject', () => {
   })
 })
 
-test('pay order', async () => {
-  jest.setTimeout(20000)
+describe('orderPaymentRequested', () => {
+  describe('when validate model (Normal Scenario)', () => {
+    test('neoTask === 1', async () => {
+      const defaultModel = {shops: Helper.Firebase.shared.defaultShops, order: Helper.Firebase.shared.defaultOrder}
+      const model = await Helper.Firebase.shared.makeValidateModel(defaultModel)
+      const preOrder = model.order.rawValue()
+      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      await model.order.update()
 
-  const model = await Helper.Firebase.shared.makeValidateModel()
-  const preOrder = model.order.rawValue()
-  model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
-  await model.order.update()
+      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
+      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+        order: Model.SampleOrder,
+        shop: Model.SampleShop,
+        user: Model.SampleUser,
+        sku: Model.SampleSKU,
+        product: Model.SampleProduct,
+        orderShop: Model.SampleOrderShop,
+        orderSKU: Model.SampleOrderSKU
+      })
 
-  const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
-  const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-    order: Model.SampleOrder,
-    shop: Model.SampleShop,
-    user: Model.SampleUser,
-    sku: Model.SampleSKU,
-    product: Model.SampleProduct,
-    orderShop: Model.SampleOrderShop,
-    orderSKU: Model.SampleOrderSKU
+      await Orderable.Functions.orderPaymentRequested(orderObject)
+
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(model),
+        Helper.Firebase.shared.expectStock(model),
+        Helper.Firebase.shared.expectOrderShop(model)
+      ])
+    })
   })
-
-  await Orderable.Functions.orderPaymentRequested(orderObject)
-  expect(true)
 })
 
 // TODO
