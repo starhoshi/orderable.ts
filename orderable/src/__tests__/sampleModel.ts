@@ -3,17 +3,17 @@ import * as Orderable from '../orderable'
 import * as Retrycf from 'retrycf'
 // import * as Orderable from '@star__hoshi/orderable'
 
-export class SampleUser extends Orderable.Model.Base implements Orderable.Model.User {
+export class SampleUser extends Pring.Base implements Orderable.Model.User {
   @property stripeCustomerID?: string
 }
 
-export class SampleShop extends Orderable.Model.Base implements Orderable.Model.Shop {
+export class SampleShop extends Pring.Base implements Orderable.Model.Shop {
   @property name?: string
   @property isActive: boolean = true
   @property freePostageMinimumPrice: number = -1
 }
 
-export class SampleProduct extends Orderable.Model.Base implements Orderable.Model.Product {
+export class SampleProduct extends Pring.Base implements Orderable.Model.Product {
   @property name?: string
 
   static async default() {
@@ -24,7 +24,7 @@ export class SampleProduct extends Orderable.Model.Base implements Orderable.Mod
   }
 }
 
-export class SampleSKU extends Orderable.Model.Base implements Orderable.Model.SKU {
+export class SampleSKU extends Pring.Base implements Orderable.Model.SKU {
   @property price: number = 0
   @property stockType: Orderable.Model.StockType = Orderable.Model.StockType.Unknown
   @property stock: number = 0
@@ -41,7 +41,7 @@ export class SampleSKU extends Orderable.Model.Base implements Orderable.Model.S
   }
 }
 
-export class SampleStripeCharge extends Orderable.Model.Base implements Orderable.Model.StripeCharge {
+export class SampleStripeCharge extends Pring.Base implements Orderable.Model.StripeCharge {
   @property cardID?: string
   @property customerID?: string
   @property chargeID?: string
@@ -53,7 +53,7 @@ export class SampleStripeCharge extends Orderable.Model.Base implements Orderabl
   }
 }
 
-export class SampleOrder extends Orderable.Model.Base implements Orderable.Model.Order, Retrycf.HasNeoTask {
+export class SampleOrder extends Pring.Base implements Orderable.Model.Order, Retrycf.HasNeoTask {
   @property testParameter: string = 'hoge'
 
   @property user: FirebaseFirestore.DocumentReference
@@ -82,7 +82,7 @@ export class SampleOrder extends Orderable.Model.Base implements Orderable.Model
   }
 }
 
-export class SampleOrderShop extends Orderable.Model.Base implements Orderable.Model.OrderShop {
+export class SampleOrderShop extends Pring.Base implements Orderable.Model.OrderShop {
   @property orderSKUs: Pring.ReferenceCollection<SampleOrderSKU> = new Pring.ReferenceCollection(this)
   @property paymentStatus: Orderable.Model.OrderShopPaymentStatus = Orderable.Model.OrderShopPaymentStatus.Unknown
 
@@ -90,7 +90,7 @@ export class SampleOrderShop extends Orderable.Model.Base implements Orderable.M
   @property user: FirebaseFirestore.DocumentReference
 }
 
-export class SampleOrderSKU extends Orderable.Model.Base implements Orderable.Model.OrderSKU<SampleSKU, SampleProduct> {
+export class SampleOrderSKU extends Pring.Base implements Orderable.Model.OrderSKU<SampleSKU, SampleProduct> {
   // @property orderShop: FirebaseFirestore.DocumentReference
   @property snapshotSKU?: SampleSKU
   @property snapshotProduct?: SampleProduct

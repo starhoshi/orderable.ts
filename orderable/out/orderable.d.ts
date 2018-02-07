@@ -35,20 +35,22 @@ export declare class NeoTask extends Retrycf.NeoTask {
     static setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T): Promise<T>;
     static setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any): Promise<T>;
 }
+export declare class PringUtil {
+    static collectionPath<T extends Pring.Base>(model: T): string;
+    static get<T extends Pring.Base>(klass: {
+        new (): T;
+    }, id: string): Promise<T>;
+}
 export declare namespace Model {
-    class Base extends Pring.Base {
-        readonly collectionPath: string;
-        get(id: string): Promise<this>;
-    }
-    interface User extends Base {
+    interface User extends Pring.Base {
         stripeCustomerID?: string;
     }
-    interface Shop extends Base {
+    interface Shop extends Pring.Base {
         name?: string;
         isActive: boolean;
         freePostageMinimumPrice: number;
     }
-    interface Product extends Base {
+    interface Product extends Pring.Base {
         name?: string;
     }
     enum StockType {
@@ -56,7 +58,7 @@ export declare namespace Model {
         Finite = "finite",
         Infinite = "infinite",
     }
-    interface SKU extends Base {
+    interface SKU extends Pring.Base {
         price: number;
         stockType: StockType;
         stock: number;
@@ -75,7 +77,7 @@ export declare namespace Model {
         customerID?: string;
         chargeID?: string;
     }
-    interface Order extends Base {
+    interface Order extends Pring.Base {
         user: FirebaseFirestore.DocumentReference;
         amount: number;
         paidDate: FirebaseFirestore.FieldValue;
@@ -90,12 +92,12 @@ export declare namespace Model {
         Created = 1,
         Paid = 2,
     }
-    interface OrderShop extends Base {
+    interface OrderShop extends Pring.Base {
         orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>;
         paymentStatus: OrderShopPaymentStatus;
         user: FirebaseFirestore.DocumentReference;
     }
-    interface OrderSKU<T extends SKU, P extends Product> extends Base {
+    interface OrderSKU<T extends SKU, P extends Product> extends Pring.Base {
         snapshotSKU?: T;
         snapshotProduct?: P;
         quantity: number;

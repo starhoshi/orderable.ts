@@ -96,22 +96,26 @@ class NeoTask extends Retrycf.NeoTask {
     }
 }
 exports.NeoTask = NeoTask;
+class PringUtil {
+    static collectionPath(model) {
+        return `version/${model.getVersion()}/${model.getModelName()}`;
+    }
+    static get(klass, id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const model = new klass();
+            return firestore.collection(PringUtil.collectionPath(model)).doc(id).get().then(s => {
+                model.init(s);
+                return model;
+            });
+        });
+    }
+}
+exports.PringUtil = PringUtil;
 var Model;
 (function (Model) {
-    class Base extends pring_1.Pring.Base {
-        get collectionPath() {
-            return `version/${this.getVersion()}/${this.getModelName()}`;
-        }
-        get(id) {
-            return __awaiter(this, void 0, void 0, function* () {
-                return firestore.collection(this.collectionPath).doc(id).get().then(s => {
-                    this.init(s);
-                    return this;
-                });
-            });
-        }
-    }
-    Model.Base = Base;
+    // export interface HasNeoTask extends Base {
+    //   neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
+    // }
     let StockType;
     (function (StockType) {
         StockType["Unknown"] = "unknown";
@@ -218,14 +222,14 @@ var Functions;
         static fetchFrom(order, orderSKUType, skuType) {
             return __awaiter(this, void 0, void 0, function* () {
                 // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
-                console.log(order);
                 console.log(order.orderSKUs);
                 const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
-                    return new orderSKUType().get(orderSKURef.id).then(s => {
-                        // const orderSKU = s as Model.OrderSKU
+                    // return new orderSKUType().get(orderSKURef.id).then(s => {
+                    return PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
+                        const orderSKU = s;
                         const orderSKUObject = new OrderSKUObject();
-                        orderSKUObject.orderSKU = s;
+                        orderSKUObject.orderSKU = orderSKU;
                         return orderSKUObject;
                     });
                 }));
@@ -253,7 +257,6 @@ var Functions;
             this.initializableClass = initializableClass;
             this.order = new initializableClass.order();
             this.order.init(event.data);
-            console.log(event.data.data());
             this.previousOrder = new initializableClass.order();
             this.previousOrder.init(event.data.previous);
         }
@@ -297,7 +300,7 @@ var Functions;
             return firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id);
+                    const skuRef = firestore.collection(PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
                         const newStock = tsku.data().stock + quantity;
@@ -342,7 +345,8 @@ var Functions;
             const order = orderObject.order;
             // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
             // orderObject.order = order
-            const user = yield new orderObject.initializableClass.user().get(order.user.id);
+            // const user = await new orderObject.initializableClass.user().get(order.user.id)
+            const user = yield PringUtil.get(orderObject.initializableClass.user, order.user.id);
             orderObject.user = user;
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
             orderObject.orderSKUObjects = orderSKUObjects;
@@ -538,8 +542,10 @@ var Functions;
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            yield firestore.collection(new orderObject.initializableClass.orderShop().collectionPath)
-                .where('order', '==', firestore.collection(new orderObject.initializableClass.order().collectionPath).doc(orderObject.orderID))
+            const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop());
+            const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order());
+            yield firestore.collection(orderShopColRef)
+                .where('order', '==', firestore.collection(orderColRef).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
                 const batch = firestore.batch();
