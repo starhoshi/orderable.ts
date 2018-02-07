@@ -6,7 +6,7 @@ import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Helper from './firebaseHelper'
-import { Retrycf } from 'retrycf'
+import * as Retrycf from 'retrycf'
 
 beforeAll(() => {
   const _ = Helper.Firebase.shared
@@ -15,7 +15,7 @@ beforeAll(() => {
 describe('OrderObject', () => {
   let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
   beforeEach(() => {
-    const event = Helper.Firebase.makeEvent({id: 'hoge'} as any, {}, {})
+    const event = Helper.Firebase.makeEvent({ id: 'hoge' } as any, {}, {})
     event.params = { orderID: '' }
     orderObject = Helper.Firebase.orderObject(event)
     const order = new Model.SampleOrder()
@@ -148,34 +148,36 @@ describe('OrderObject', () => {
           }
         })
         // TODO: retrycf と同時に修正
-        // test('CompletedError when already this stap completed', async () => {
-        //   const step = 'step'
+        test('CompletedError when already this stap completed', async () => {
+          const step = 'step'
 
-        //   const neoTask = new Retrycf.NeoTask(orderObject.event.data)
-        //   await model.order.reference.update({ neoTask: { completed: { [step]: true } } })
+          model.order.neoTask = await Retrycf.NeoTask.makeNeoTask(model.order)
+          const completed = {[step]: true}
+          model.order.neoTask.completed = completed
+          await model.order.reference.update({ neoTask: { completed: { [step]: true } } })
 
-        //   const event = Helper.Firebase.makeEvent({} as any, { neoTask: { completed: { [step]: true } } }, {})
-        //   event.params = { orderID: '' }
-        //   orderObject = Helper.Firebase.orderObject(event)
-        //   orderObject.order = model.order
-        //   const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-        //   orderObject.orderSKUObjects = orderSKUObjects
+          const event = Helper.Firebase.makeEvent(model.order.reference, { neoTask: { completed: { [step]: true } } }, {})
+          event.params = { orderID: model.order.id }
+          orderObject = Helper.Firebase.orderObject(event)
+          orderObject.order = model.order
+          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          orderObject.orderSKUObjects = orderSKUObjects
 
-        //   expect.hasAssertions()
-        //   try {
-        //     await orderObject.updateStock(Orderable.Functions.Operator.minus, step)
-        //   } catch (e) {
-        //     expect(e).toBeInstanceOf(Retrycf.CompletedError)
-        //     const completedError = e as Retrycf.CompletedError
-        //     expect(completedError.step).toEqual(step)
+          expect.hasAssertions()
+          try {
+            await orderObject.updateStock(Orderable.Functions.Operator.minus, step)
+          } catch (e) {
+            expect(e).toBeInstanceOf(Retrycf.CompletedError)
+            const completedError = e as Retrycf.CompletedError
+            expect(completedError.step).toEqual(step)
 
-        //     // check stock did not decrement
-        //     for (const sku of model.skus) {
-        //       const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
-        //       expect(updatedSKU.stock).toEqual(sku.stock)
-        //     }
-        //   }
-        // })
+            // check stock did not decrement
+            for (const sku of model.skus) {
+              const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
+              expect(updatedSKU.stock).toEqual(sku.stock)
+            }
+          }
+        })
       })
     })
   })

@@ -3,7 +3,7 @@ import * as functions from 'firebase-functions';
 import * as FirebaseFirestore from '@google-cloud/firestore';
 import * as Stripe from 'stripe';
 import { Pring } from 'pring';
-import { Retrycf } from 'retrycf';
+import * as Retrycf from 'retrycf';
 import * as Flow from '@1amageek/flow';
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
 export declare const initialize: (options: {
@@ -27,21 +27,18 @@ export declare enum ValidationErrorType {
     PaymentInfoNotFound = "PaymentInfoNotFound",
 }
 export declare class FlowError extends Error {
-    task: Retrycf.INeoTask;
+    task?: Retrycf.NeoTask;
     error: any;
-    constructor(task: Retrycf.INeoTask, error: any);
+    constructor(error: any, task?: Retrycf.NeoTask);
 }
 export declare class NeoTask extends Retrycf.NeoTask {
-    static setFatalAndPostToSlackIfRetryCountIsMax(event: functions.Event<DeltaDocumentSnapshot>): Promise<void>;
-    static setFatalAndPostToSlack(event: functions.Event<DeltaDocumentSnapshot>, step: string, error: any): Promise<Retrycf.NeoTask>;
+    static setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T): Promise<T>;
+    static setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any): Promise<T>;
 }
 export declare namespace Model {
     class Base extends Pring.Base {
         readonly collectionPath: string;
         get(id: string): Promise<this>;
-    }
-    interface HasNeoTask extends Base {
-        neoTask?: HasNeoTask | FirebaseFirestore.FieldValue;
     }
     interface User extends Base {
         stripeCustomerID?: string;
@@ -78,7 +75,7 @@ export declare namespace Model {
         customerID?: string;
         chargeID?: string;
     }
-    interface Order extends HasNeoTask {
+    interface Order extends Base {
         user: FirebaseFirestore.DocumentReference;
         amount: number;
         paidDate: FirebaseFirestore.FieldValue;
@@ -122,7 +119,7 @@ export declare class StripeError extends Error {
     requestId: string;
     error: any;
     constructor(error: any);
-    setNeoTask(event: functions.Event<DeltaDocumentSnapshot>, step: string): Promise<NeoTask>;
+    setNeoTask<T extends Retrycf.HasNeoTask>(model: T, step: string): Promise<T>;
 }
 export declare namespace Functions {
     class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
@@ -134,7 +131,7 @@ export declare namespace Functions {
             new (): SKU;
         }): Promise<OrderSKUObject<Model.OrderSKU<Model.SKU, Model.Product>, Model.SKU>[]>;
     }
-    interface InitializableClass<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> {
+    interface InitializableClass<Order extends Model.Order & Retrycf.HasNeoTask, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> {
         order: {
             new (): Order;
         };
@@ -161,11 +158,11 @@ export declare namespace Functions {
         Unknown = 0,
         Stripe = 1,
     }
-    class OrderObject<Order extends Model.Order, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
+    class OrderObject<Order extends Model.Order & Retrycf.HasNeoTask, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
         initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
         event: functions.Event<DeltaDocumentSnapshot>;
         orderID: string;
-        order: Model.Order;
+        order: Model.Order & Retrycf.HasNeoTask;
         previousOrder: Model.Order;
         shops?: Model.Shop[];
         user?: Model.User;

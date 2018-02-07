@@ -1,5 +1,6 @@
 import { Pring, property } from 'pring'
 import * as Orderable from '../orderable'
+import * as Retrycf from 'retrycf'
 // import * as Orderable from '@star__hoshi/orderable'
 
 export class SampleUser extends Orderable.Model.Base implements Orderable.Model.User {
@@ -52,7 +53,7 @@ export class SampleStripeCharge extends Orderable.Model.Base implements Orderabl
   }
 }
 
-export class SampleOrder extends Orderable.Model.Base implements Orderable.Model.Order {
+export class SampleOrder extends Orderable.Model.Base implements Orderable.Model.Order, Retrycf.HasNeoTask {
   @property testParameter: string = 'hoge'
 
   @property user: FirebaseFirestore.DocumentReference
@@ -64,6 +65,7 @@ export class SampleOrder extends Orderable.Model.Base implements Orderable.Model
 
   @property paymentStatus: Orderable.Model.OrderPaymentStatus = Orderable.Model.OrderPaymentStatus.Created
   @property stripe?: SampleStripeCharge
+  @property neoTask?: Retrycf.NeoTask
 
   static async default(user: SampleUser, orderSKUs: SampleOrderSKU[]) {
     const o = new SampleOrder()
