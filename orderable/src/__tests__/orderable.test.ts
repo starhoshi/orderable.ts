@@ -12,15 +12,15 @@ beforeAll(() => {
   const _ = Helper.Firebase.shared
 })
 
+jest.setTimeout(20000)
+
 describe('OrderObject', () => {
   let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
   beforeEach(() => {
-    const event = Helper.Firebase.makeEvent({ id: 'hoge' } as any, {}, {})
-    event.params = { orderID: '' }
-    orderObject = Helper.Firebase.orderObject(event)
     const order = new Model.SampleOrder()
+    const event = Helper.Firebase.makeOrderEvent(order.reference, order.rawValue(), {})
+    orderObject = Helper.Firebase.orderObject(event)
     orderObject.order = order
-    orderObject.order.stripe = undefined
   })
 
   describe('getShops', () => {
@@ -63,14 +63,11 @@ describe('OrderObject', () => {
     })
 
     test('return Unknown when order is undefined', () => {
-      // orderObject.order = undefined
-
       expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
     })
   })
 
   describe('updateStock', () => {
-    jest.setTimeout(20000)
     let model: Helper.SampleModel
 
     beforeEach(async () => {
@@ -79,7 +76,7 @@ describe('OrderObject', () => {
     })
 
     describe('finite', async () => {
-      describe('Nominal Scenarios', () => {
+      describe('when update succeeded', () => {
         const stock = 100
         beforeEach(async () => {
           for (const sku of model.skus) {
@@ -93,8 +90,7 @@ describe('OrderObject', () => {
             orderSKU.quantity = quantity
             await orderSKU.update()
           }
-          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-          orderObject.orderSKUObjects = orderSKUObjects
+          orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
         })
 
         test('stock decremented', async () => {
@@ -122,8 +118,8 @@ describe('OrderObject', () => {
         })
       })
 
-      describe('Exception Scenarios', () => {
-        test('ValidationError.OutOfStock when sku is out of stock', async () => {
+      describe('when sku is out of stock', () => {
+        test('ValidationError.OutOfStock', async () => {
           let quantity = 10000000000000
           for (const orderSKU of model.orderSKUs) {
             orderSKU.quantity = quantity
@@ -147,17 +143,19 @@ describe('OrderObject', () => {
             }
           }
         })
+      })
+
+      describe('when already this stap completed', () => {
         // TODO: retrycf と同時に修正
-        test('CompletedError when already this stap completed', async () => {
+        test('CompletedError', async () => {
           const step = 'step'
 
           model.order.neoTask = await Retrycf.NeoTask.makeNeoTask(model.order)
-          const completed = {[step]: true}
+          const completed = { [step]: true }
           model.order.neoTask.completed = completed
-          await model.order.reference.update({ neoTask: { completed: { [step]: true } } })
+          await model.order.reference.update({ neoTask: { completed: completed } })
 
-          const event = Helper.Firebase.makeEvent(model.order.reference, { neoTask: { completed: { [step]: true } } }, {})
-          event.params = { orderID: model.order.id }
+          const event = Helper.Firebase.makeOrderEvent(model.order.reference, { neoTask: { completed: { [step]: true } } }, {})
           orderObject = Helper.Firebase.orderObject(event)
           orderObject.order = model.order
           const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
@@ -191,7 +189,7 @@ test('pay order', async () => {
   const newOrder = oldOrder.rawValue()
   newOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
 
-  const event = Helper.Firebase.makeEvent(oldOrder.reference, newOrder, oldOrder.rawValue())
+  const event = Helper.Firebase.makeOrderEvent(oldOrder.reference, newOrder, oldOrder.rawValue())
   event.params = { orderID: oldOrder.id }
   const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
     order: Model.SampleOrder,

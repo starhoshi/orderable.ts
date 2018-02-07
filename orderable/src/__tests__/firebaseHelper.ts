@@ -45,8 +45,9 @@ export class Firebase {
     return this._shared
   }
 
-  static makeEvent(ref: FirebaseFirestore.DocumentReference, data: any, previousData: any) {
+  static makeOrderEvent(ref: FirebaseFirestore.DocumentReference, data: any, previousData: any) {
     return <functions.Event<DeltaDocumentSnapshot>>{
+      params: { orderID: ref.id },
       data: {
         exists: true,
         ref: ref,
