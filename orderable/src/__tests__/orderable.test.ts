@@ -71,7 +71,7 @@ describe('OrderObject', () => {
     let model: Helper.SampleModel
 
     beforeEach(async () => {
-      model = await Helper.Firebase.shared.makeModel()
+      model = await Helper.Firebase.shared.makeValidateModel()
       orderObject.order = model.order
     })
 
