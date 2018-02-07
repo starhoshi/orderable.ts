@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
-import { Retrycf } from 'retrycf'
+import * as Retrycf from 'retrycf'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import { Pring, property } from 'pring'
 import * as Model from './sampleModel'
@@ -31,5 +31,5 @@ export const paySampleOrder = functions.firestore
       orderSKU: Model.SampleOrderSKU
     })
 
-    return Orderable.Functions.orderPaymentRequested(event, orderObject)
+    return Orderable.Functions.orderPaymentRequested(orderObject)
   })

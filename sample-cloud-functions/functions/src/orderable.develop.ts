@@ -4,7 +4,7 @@ import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
 import { Pring, property } from 'pring'
-import { Retrycf } from 'retrycf'
+import * as Retrycf from 'retrycf'
 import * as Flow from '@1amageek/flow'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as request from 'request'
@@ -76,10 +76,10 @@ export enum ValidationErrorType {
 }
 
 export class FlowError extends Error {
-  task: Retrycf.INeoTask
+  task?: Retrycf.NeoTask
   error: any
 
-  constructor(task: Retrycf.INeoTask, error: any) {
+  constructor(error: any, task?: Retrycf.NeoTask) {
     super()
     this.task = task
     this.error = error
@@ -87,16 +87,17 @@ export class FlowError extends Error {
 }
 
 export class NeoTask extends Retrycf.NeoTask {
-  static async setFatalAndPostToSlackIfRetryCountIsMax(event: functions.Event<DeltaDocumentSnapshot>) {
-    const neoTask = await NeoTask.setFatalIfRetryCountIsMax(event)
-    if (neoTask) {
-      Webhook.postError('retry error', JSON.stringify(neoTask.rawValue()), event.data.ref.path)
+  static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T) {
+    model = await NeoTask.setFatalIfRetryCountIsMax(model)
+    if (model.neoTask && model.neoTask.fatal) {
+      Webhook.postError('retry error', JSON.stringify(model.neoTask.rawValue()), model.reference.path)
     }
+    return model
   }
 
-  static async setFatalAndPostToSlack(event: functions.Event<DeltaDocumentSnapshot>, step: string, error: any) {
-    Webhook.postError(step, error.toString(), event.data.ref.path)
-    return NeoTask.setFatal(event, step, error)
+  static async setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any) {
+    Webhook.postError(step, error.toString(), model.reference.path)
+    return NeoTask.setFatal(model, step, error)
   }
 }
 
@@ -114,9 +115,9 @@ export namespace Model {
     }
   }
 
-  export interface HasNeoTask extends Base {
-    neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
-  }
+  // export interface HasNeoTask extends Base {
+  //   neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
+  // }
 
   export interface User extends Base {
     stripeCustomerID?: string
@@ -160,7 +161,7 @@ export namespace Model {
     chargeID?: string
   }
 
-  export interface Order extends HasNeoTask {
+  export interface Order extends Base {
     user: FirebaseFirestore.DocumentReference
     amount: number
     paidDate: FirebaseFirestore.FieldValue
@@ -247,32 +248,37 @@ export class StripeError extends Error {
     }
   }
 
-  async setNeoTask(event: functions.Event<DeltaDocumentSnapshot>, step: string): Promise<NeoTask> {
+  async setNeoTask<T extends Retrycf.HasNeoTask>(model: T, step: string): Promise<T> {
     switch (this.type) {
       // validate
       case StripeErrorType.StripeCardError: {
         const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeCardError, this.message)
-        return await NeoTask.setInvalid(event, validationError)
+        model = await NeoTask.setInvalid(model, validationError)
+        break
       }
       case StripeErrorType.StripeInvalidRequestError: {
         const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeInvalidRequestError, this.message)
-        return await NeoTask.setInvalid(event, validationError)
+        model = await NeoTask.setInvalid(model, validationError)
+        break
       }
 
       // retry
       case StripeErrorType.StripeAPIError:
       case StripeErrorType.StripeConnectionError:
-        return await NeoTask.setRetry(event, step, this.message)
+        model = await NeoTask.setRetry(model, step, this.message)
+        break
 
       // fatal
       case StripeErrorType.RateLimitError:
       case StripeErrorType.StripeAuthenticationError:
       case StripeErrorType.UnexpectedError:
-        return await NeoTask.setFatalAndPostToSlack(event, step, this.type)
+        model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+        break
 
       default:
-        return await NeoTask.setFatalAndPostToSlack(event, step, this.type)
+        model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
     }
+    return model
   }
 }
 
@@ -305,7 +311,7 @@ export namespace Functions {
   }
 
   export interface InitializableClass<
-    Order extends Model.Order,
+    Order extends Model.Order  & Retrycf.HasNeoTask,
     Shop extends Model.Shop,
     User extends Model.User,
     SKU extends Model.SKU,
@@ -327,7 +333,7 @@ export namespace Functions {
   }
 
   export class OrderObject<
-    Order extends Model.Order,
+    Order extends Model.Order & Retrycf.HasNeoTask,
     Shop extends Model.Shop,
     User extends Model.User,
     SKU extends Model.SKU,
@@ -337,9 +343,10 @@ export namespace Functions {
 
     initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>
 
-    orderID: string
     event: functions.Event<DeltaDocumentSnapshot>
-    order?: Model.Order
+    orderID: string
+    order: Model.Order  & Retrycf.HasNeoTask
+    previousOrder: Model.Order
     shops?: Model.Shop[]
     user?: Model.User
     orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
@@ -364,6 +371,10 @@ export namespace Functions {
       this.event = event
       this.orderID = event.params!.orderID!
       this.initializableClass = initializableClass
+      this.order = new initializableClass.order()
+      this.order.init(event.data)
+      this.previousOrder = new initializableClass.order()
+      this.previousOrder.init(event.data.previous)
     }
 
     get isCharged(): boolean {
@@ -385,11 +396,11 @@ export namespace Functions {
       return PaymentAgencyType.Unknown
     }
 
-    updateStock(operator: Operator) {
+    updateStock(operator: Operator, step: string) {
       const orderSKUObjects = this.orderSKUObjects
-      const order = this.order
+      // const order = this.order
       if (!orderSKUObjects) { throw Error('orderSKUObjects must be non-null') }
-      if (!order) { throw Error('orderSKUObjects must be non-null') }
+      // if (!order) { throw Error('orderSKUObjects must be non-null') }
 
       return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
@@ -397,7 +408,6 @@ export namespace Functions {
           const skuRef = firestore.collection(new this.initializableClass.sku().collectionPath).doc(orderSKUObject.sku.id)
           const t = transaction.get(skuRef).then(tsku => {
             const quantity = orderSKUObject.orderSKU.quantity * operator
-            console.log(tsku.data())
             const newStock = tsku.data()!.stock + quantity
 
             if (newStock >= 0) {
@@ -411,15 +421,17 @@ export namespace Functions {
         }
 
         // // 重複実行された時に、2回目の実行を弾く
-        const step = 'validateAndDecreaseStock'
         // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
-        const orderRef = firestore.doc(order.getPath())
+        const orderRef = firestore.doc(this.order.getPath())
         const orderPromise = transaction.get(orderRef).then(tref => {
-          if (Retrycf.NeoTask.isCompleted(this.event, 'validateAndDecreaseStock')) {
-            throw new Retrycf.CompletedError('validateAndDecreaseStock')
+          if (Retrycf.NeoTask.isCompleted(this.order, step)) {
+            throw new Retrycf.CompletedError(step)
           } else {
-            const neoTask = new Retrycf.NeoTask(this.event.data)
-            neoTask.completed[step] = true
+            // const neoTask = new Retrycf.NeoTask(this.event.data)
+            const neoTask = Retrycf.NeoTask.makeNeoTask(this.order)
+            const completed = { [step]: true }
+            neoTask.completed = completed
+            this.order.neoTask = neoTask
             transaction.update(orderRef, { neoTask: neoTask.rawValue() })
           }
         })
@@ -438,8 +450,9 @@ export namespace Functions {
   const prepareRequiredData: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
-        orderObject.order = order
+        const order = orderObject.order!
+        // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
+        // orderObject.order = order
 
         const user = await new orderObject.initializableClass.user().get(order.user.id)
         orderObject.user = user
@@ -458,8 +471,8 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // ここで起きるエラーは取得エラーのみのはずなので retry
-        const neoTask = await NeoTask.setRetry(orderObject.event, 'prepareRequiredData', error)
-        throw new FlowError(neoTask, error)
+        orderObject.order = await NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error)
+        throw new FlowError(error, orderObject.order.neoTask)
       }
     })
 
@@ -485,8 +498,8 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-          throw new FlowError(neoTask, error)
+          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          throw new FlowError(error, orderObject.order.neoTask)
         }
 
         throw (error)
@@ -515,8 +528,8 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-          throw new FlowError(neoTask, error)
+          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          throw new FlowError(error, orderObject.order.neoTask)
         }
 
         throw (error)
@@ -551,8 +564,8 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-          throw new FlowError(neoTask, error)
+          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          throw new FlowError(error, orderObject.order.neoTask)
         }
 
         throw (error)
@@ -569,14 +582,14 @@ export namespace Functions {
           return orderObject
         }
 
-        await orderObject.updateStock(Operator.minus)
+        await orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock')
 
         return orderObject
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          const neoTask = await NeoTask.setInvalid(orderObject.event, validationError)
-          throw new FlowError(neoTask, error)
+          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          throw new FlowError(error, orderObject.order.neoTask)
         }
 
         throw (error)
@@ -626,13 +639,13 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
-        await orderObject.updateStock(Operator.plus)
-        await NeoTask.clearComplete(orderObject.event)
+        await orderObject.updateStock(Operator.plus, 'payment')
+        orderObject.order = await NeoTask.clearCompleted(orderObject.order)
 
         if (error.constructor === StripeError) {
           const stripeError = new StripeError(error)
-          const neoTask = await stripeError.setNeoTask(orderObject.event, 'payment')
-          throw new FlowError(neoTask, error)
+          orderObject.order = await stripeError.setNeoTask(orderObject.order, 'payment')
+          throw new FlowError(error, orderObject.order.neoTask)
         }
 
         throw (error)
@@ -675,8 +688,8 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
-        const neoTask = await NeoTask.setFatalAndPostToSlack(orderObject.event, 'updateOrder', error)
-        throw new FlowError(neoTask, error)
+        orderObject.order = await NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error)
+        throw new FlowError(error, orderObject.order.neoTask)
       }
     })
 
@@ -706,44 +719,40 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // 失敗する可能性があるのは batch の失敗だけなので retry
-        const neoTask = await NeoTask.setRetry(orderObject.event, 'updateOrderShops', error)
-        throw new FlowError(neoTask, error)
+        orderObject.order = await NeoTask.setRetry(orderObject.order, 'updateOrderShops', error)
+        throw new FlowError(error, orderObject.order)
       }
     })
 
   const setOrderTask: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        await NeoTask.success(orderObject.event)
+        orderObject.order = await NeoTask.setSuccess(orderObject.order)
 
         return orderObject
       } catch (error) {
         // 失敗する可能性があるのは update の失敗だけなので retry
-        const neoTask = await NeoTask.setRetry(orderObject.event, 'setOrderTask', error)
-        throw new FlowError(neoTask, error)
+        orderObject.order = await NeoTask.setRetry(orderObject.order, 'setOrderTask', error)
+        throw new FlowError(error, orderObject.order)
       }
     })
 
-  export const orderPaymentRequested = async (event: Event<DeltaDocumentSnapshot>, orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
-    // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+  export const orderPaymentRequested = async (orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
+  // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
-      const shouldRetry = NeoTask.shouldRetry(event.data)
-      await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
+      const shouldRetry = NeoTask.shouldRetry(orderObject.order)
+      orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order)
 
       // status が payment requested に変更された時
       // もしくは should retry が true だった時にこの functions は実行される
       // TODO: Retry
-      if (event.data.previous.data().paymentStatus !== event.data.data().paymentStatus && event.data.data().paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
+      if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
         // 処理実行、リトライは実行されない
       } else {
         return undefined
       }
-      if (event.data.data().paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
+      if (orderObject.order.paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
         return undefined
-      }
-
-      if (!event.params || !event.params.orderID) {
-        throw Error('orderID must be non-null')
       }
 
       const flow = new Flow.Line([
@@ -772,8 +781,9 @@ export namespace Functions {
         return undefined
       }
 
+      // FlowError としてキャッチされていない場合はここで FlowError をセット
       if (error.constructor !== FlowError) {
-        await NeoTask.setFatalAndPostToSlack(event, 'orderPaymentRequested', error.toString())
+        await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
       }
 
       return Promise.reject(error)
