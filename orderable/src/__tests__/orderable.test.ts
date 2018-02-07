@@ -223,7 +223,7 @@ describe('OrderObject', () => {
 test('pay order', async () => {
   jest.setTimeout(20000)
 
-  const model = await Helper.Firebase.shared.makeModel()
+  const model = await Helper.Firebase.shared.makeValidateModel()
   const preOrder = model.order
   const order = preOrder.rawValue()
   preOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
