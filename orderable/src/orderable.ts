@@ -398,7 +398,7 @@ export namespace Functions {
       return PaymentAgencyType.Unknown
     }
 
-    updateStock(operator: Operator, step: string) {
+    updateStock(operator: Operator, step?: string) {
       const orderSKUObjects = this.orderSKUObjects
       // const order = this.order
       if (!orderSKUObjects) { throw Error('orderSKUObjects must be non-null') }
@@ -422,22 +422,25 @@ export namespace Functions {
           promises.push(t)
         }
 
-        // // 重複実行された時に、2回目の実行を弾く
+        // 重複実行された時に、2回目の実行を弾く
+        // step が undefined だったらこの処理は実行しない (在庫数を元に戻すことがあるため)
         // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
-        const orderRef = firestore.doc(this.order.getPath())
-        const orderPromise = transaction.get(orderRef).then(tref => {
-          if (Retrycf.NeoTask.isCompleted(this.order, step)) {
-            throw new Retrycf.CompletedError(step)
-          } else {
-            // const neoTask = new Retrycf.NeoTask(this.event.data)
-            const neoTask = Retrycf.NeoTask.makeNeoTask(this.order)
-            const completed = { [step]: true }
-            neoTask.completed = completed
-            this.order.neoTask = neoTask
-            transaction.update(orderRef, { neoTask: neoTask.rawValue() })
-          }
-        })
-        promises.push(orderPromise)
+        if (step) {
+          const orderRef = firestore.doc(this.order.getPath())
+          const orderPromise = transaction.get(orderRef).then(tref => {
+            if (Retrycf.NeoTask.isCompleted(this.order, step)) {
+              throw new Retrycf.CompletedError(step)
+            } else {
+              // const neoTask = new Retrycf.NeoTask(this.event.data)
+              const neoTask = Retrycf.NeoTask.makeNeoTask(this.order)
+              const completed = { [step]: true }
+              neoTask.completed = completed
+              this.order.neoTask = neoTask
+              transaction.update(orderRef, { neoTask: neoTask.rawValue() })
+            }
+          })
+          promises.push(orderPromise)
+        }
 
         return Promise.all(promises)
       })
@@ -642,7 +645,7 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
-        await orderObject.updateStock(Operator.plus, 'payment')
+        await orderObject.updateStock(Operator.plus)
         orderObject.order = await NeoTask.clearCompleted(orderObject.order)
 
         if (error.constructor === StripeError) {

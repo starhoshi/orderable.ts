@@ -116,6 +116,46 @@ describe('OrderObject', () => {
             expect(sku.stock).toEqual(stock + quantity)
           }
         })
+
+        describe('when completed but step is undefined', () => {
+          test('stock decremented', async () => {
+            const step = 'step'
+
+            model.order.neoTask = await Retrycf.NeoTask.makeNeoTask(model.order)
+            const completed = { [step]: true }
+            model.order.neoTask.completed = completed
+            await model.order.reference.update({ neoTask: { completed: completed } })
+
+            const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, { neoTask: { completed: { [step]: true } } }, {})
+            orderObject = Helper.Firebase.shared.orderObject(event)
+            orderObject.order = model.order
+            orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+
+            await orderObject.updateStock(Orderable.Functions.Operator.plus, undefined)
+
+            let quantity = 0
+            for (const orderSKU of model.orderSKUs) {
+              quantity += 1
+              const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+              const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+              expect(sku.stock).toEqual(stock + quantity)
+            }
+          })
+        })
+
+        describe('when not completed and step is undefined', () => {
+          test('stock decremented', async () => {
+            await orderObject.updateStock(Orderable.Functions.Operator.plus, undefined)
+
+            let quantity = 0
+            for (const orderSKU of model.orderSKUs) {
+              quantity += 1
+              const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+              const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+              expect(sku.stock).toEqual(stock + quantity)
+            }
+          })
+        })
       })
 
       describe('when sku is out of stock', () => {
@@ -146,7 +186,6 @@ describe('OrderObject', () => {
       })
 
       describe('when already this stap completed', () => {
-        // TODO: retrycf と同時に修正
         test('CompletedError', async () => {
           const step = 'step'
 

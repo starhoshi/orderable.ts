@@ -175,7 +175,7 @@ export declare namespace Functions {
         constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>);
         readonly isCharged: boolean;
         readonly paymentAgencyType: PaymentAgencyType;
-        updateStock(operator: Operator, step: string): Promise<any[]>;
+        updateStock(operator: Operator, step?: string): Promise<any[]>;
     }
     enum Operator {
         plus = 1,
