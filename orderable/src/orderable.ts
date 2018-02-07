@@ -435,7 +435,6 @@ export namespace Functions {
               const neoTask = Retrycf.NeoTask.makeNeoTask(this.order)
               const completed = { [step]: true }
               neoTask.completed = completed
-              this.order.neoTask = neoTask
               transaction.update(orderRef, { neoTask: neoTask.rawValue() })
             }
           })
