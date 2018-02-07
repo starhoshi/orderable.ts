@@ -289,6 +289,7 @@ export namespace Functions {
 
     static async fetchFrom<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU>(order: Model.Order, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
       // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+      console.log(order)
       console.log(order.orderSKUs)
       const orderSKURefs = await order.orderSKUs.get(orderSKUType)
       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
@@ -374,6 +375,7 @@ export namespace Functions {
       this.initializableClass = initializableClass
       this.order = new initializableClass.order()
       this.order.init(event.data)
+      console.log(event.data.data())
       this.previousOrder = new initializableClass.order()
       this.previousOrder.init(event.data.previous)
     }

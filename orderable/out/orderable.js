@@ -218,6 +218,7 @@ var Functions;
         static fetchFrom(order, orderSKUType, skuType) {
             return __awaiter(this, void 0, void 0, function* () {
                 // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+                console.log(order);
                 console.log(order.orderSKUs);
                 const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
@@ -252,6 +253,7 @@ var Functions;
             this.initializableClass = initializableClass;
             this.order = new initializableClass.order();
             this.order.init(event.data);
+            console.log(event.data.data());
             this.previousOrder = new initializableClass.order();
             this.previousOrder.init(event.data.previous);
         }
