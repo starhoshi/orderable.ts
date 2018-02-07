@@ -218,6 +218,7 @@ var Functions;
         static fetchFrom(order, orderSKUType, skuType) {
             return __awaiter(this, void 0, void 0, function* () {
                 // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+                console.log(order.orderSKUs);
                 const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
                     return new orderSKUType().get(orderSKURef.id).then(s => {
