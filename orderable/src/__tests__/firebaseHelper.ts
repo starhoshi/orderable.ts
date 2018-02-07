@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
-import { Pring } from 'pring'
+import { Pring, property } from 'pring'
 import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
@@ -167,7 +167,7 @@ export class Firebase {
     const stripeCharge = new Model.SampleStripeCharge()
     if (dataSet.order.stripe) {
       stripeCharge.cardID = dataSet.order.stripe.cardID
-      stripeCharge.customerID = dataSet.order.stripe.cardID
+      stripeCharge.customerID = dataSet.order.stripe.customerID
     }
 
     const order = new Model.SampleOrder()
@@ -202,6 +202,9 @@ export class Firebase {
       orderShopsForReturn.push(orderShop)
     }
     await order.save()
+
+    const preOrder = order.rawValue()
+    preOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
 
     return <SampleModel>{
       user: user,

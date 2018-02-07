@@ -224,11 +224,11 @@ test('pay order', async () => {
   jest.setTimeout(20000)
 
   const model = await Helper.Firebase.shared.makeValidateModel()
-  const preOrder = model.order
-  const order = preOrder.rawValue()
-  preOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+  const preOrder = model.order.rawValue()
+  model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+  await model.order.update()
 
-  const event = Helper.Firebase.shared.makeOrderEvent(preOrder.reference, order, preOrder.rawValue())
+  const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
   const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
     order: Model.SampleOrder,
     shop: Model.SampleShop,
