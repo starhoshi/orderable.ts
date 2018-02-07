@@ -44,20 +44,20 @@
   resolved "https://registry.yarnpkg.com/@firebase/util/-/util-0.1.8.tgz#7a7eb9d5fc56ba9e9b854bb2357d51f83b07df31"
 
 "@google-cloud/common-grpc@^0.5.3":
-  version "0.5.3"
-  resolved "https://registry.yarnpkg.com/@google-cloud/common-grpc/-/common-grpc-0.5.3.tgz#cfc7ba598549b0284f3176a54338687a7cab60f7"
+  version "0.5.4"
+  resolved "https://registry.yarnpkg.com/@google-cloud/common-grpc/-/common-grpc-0.5.4.tgz#bbc36de0c01cf101dcb2660d76c8b833db6f7a23"
   dependencies:
-    "@google-cloud/common" "^0.13.6"
-    dot-prop "^2.4.0"
+    "@google-cloud/common" "^0.15.1"
+    dot-prop "^4.2.0"
     duplexify "^3.5.1"
     extend "^3.0.1"
-    grpc "^1.7.1"
+    grpc "~1.7.2"
     is "^3.2.0"
     modelo "^4.2.0"
     retry-request "^3.3.1"
     through2 "^2.0.3"
 
-"@google-cloud/common@^0.13.0", "@google-cloud/common@^0.13.6":
+"@google-cloud/common@^0.13.0":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@google-cloud/common/-/common-0.13.6.tgz#a9d8e137bc429a44aba9689fe6a0e4331784f853"
   dependencies:
@@ -285,8 +285,8 @@
     "@types/node" "*"
 
 "@types/lodash@^4.14.34":
-  version "4.14.100"
-  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.100.tgz#f353dd9d3a9785638b6cb8023e6639097bd31969"
+  version "4.14.101"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.101.tgz#512f6c9e1749890f4d024e98cb995a63f562d458"
 
 "@types/long@^3.0.32":
   version "3.0.32"
@@ -1183,8 +1183,8 @@ combined-stream@^1.0.5, combined-stream@~1.0.5:
     delayed-stream "~1.0.0"
 
 commander@^2.12.1, commander@^2.8.1:
-  version "2.13.0"
-  resolved "https://registry.yarnpkg.com/commander/-/commander-2.13.0.tgz#6964bca67685df7c1f1430c584f07d7597885b9c"
+  version "2.14.0"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-2.14.0.tgz#7b25325963e6aace20d3a9285b09379b0c2208b5"
 
 compare-semver@^1.0.0:
   version "1.1.0"
@@ -1538,19 +1538,13 @@ domexception@^1.0.0:
   dependencies:
     webidl-conversions "^4.0.2"
 
-dot-prop@^2.4.0:
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/dot-prop/-/dot-prop-2.4.0.tgz#848e28f7f1d50740c6747ab3cb07670462b6f89c"
-  dependencies:
-    is-obj "^1.0.0"
-
 dot-prop@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/dot-prop/-/dot-prop-3.0.0.tgz#1b708af094a49c9a0e7dbcad790aba539dac1177"
   dependencies:
     is-obj "^1.0.0"
 
-dot-prop@^4.1.0:
+dot-prop@^4.1.0, dot-prop@^4.2.0:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/dot-prop/-/dot-prop-4.2.0.tgz#1f19e0c2e1aa0e32797c49799f2837ac6af69c57"
   dependencies:
@@ -2460,16 +2454,6 @@ grpc@1.4.1:
     lodash "^4.15.0"
     nan "^2.0.0"
     node-pre-gyp "^0.6.35"
-    protobufjs "^5.0.0"
-
-grpc@^1.7.1:
-  version "1.8.4"
-  resolved "https://registry.yarnpkg.com/grpc/-/grpc-1.8.4.tgz#81d1b49ccdd25a7149f189f3c36b123ca46caa95"
-  dependencies:
-    arguejs "^0.2.3"
-    lodash "^4.15.0"
-    nan "^2.0.0"
-    node-pre-gyp "^0.6.39"
     protobufjs "^5.0.0"
 
 grpc@~1.7.2:
@@ -4735,9 +4719,9 @@ retry-request@^3.0.0, retry-request@^3.1.0, retry-request@^3.3.1:
     request "^2.81.0"
     through2 "^2.0.0"
 
-retrycf@^0.0.36:
-  version "0.0.36"
-  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.0.36.tgz#b3de42f5f21dbe2c4667297bdb8013249cab7ebf"
+retrycf@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.1.0.tgz#4e4b18aad532990fa42ec58cce7f41e653af4985"
   dependencies:
     "@google-cloud/firestore" "^0.11.2"
     firebase-admin "^5.8.2"

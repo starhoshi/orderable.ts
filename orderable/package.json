@@ -53,7 +53,7 @@
     "firebase-functions": "^0.8.1",
     "pring": "^0.5.2",
     "request": "^2.83.0",
-    "retrycf": "^0.0.36",
+    "retrycf": "^0.1.0",
     "slack-node": "^0.1.8",
     "stripe": "^5.4.0"
   }

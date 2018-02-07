@@ -4,7 +4,7 @@ import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
 import { Pring, property } from 'pring'
-import { Retrycf } from 'retrycf'
+import * as Retrycf from 'retrycf'
 import * as Flow from '@1amageek/flow'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as request from 'request'
@@ -114,9 +114,9 @@ export namespace Model {
     }
   }
 
-  export interface HasNeoTask extends Base {
-    neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
-  }
+  // export interface HasNeoTask extends Base {
+  //   neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
+  // }
 
   export interface User extends Base {
     stripeCustomerID?: string
@@ -160,7 +160,7 @@ export namespace Model {
     chargeID?: string
   }
 
-  export interface Order extends HasNeoTask {
+  export interface Order extends Pring.Base {
     user: FirebaseFirestore.DocumentReference
     amount: number
     paidDate: FirebaseFirestore.FieldValue
@@ -305,7 +305,7 @@ export namespace Functions {
   }
 
   export interface InitializableClass<
-    Order extends Model.Order,
+    Order extends Model.Order  & Retrycf.HasNeoTask,
     Shop extends Model.Shop,
     User extends Model.User,
     SKU extends Model.SKU,
@@ -327,7 +327,7 @@ export namespace Functions {
   }
 
   export class OrderObject<
-    Order extends Model.Order,
+    Order extends Model.Order & Retrycf.HasNeoTask,
     Shop extends Model.Shop,
     User extends Model.User,
     SKU extends Model.SKU,
@@ -339,7 +339,7 @@ export namespace Functions {
 
     event: functions.Event<DeltaDocumentSnapshot>
     orderID: string
-    order: Model.Order
+    order: Model.Order  & Retrycf.HasNeoTask
     previousOrder: Model.Order
     shops?: Model.Shop[]
     user?: Model.User
@@ -730,9 +730,8 @@ export namespace Functions {
 
   export const orderPaymentRequested = async (orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
   // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
-    const event = orderObject.event
     try {
-      const shouldRetry = NeoTask.shouldRetry(event.data)
+      const shouldRetry = NeoTask.shouldRetry(orderObject.order)
       await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(event)
 
       // status が payment requested に変更された時
