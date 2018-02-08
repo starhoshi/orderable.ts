@@ -334,8 +334,38 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
+  describe('stripe card is expired', () => {
+    test('Retrycf.ValidationError SKUIsNotActive', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.stripe.customerID = 'cus_C1vUA7cpCejmHN'
+      order.stripe.cardID = 'card_1Bdre0KZcOra3Jxs6IOjm4WO' // 12/2017
+      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+
+      const model = await Helper.Firebase.shared.makeValidateModel(customModel)
+      const preOrder = model.order.rawValue()
+      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      await model.order.update()
+
+      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
+      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+      })
+
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.FlowError)
+        const flowError = e as Orderable.FlowError
+        expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
+        const validationError  = flowError.error as Retrycf.ValidationError
+        expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.StripeCardExpired)
+      }
+    })
+  })
+
   // TODO
-  // validateSKUIsActive is not active
   // validatePaymentMethod expired
   // validatePaymentMethod payment method not exist
   // validateAndDecreaseStock out of stock
@@ -349,6 +379,7 @@ describe.only('orderPaymentRequested', () => {
   // fatal error when retry 3 times
   // stripe mutiple charge
   // reference data is broken
+  // order timelimit
 })
 
 // TODO
