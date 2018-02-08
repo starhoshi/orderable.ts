@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="https://raw.githubusercontent.com/starhoshi/orderable.ts/master/docs/logo.png" width='200' />
+</p>
+
 # orderable.ts
 
 Orderable は Cloud Functions for Firebase と連携し、決済が簡単に実行できるライブラリです。  
