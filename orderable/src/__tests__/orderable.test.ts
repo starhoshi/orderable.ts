@@ -247,7 +247,8 @@ describe.only('orderPaymentRequested', () => {
       await Promise.all([
         Helper.Firebase.shared.expectOrder(model),
         Helper.Firebase.shared.expectStock(model),
-        Helper.Firebase.shared.expectOrderShop(model)
+        Helper.Firebase.shared.expectOrderShop(model),
+        Helper.Firebase.shared.expectStripe(model)
       ])
     })
   })

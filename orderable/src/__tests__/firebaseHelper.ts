@@ -5,6 +5,9 @@ import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Retrycf from 'retrycf'
+import * as Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE as string)
 
 export interface SampleModel {
   user: Model.SampleUser,
@@ -248,6 +251,14 @@ export class Firebase {
       const fetchedOrderShop = await Model.SampleOrderShop.get(orderShop.id) as Model.SampleOrderShop
       expect(fetchedOrderShop.paymentStatus).toEqual(Orderable.Model.OrderShopPaymentStatus.Paid)
     }
+  }
+
+  async expectStripe(model: SampleModel) {
+    const charge = await stripe.charges.retrieve(model.order.stripe!.chargeID!)
+    console.log(charge)
+    expect(charge.amount).toEqual(model.order.amount)
+    expect(charge.metadata.orderID).toEqual(model.order.id)
+    expect(charge.customer).toEqual(model.order.stripe!.customerID)
   }
 
   /// 指定した DocumentReference を observe する。 `timeout` を超えたらエラーを返す
