@@ -147,7 +147,7 @@ if (order.neoTask && order.neoTask.status === 1) {
 
 #### NeoTask.invalid
 
-決済を行うにあたって必須の条件が設定されていない時にセットされます。  
+決済を行うにあたって必須の条件が設定されていない時にセットされます。  
 例えば、在庫が足りていない場合や、クレジットカードが不正だった時です。
 
 ```ts
@@ -162,29 +162,29 @@ export enum ValidationErrorType {
 }
 ```
 
-必要な条件を再度設定し、 4. Start payment のトリガーを再度実行してください。  
+必要な条件を再度設定し、 4. Start payment のトリガーを再度実行してください。  
 場合によっては Order を作り直した方が良いかもしれません。
 
 #### NeoTask.fatal
 
-回復不能なエラーが発生した時にセットされます。  
+回復不能なエラーが発生した時にセットされます。  
 例えば決済が完了したフラグを保存しようとした時、などです。
 
 この場合はどうしようもないので、デベロッパーが直接データを見て修正してください。
 
 #### NeoTask.retry
 
-retry は、全く同じ状態のまま Cloud Functions を再実行すれば解決できる状態です。  
+retry は、全く同じ状態のまま Cloud Functions を再実行すれば解決できる状態です。  
 この場合、 __Orderable が自動で__ retry を行います。
 
-retry を 2 回行い、それでも失敗した場合は fatal エラーが書き込まれます。  
+retry を 2 回行い、それでも失敗した場合は fatal エラーが書き込まれます。  
 成功した場合は neoTask.status が 1 になります。
 
 retry の後すぐに fatal か success に変わるため、それを待ってください。
 
 ### FlowError
 
-処理が途中で失敗すると、 FlowError という型の Error を catch できます。　　
+処理が途中で失敗すると、 FlowError という型の Error を catch できます。  
 FlowError の中にはさらに error があり、それを見てデベロッパー側でもエラーハンドリングができます。
 
 ```ts
