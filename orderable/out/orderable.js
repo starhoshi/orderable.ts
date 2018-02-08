@@ -502,7 +502,7 @@ var Functions;
             yield orderObject.updateStock(Operator.plus);
             orderObject.order = yield NeoTask.clearCompleted(orderObject.order);
             if (error.constructor === StripeError) {
-                const stripeError = new StripeError(error);
+                const stripeError = error;
                 orderObject.order = yield stripeError.setNeoTask(orderObject.order, 'payment');
                 throw new FlowError(error, orderObject.order.neoTask);
             }

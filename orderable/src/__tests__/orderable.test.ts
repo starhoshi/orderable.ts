@@ -395,8 +395,6 @@ describe('orderPaymentRequested', () => {
         Orderable.Functions.orderPaymentRequested(data.orderObject)
       ])
 
-      console.log(data.model.order.id)
-
       // multiple fired, but successfully only once
       await Promise.all([
         Helper.Firebase.shared.expectOrder(data.model),
@@ -407,8 +405,32 @@ describe('orderPaymentRequested', () => {
     })
   })
 
+  describe('over limit of stripe', () => {
+    test('Retrycf.ValidationError StripeInvalidRequestError', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.amount = 1000000000000000
+      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+
+      const data = await makeTestData(customModel)
+
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.FlowError)
+        const flowError = e as Orderable.FlowError
+        expect(flowError.error).toBeInstanceOf(Orderable.StripeError)
+        const stripeError  = flowError.error as Orderable.StripeError
+        expect(stripeError.type).toEqual(Orderable.StripeErrorType.StripeInvalidRequestError)
+        expect(stripeError.statusCode).toEqual(400)
+
+        await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+      }
+    })
+  })
+
   // TODO
-  // validateAndDecreaseStock completed
   // stripe charge price error
   // stripe charge functions multiple fire
   // stripe charge error type cover

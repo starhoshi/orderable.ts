@@ -650,7 +650,7 @@ export namespace Functions {
         orderObject.order = await NeoTask.clearCompleted(orderObject.order)
 
         if (error.constructor === StripeError) {
-          const stripeError = new StripeError(error)
+          const stripeError = error as StripeError
           orderObject.order = await stripeError.setNeoTask(orderObject.order, 'payment')
           throw new FlowError(error, orderObject.order.neoTask)
         }

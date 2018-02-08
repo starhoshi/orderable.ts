@@ -238,10 +238,12 @@ export class Firebase {
     }
   }
 
+  step = 'validateAndDecreaseStock'
+
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
-      expect(order.neoTask!.completed).toEqual({'validateAndDecreaseStock': true})
+      expect(order.neoTask!.completed).toEqual({[this.step]: true})
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
       expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.Paid)
@@ -265,7 +267,12 @@ export class Firebase {
     }
 
     const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    expect(order.neoTask!.completed).toBeUndefined()
+    // completed not contain step
+    if (order.neoTask!.completed) {
+      expect(order.neoTask!.completed![this.step]).toBeUndefined()
+    } else {
+      expect(order.neoTask!.completed).toBeUndefined()
+    }
     expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.PaymentRequested)
   }
 
