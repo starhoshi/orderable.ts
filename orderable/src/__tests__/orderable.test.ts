@@ -359,6 +359,33 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
+  describe.only('out of stock', () => {
+    test('Retrycf.ValidationError OutOfStock', async () => {
+      const shops = Helper.Firebase.shared.defaultShops
+      shops[0].skus[0].quantity = 100000000000
+      const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder }
+
+      const data = await makeTestData(customModel)
+
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.FlowError)
+        const flowError = e as Orderable.FlowError
+        expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
+        const validationError  = flowError.error as Retrycf.ValidationError
+        expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
+
+        // 在庫が減っていないことを確認
+        await Promise.all([
+          Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+        ])
+      }
+    })
+  })
+
   // TODO
   // validateAndDecreaseStock out of stock
   // validateAndDecreaseStock completed

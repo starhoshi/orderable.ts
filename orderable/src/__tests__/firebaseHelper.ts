@@ -207,7 +207,7 @@ export class Firebase {
         const orderSKU = new Model.SampleOrderSKU()
         orderSKU.snapshotSKU = product.sku.rawValue()
         orderSKU.snapshotProduct = product.product.rawValue()
-        orderSKU.quantity = 1
+        orderSKU.quantity = product.quantity
         orderSKU.sku = product.sku.reference
         orderSKU.shop = shop.shop.reference
 
@@ -252,6 +252,15 @@ export class Firebase {
     for (const sku of model.skus) {
       const fetchedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
       expect(fetchedSKU.stock).toEqual(sku.stock - model.orderSKUs[index].quantity)
+      index += 1
+    }
+  }
+
+  async expectStockNotDecrementAndNotCompleted(model: SampleModel) {
+    let index = 0
+    for (const sku of model.skus) {
+      const fetchedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
+      expect(fetchedSKU.stock).toEqual(sku.stock)
       index += 1
     }
   }
