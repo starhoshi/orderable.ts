@@ -275,7 +275,7 @@ describe.only('orderPaymentRequested', () => {
   })
 
   describe('shop is not active', () => {
-    test('Retrycf.ValidationError SKUIsNotActive', async () => {
+    test('Retrycf.ValidationError ShopIsNotActive', async () => {
       const shops = Helper.Firebase.shared.defaultShops
       shops[0].isActive = false
       const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
@@ -304,8 +304,37 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
+  describe('sku is not active', () => {
+    test('Retrycf.ValidationError SKUIsNotActive', async () => {
+      const shops = Helper.Firebase.shared.defaultShops
+      shops[0].skus[0].isActive = false
+      const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
+
+      const model = await Helper.Firebase.shared.makeValidateModel(customModel)
+      const preOrder = model.order.rawValue()
+      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      await model.order.update()
+
+      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
+      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+      })
+
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.FlowError)
+        const flowError = e as Orderable.FlowError
+        expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
+        const validationError  = flowError.error as Retrycf.ValidationError
+        expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.SKUIsNotActive)
+      }
+    })
+  })
+
   // TODO
-  // validateShopIsActive is not active
   // validateSKUIsActive is not active
   // validatePaymentMethod expired
   // validatePaymentMethod payment method not exist

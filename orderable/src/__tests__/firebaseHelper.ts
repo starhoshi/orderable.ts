@@ -28,6 +28,7 @@ export interface DataSet {
       price?: number,
       stockType?: Orderable.Model.StockType,
       stock?: number,
+      isActive?: boolean,
       quantity?: number
     }[]
   }[]
@@ -112,6 +113,7 @@ export class Firebase {
           price: 1000,
           stockType: Orderable.Model.StockType.Finite,
           stock: 100,
+          isActive: true,
           quantity: 1
         },
         {
@@ -119,6 +121,7 @@ export class Firebase {
           price: 2000,
           stockType: Orderable.Model.StockType.Finite,
           stock: 150,
+          isActive: true,
           quantity: 2
         }
       ]
@@ -165,6 +168,7 @@ export class Firebase {
         sk.price = sku.price || 1000
         sk.stockType = sku.stockType || Orderable.Model.StockType.Infinite
         sk.stock = sku.stock || 100
+        sk.isActive = !!sku.isActive
         promises1.push(sk.save())
         products.push({ product: p, sku: sk, quantity: sku.quantity || 1 })
         productsForReturn.push(p)
