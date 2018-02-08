@@ -55,17 +55,7 @@ Pring.initialize(functions.config().firebase)
 Orderable.initialize({
   adminOptions: functions.config().firebase,
   stripeToken: 'YOUR_STRIPE_TOKEN_IF_NEEDED',
-  slack: undefined
-})
-```
-
-エラーが発生した時に Slack 通知が必要な場合:
-
-```ts
-Orderable.initialize({
-    adminOptions: functions.config().firebase,
-    stripeToken: functions.config().stripe.token,
-    slack: {url: "YOUR_SLACK_URL", channel: 'CHANNEL_NAME'}
+  slack: undefined // OR {url: "YOUR_SLACK_URL", channel: 'CHANNEL_NAME'}
 })
 ```
 
