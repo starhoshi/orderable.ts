@@ -234,7 +234,9 @@ export class Firebase {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
       expect(order.neoTask!.completed).toEqual({'validateAndDecreaseStock': true})
-      expect(order.stripe!.chargeID).toBeTruthy()
+      expect(order.stripe!.chargeID).toBeDefined()
+      expect(order.paidDate).toBeInstanceOf(Date)
+      expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.Paid)
   }
 
   async expectStock(model: SampleModel) {

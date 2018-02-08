@@ -275,6 +275,22 @@ describe.only('orderPaymentRequested', () => {
       ])
     })
   })
+
+  // TODO
+  // validateShopIsActive is not active
+  // validateSKUIsActive is not active
+  // validatePaymentMethod expired
+  // validatePaymentMethod payment method not exist
+  // validateAndDecreaseStock out of stock
+  // validateAndDecreaseStock completed
+  // stripe charge price error
+  // stripe charge functions multiple fire
+  // stripe charge error type cover
+  // update order
+  // skip enabled
+  // retry 2 times
+  // fatal error when retry 3 times
+  // stripe mutiple charge
 })
 
 // TODO
