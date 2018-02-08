@@ -9,7 +9,7 @@
 
 for japanese: [README\.ja\.md](https://github.com/starhoshi/orderable.ts/blob/master/README.ja.md)
 
-orderable.ts is a npm library that works with Cloud Functions for Firebase and can easily execute payment.  
+orderable.ts is an npm library that works with Cloud Functions for Firebase and can easily execute payment.  
 EC requires a lot of processing. For example, check inventory, payment process, create history, and so on. orderable.ts exec these troublesome tasks.
 
 For Client Side (iOS): [starhoshi/Orderable](https://github.com/starhoshi/Orderable)
