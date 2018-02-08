@@ -9,15 +9,12 @@ import * as Orderable from '@star__hoshi/orderable'
 
 admin.initializeApp(<admin.AppOptions>functions.config().firebase)
 Pring.initialize(functions.config().firebase)
-Retrycf.initialize(functions.config().firebase)
 Orderable.initialize({
   adminOptions: functions.config().firebase,
   stripeToken: functions.config().stripe.token,
   slack: undefined
-  // slack: { url: functions.config().slack.url, channel: '#komerco-error' }
 })
 
-// export const orderablePayOrder = Orderable.Functions.orderPaymentRequested
 export const paySampleOrder = functions.firestore
   .document(`${Model.SampleOrder.getPath()}/{orderID}`)
   .onUpdate(async (event) =>  {

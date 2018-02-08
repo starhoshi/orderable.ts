@@ -61,7 +61,7 @@ it('order pay', async () => {
   const orderSKU2 = new Model.SampleOrderSKU()
   orderSKU2.snapshotSKU = sku2.rawValue()
   orderSKU2.snapshotProduct = product2.rawValue()
-  orderSKU2.quantity = 2
+  orderSKU2.quantity = 2000000000
   orderSKU2.sku = sku2.reference
   orderSKU2.shop = shop.reference
 
