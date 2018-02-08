@@ -497,7 +497,7 @@ export namespace Functions {
 
         shops.forEach((shop, index) => {
           if (!shop.isActive) {
-            throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
+            throw new Retrycf.ValidationError(ValidationErrorType.ShopIsNotActive,
               `ショップ「${shop.name}」は現在ご利用いただけません。`)
           }
         })
@@ -785,7 +785,7 @@ export namespace Functions {
 
       return Promise.resolve()
     } catch (error) {
-      console.error(error)
+      // console.error(error)
       if (error.constructor === Retrycf.CompletedError) {
         // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
         return undefined

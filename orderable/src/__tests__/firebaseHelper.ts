@@ -22,6 +22,7 @@ export interface SampleModel {
 export interface DataSet {
   shops?: {
     name?: string,
+    isActive?: boolean,
     skus: {
       name?: string,
       price?: number,
@@ -104,6 +105,7 @@ export class Firebase {
   get defaultShops() {
     return [{
       name: 'shop',
+      isActive: true,
       skus: [
         {
           name: 'sku1',
@@ -150,6 +152,7 @@ export class Firebase {
     for (const shop of dataSet.shops) {
       const sh = new Model.SampleShop()
       sh.name = shop.name || 'shop'
+      sh.isActive = !!shop.isActive
       promises1.push(sh.save())
 
       let products: {product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number}[] = []
