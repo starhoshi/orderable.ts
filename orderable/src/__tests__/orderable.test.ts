@@ -221,9 +221,8 @@ describe('OrderObject', () => {
 })
 
 describe.only('orderPaymentRequested', () => {
-  describe('when one shop (Normal Scenario)', () => {
-    test('neoTask === 1', async () => {
-      const model = await Helper.Firebase.shared.makeValidateModel()
+  const makeTestData = async (dataSet: Helper.DataSet = {}) => {
+      const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
       const preOrder = model.order.rawValue()
       model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
       await model.order.update()
@@ -233,15 +232,22 @@ describe.only('orderPaymentRequested', () => {
         order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
       })
 
+      return {model: model, orderObject: orderObject}
+  }
+
+  describe('when one shop (Normal Scenario)', () => {
+    test('neoTask === 1', async () => {
+      const data = await makeTestData()
+
       // run functions
-      await Orderable.Functions.orderPaymentRequested(orderObject)
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
       // expect
       await Promise.all([
-        Helper.Firebase.shared.expectOrder(model),
-        Helper.Firebase.shared.expectStock(model),
-        Helper.Firebase.shared.expectOrderShop(model),
-        Helper.Firebase.shared.expectStripe(model)
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
       ])
     })
   })
@@ -251,25 +257,17 @@ describe.only('orderPaymentRequested', () => {
       const shops = Helper.Firebase.shared.defaultShops.concat(Helper.Firebase.shared.defaultShops)
       const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
 
-      const model = await Helper.Firebase.shared.makeValidateModel(customModel)
-      const preOrder = model.order.rawValue()
-      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
-      await model.order.update()
-
-      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
-      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-      })
+      const data = await makeTestData(customModel)
 
       // run functions
-      await Orderable.Functions.orderPaymentRequested(orderObject)
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
       // expect
       await Promise.all([
-        Helper.Firebase.shared.expectOrder(model),
-        Helper.Firebase.shared.expectStock(model),
-        Helper.Firebase.shared.expectOrderShop(model),
-        Helper.Firebase.shared.expectStripe(model)
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
       ])
     })
   })
@@ -280,20 +278,12 @@ describe.only('orderPaymentRequested', () => {
       shops[0].isActive = false
       const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
 
-      const model = await Helper.Firebase.shared.makeValidateModel(customModel)
-      const preOrder = model.order.rawValue()
-      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
-      await model.order.update()
-
-      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
-      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-      })
+      const data = await makeTestData(customModel)
 
       expect.hasAssertions()
       try {
         // run functions
-        await Orderable.Functions.orderPaymentRequested(orderObject)
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
       } catch (e) {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
@@ -310,20 +300,12 @@ describe.only('orderPaymentRequested', () => {
       shops[0].skus[0].isActive = false
       const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
 
-      const model = await Helper.Firebase.shared.makeValidateModel(customModel)
-      const preOrder = model.order.rawValue()
-      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
-      await model.order.update()
-
-      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
-      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-      })
+      const data = await makeTestData(customModel)
 
       expect.hasAssertions()
       try {
         // run functions
-        await Orderable.Functions.orderPaymentRequested(orderObject)
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
       } catch (e) {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
@@ -334,11 +316,31 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-  describe('stripe card is expired', () => {
+  describe.only('stripe card is expired', () => {
     test('Retrycf.ValidationError SKUIsNotActive', async () => {
       const order = Helper.Firebase.shared.defaultOrder
-      order.stripe.customerID = 'cus_C1vUA7cpCejmHN'
-      order.stripe.cardID = 'card_1Bdre0KZcOra3Jxs6IOjm4WO' // 12/2017
+      order.stripe!.customerID = 'cus_C1vUA7cpCejmHN'
+      order.stripe!.cardID = 'card_1Bdre0KZcOra3Jxs6IOjm4WO' // 12/2017
+      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+
+      const data = await makeTestData(customModel)
+
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.FlowError)
+        const flowError = e as Orderable.FlowError
+        expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
+        const validationError  = flowError.error as Retrycf.ValidationError
+        expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.StripeCardExpired)
+      }
+    })
+
+    test('Retrycf.ValidationError PaymentInfoNotFount', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.stripe = undefined
       const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
 
       const model = await Helper.Firebase.shared.makeValidateModel(customModel)
@@ -360,14 +362,12 @@ describe.only('orderPaymentRequested', () => {
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
         const validationError  = flowError.error as Retrycf.ValidationError
-        expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.StripeCardExpired)
+        expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.PaymentInfoNotFound)
       }
     })
   })
 
   // TODO
-  // validatePaymentMethod expired
-  // validatePaymentMethod payment method not exist
   // validateAndDecreaseStock out of stock
   // validateAndDecreaseStock completed
   // stripe charge price error

@@ -19,6 +19,16 @@ export interface SampleModel {
   orderSKUs: Model.SampleOrderSKU[]
 }
 
+export interface DataSetOrder {
+  amount?: number,
+  currency?: string,
+  paymentStatus?: Orderable.Model.OrderPaymentStatus,
+  stripe?: {
+    cardID: string,
+    customerID: string
+  }
+}
+
 export interface DataSet {
   shops?: {
     name?: string,
@@ -33,15 +43,7 @@ export interface DataSet {
     }[]
   }[]
 
-  order?: {
-    amount?: number,
-    currency?: string,
-    paymentStatus?: Orderable.Model.OrderPaymentStatus,
-    stripe?: {
-      cardID: string,
-      customerID: string
-    }
-  }
+  order?: DataSetOrder
 }
 
 export class Firebase {
@@ -129,7 +131,7 @@ export class Firebase {
   }
 
   get defaultOrder() {
-    return {
+    return <DataSetOrder>{
       amount: 1000,
       currency: 'jpy',
       paymentStatus: Orderable.Model.OrderPaymentStatus.Created,
@@ -181,18 +183,17 @@ export class Firebase {
 
     const promises2: Promise<any>[] = []
 
-    const stripeCharge = new Model.SampleStripeCharge()
-    if (dataSet.order.stripe) {
-      stripeCharge.cardID = dataSet.order.stripe.cardID
-      stripeCharge.customerID = dataSet.order.stripe.customerID
-    }
-
     const order = new Model.SampleOrder()
     order.user = user.reference
     order.amount = dataSet.order.amount || 10000
     order.currency = dataSet.order.currency || 'jpy'
     order.paymentStatus = dataSet.order.paymentStatus || Orderable.Model.OrderPaymentStatus.Created
-    order.stripe = stripeCharge.rawValue()
+    if (dataSet.order.stripe) {
+      const stripeCharge = new Model.SampleStripeCharge()
+      stripeCharge.cardID = dataSet.order.stripe.cardID
+      stripeCharge.customerID = dataSet.order.stripe.customerID
+      order.stripe = stripeCharge.rawValue()
+    }
 
     const orderSKUsForReturn: Model.SampleOrderSKU[] = []
     const orderShopsForReturn: Model.SampleOrderShop[] = []
