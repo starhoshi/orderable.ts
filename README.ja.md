@@ -64,19 +64,19 @@ Orderable.initialize({
 [orderable\.ts/sampleModel\.ts](https://github.com/starhoshi/orderable.ts/blob/master/sample-cloud-functions/functions/src/sampleModel.ts) を参考に、あなたのプロジェクトで必要な Model の定義をしてください。
 
 * User
-    * 購入者
+  * 購入者
 * Shop
-    * 販売者
+  * 販売者
 * Product
-    * 商品の概念。
+  * 商品の概念。
 * SKU
-    * 商品の実態。在庫や値段などを持つ。
+  * 商品の実態。在庫や値段などを持つ。
 * Order
-    * 注文。ユーザが支払う金額や支払い方法などを持つ。
+  * 注文。ユーザが支払う金額や支払い方法などを持つ。
 * OrderShop
-    * Shop ごとの注文情報。
+  * Shop ごとの注文情報。
 * OrderSKU
-    * 注文された商品。購入数などを持つ。
+  * 注文された商品。購入数などを持つ。
 
 ### 3. Cloud Functions
 
@@ -142,7 +142,7 @@ if (order.neoTask && order.neoTask.status === 1) {
 
 ### NeoTask
 
-処理が途中で失敗すると、 Order.neoTask にエラーの情報が書き込まれます。　　
+処理が途中で失敗すると、 Order.neoTask にエラーの情報が書き込まれます。  
 この場合、 `neoTask.status === 2` になります。
 
 #### NeoTask.invalid
@@ -210,4 +210,3 @@ Cloud Functions は稀に複数回発火することがあります。
 
 関数が複数回実行されてしまうのを防ぐために transaction を使い、処理が完了したことを保存し2回目の関数実行では決済処理までたどり着かないようになっています。  
 https://github.com/starhoshi/orderable.ts/blob/master/orderable/src/orderable.ts#L433-L434
-
