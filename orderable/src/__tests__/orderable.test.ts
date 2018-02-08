@@ -343,20 +343,12 @@ describe.only('orderPaymentRequested', () => {
       order.stripe = undefined
       const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
 
-      const model = await Helper.Firebase.shared.makeValidateModel(customModel)
-      const preOrder = model.order.rawValue()
-      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
-      await model.order.update()
-
-      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
-      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-      })
+      const data = await makeTestData(customModel)
 
       expect.hasAssertions()
       try {
         // run functions
-        await Orderable.Functions.orderPaymentRequested(orderObject)
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
       } catch (e) {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
