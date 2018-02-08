@@ -241,7 +241,6 @@ export class Firebase {
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
-      expect(order.neoTask!.completed).toEqual({'validateAndDecreaseStock': true})
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
       expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.Paid)
@@ -263,6 +262,10 @@ export class Firebase {
       expect(fetchedSKU.stock).toEqual(sku.stock)
       index += 1
     }
+
+    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+    expect(order.neoTask!.completed).toBeUndefined()
+    expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.PaymentRequested)
   }
 
   async expectOrderShop(model: SampleModel) {

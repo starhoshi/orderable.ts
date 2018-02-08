@@ -220,7 +220,7 @@ describe('OrderObject', () => {
   })
 })
 
-describe.only('orderPaymentRequested', () => {
+describe('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}) => {
       const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
       const preOrder = model.order.rawValue()
@@ -316,7 +316,7 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-  describe.only('stripe card is expired', () => {
+  describe('stripe card is expired', () => {
     test('Retrycf.ValidationError SKUIsNotActive', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       order.stripe!.customerID = 'cus_C1vUA7cpCejmHN'
@@ -359,7 +359,7 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-  describe.only('out of stock', () => {
+  describe('out of stock', () => {
     test('Retrycf.ValidationError OutOfStock', async () => {
       const shops = Helper.Firebase.shared.defaultShops
       shops[0].skus[0].quantity = 100000000000
@@ -399,6 +399,7 @@ describe.only('orderPaymentRequested', () => {
   // stripe mutiple charge
   // reference data is broken
   // order timelimit
+  // stock count Threshold test
 })
 
 // TODO
