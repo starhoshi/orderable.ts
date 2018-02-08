@@ -66,7 +66,7 @@ Orderable.initialize({
 })
 ```
 
-### 2. Model 定義
+### 2. Model definition
 
 You need to define the necessary Model in your project.
 
