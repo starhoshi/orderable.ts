@@ -378,16 +378,36 @@ describe('orderPaymentRequested', () => {
         const validationError  = flowError.error as Retrycf.ValidationError
         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
-        // 在庫が減っていないことを確認
-        await Promise.all([
-          Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
-        ])
+        await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
       }
     })
   })
 
+  describe('cloud functions fired multiple times', () => {
+    test('successflly only once', async () => {
+      const data = await makeTestData()
+
+      await Promise.all([
+        Orderable.Functions.orderPaymentRequested(data.orderObject),
+        Orderable.Functions.orderPaymentRequested(data.orderObject),
+        Orderable.Functions.orderPaymentRequested(data.orderObject),
+        Orderable.Functions.orderPaymentRequested(data.orderObject),
+        Orderable.Functions.orderPaymentRequested(data.orderObject)
+      ])
+
+      console.log(data.model.order.id)
+
+      // multiple fired, but successfully only once
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
+      ])
+    })
+  })
+
   // TODO
-  // validateAndDecreaseStock out of stock
   // validateAndDecreaseStock completed
   // stripe charge price error
   // stripe charge functions multiple fire

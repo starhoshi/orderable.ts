@@ -446,12 +446,13 @@ var Functions;
     }));
     const validateAndDecreaseStock = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const order = orderObject.order;
             // 決済済みだったらスキップして良い
             if (orderObject.isCharged) {
                 return orderObject;
             }
             yield orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock');
+            // TODO: Remove the extra processing
+            orderObject.order = yield PringUtil.get(orderObject.initializableClass.order, orderObject.orderID);
             return orderObject;
         }
         catch (error) {

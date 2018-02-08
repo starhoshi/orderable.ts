@@ -581,14 +581,15 @@ export namespace Functions {
   const validateAndDecreaseStock: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        const order = orderObject.order!
-
         // 決済済みだったらスキップして良い
         if (orderObject.isCharged) {
           return orderObject
         }
 
         await orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock')
+
+        // TODO: Remove the extra processing
+        orderObject.order = await PringUtil.get(orderObject.initializableClass.order, orderObject.orderID)
 
         return orderObject
       } catch (error) {

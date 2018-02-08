@@ -241,6 +241,7 @@ export class Firebase {
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
+      expect(order.neoTask!.completed).toEqual({'validateAndDecreaseStock': true})
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
       expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.Paid)
@@ -276,7 +277,8 @@ export class Firebase {
   }
 
   async expectStripe(model: SampleModel) {
-    const charge = await stripe.charges.retrieve(model.order.stripe!.chargeID!)
+    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+    const charge = await stripe.charges.retrieve(order.stripe!.chargeID!)
     expect(charge.amount).toEqual(model.order.amount)
     expect(charge.metadata.orderID).toEqual(model.order.id)
     expect(charge.customer).toEqual(model.order.stripe!.customerID)
