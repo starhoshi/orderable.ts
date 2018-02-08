@@ -31,7 +31,7 @@
     "@types/slack-node": "^0.1.2",
     "@types/stripe": "^5.0.4",
     "firebase-tools": "^3.17.4",
-    "jest": "^22.1.4",
+    "jest": "^22.2.1",
     "ts-jest": "^22.0.3",
     "tslint": "^5.9.1",
     "typescript": "^2.7.1"
@@ -53,7 +53,7 @@
     "firebase-functions": "^0.8.1",
     "pring": "^0.5.2",
     "request": "^2.83.0",
-    "retrycf": "^0.1.1",
+    "retrycf": "^0.1.2",
     "slack-node": "^0.1.8",
     "stripe": "^5.4.0"
   }
