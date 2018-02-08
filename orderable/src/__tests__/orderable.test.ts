@@ -221,9 +221,10 @@ describe('OrderObject', () => {
 })
 
 describe.only('orderPaymentRequested', () => {
-  describe('when validate model (Normal Scenario)', () => {
+  describe('when one shop (Normal Scenario)', () => {
     test('neoTask === 1', async () => {
       const defaultModel = {shops: Helper.Firebase.shared.defaultShops, order: Helper.Firebase.shared.defaultOrder}
+
       const model = await Helper.Firebase.shared.makeValidateModel(defaultModel)
       const preOrder = model.order.rawValue()
       model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
@@ -231,19 +232,41 @@ describe.only('orderPaymentRequested', () => {
 
       const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
       const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder,
-        shop: Model.SampleShop,
-        user: Model.SampleUser,
-        sku: Model.SampleSKU,
-        product: Model.SampleProduct,
-        orderShop: Model.SampleOrderShop,
-        orderSKU: Model.SampleOrderSKU
+        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
       })
 
+      // run functions
       await Orderable.Functions.orderPaymentRequested(orderObject)
 
-      console.log(model.order.id)
+      // expect
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(model),
+        Helper.Firebase.shared.expectStock(model),
+        Helper.Firebase.shared.expectOrderShop(model),
+        Helper.Firebase.shared.expectStripe(model)
+      ])
+    })
+  })
 
+  describe('when multiple shops (Normal Scenario)', () => {
+    test('neoTask === 1', async () => {
+      const shops = Helper.Firebase.shared.defaultShops.concat(Helper.Firebase.shared.defaultShops)
+      const defaultModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
+
+      const model = await Helper.Firebase.shared.makeValidateModel(defaultModel)
+      const preOrder = model.order.rawValue()
+      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      await model.order.update()
+
+      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
+      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+      })
+
+      // run functions
+      await Orderable.Functions.orderPaymentRequested(orderObject)
+
+      // expect
       await Promise.all([
         Helper.Firebase.shared.expectOrder(model),
         Helper.Firebase.shared.expectStock(model),

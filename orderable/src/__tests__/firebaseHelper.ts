@@ -255,7 +255,6 @@ export class Firebase {
 
   async expectStripe(model: SampleModel) {
     const charge = await stripe.charges.retrieve(model.order.stripe!.chargeID!)
-    console.log(charge)
     expect(charge.amount).toEqual(model.order.amount)
     expect(charge.metadata.orderID).toEqual(model.order.id)
     expect(charge.customer).toEqual(model.order.stripe!.customerID)
