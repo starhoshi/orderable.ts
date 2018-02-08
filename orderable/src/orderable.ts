@@ -428,13 +428,16 @@ export namespace Functions {
         if (step) {
           const orderRef = firestore.doc(this.order.getPath())
           const orderPromise = transaction.get(orderRef).then(tref => {
-            if (Retrycf.NeoTask.isCompleted(this.order, step)) {
+            const transactionOrder = new this.initializableClass.order()
+            transactionOrder.init(tref)
+            if (Retrycf.NeoTask.isCompleted(transactionOrder, step)) {
               throw new Retrycf.CompletedError(step)
             } else {
-              // const neoTask = new Retrycf.NeoTask(this.event.data)
-              const neoTask = Retrycf.NeoTask.makeNeoTask(this.order)
+              const neoTask = Retrycf.NeoTask.makeNeoTask(transactionOrder)
+              this.order.neoTask = neoTask
               const completed = { [step]: true }
               neoTask.completed = completed
+              this.order.neoTask.completed = completed
               transaction.update(orderRef, { neoTask: neoTask.rawValue() })
             }
           })

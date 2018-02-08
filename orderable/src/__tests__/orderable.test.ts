@@ -220,7 +220,7 @@ describe('OrderObject', () => {
   })
 })
 
-describe('orderPaymentRequested', () => {
+describe.only('orderPaymentRequested', () => {
   describe('when validate model (Normal Scenario)', () => {
     test('neoTask === 1', async () => {
       const defaultModel = {shops: Helper.Firebase.shared.defaultShops, order: Helper.Firebase.shared.defaultOrder}
@@ -241,6 +241,8 @@ describe('orderPaymentRequested', () => {
       })
 
       await Orderable.Functions.orderPaymentRequested(orderObject)
+
+      console.log(model.order.id)
 
       await Promise.all([
         Helper.Firebase.shared.expectOrder(model),
