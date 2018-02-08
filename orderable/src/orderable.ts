@@ -456,10 +456,7 @@ export namespace Functions {
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
-        // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
-        // orderObject.order = order
 
-        // const user = await new orderObject.initializableClass.user().get(order.user.id)
         const user = await PringUtil.get(orderObject.initializableClass.user, order.user.id)
         orderObject.user = user
 

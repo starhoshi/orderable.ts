@@ -1,7 +1,7 @@
 import 'jest'
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
-import { Pring } from 'pring'
+import { Pring, property } from 'pring'
 import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
@@ -430,15 +430,45 @@ describe('orderPaymentRequested', () => {
     })
   })
 
+  // Stripe's Idempotent Requests do not return an error...
+  describe.skip('stripe multiple charged', () => {
+    jest.setTimeout(300000)
+    test('?', async () => {
+      const data = await makeTestData()
+
+      expect.hasAssertions()
+      // run functions
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
+
+      // prepare for restart
+      data.model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+      data.model.order.stripe = new Model.SampleStripeCharge()
+      const stripeCharge = new Model.SampleStripeCharge()
+      stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
+      stripeCharge.customerID = Helper.Firebase.shared.defaultOrder.stripe!.customerID
+      data.model.order.stripe = stripeCharge.rawValue()
+      data.model.order.neoTask = {} as any
+      await data.model.order.update()
+
+      const preOrder = data.model.order.rawValue()
+      data.model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      await data.model.order.update()
+
+      const event = Helper.Firebase.shared.makeOrderEvent(data.model.order.reference, data.model.order.rawValue(), preOrder)
+      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+      })
+
+      // restart
+      await Orderable.Functions.orderPaymentRequested(orderObject)
+    })
+  })
+
   // TODO
-  // stripe charge price error
-  // stripe charge functions multiple fire
   // stripe charge error type cover
-  // update order
   // skip enabled
   // retry 2 times
   // fatal error when retry 3 times
-  // stripe mutiple charge
   // reference data is broken
   // order timelimit
   // stock count Threshold test

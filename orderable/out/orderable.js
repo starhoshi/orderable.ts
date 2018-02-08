@@ -345,9 +345,6 @@ var Functions;
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            // const order = await new orderObject.initializableClass.order().get(orderObject.orderID)
-            // orderObject.order = order
-            // const user = await new orderObject.initializableClass.user().get(order.user.id)
             const user = yield PringUtil.get(orderObject.initializableClass.user, order.user.id);
             orderObject.user = user;
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
@@ -592,6 +589,8 @@ var Functions;
             // status が payment requested に変更された時
             // もしくは should retry が true だった時にこの functions は実行される
             // TODO: Retry
+            console.log(orderObject.previousOrder.paymentStatus);
+            console.log(orderObject.order.paymentStatus);
             if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
                 // 処理実行、リトライは実行されない
             }
