@@ -283,10 +283,8 @@ export namespace Functions {
     sku: SKU
 
     static async fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: OrderProtocol, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
-      // const orderSKURefs = await order.orderSKUs.get(OrderSKU)
       const orderSKURefs = await order.orderSKUs.get(orderSKUType)
       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
-        // return new orderSKUType().get(orderSKURef.id).then(s => {
         return PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
           const orderSKU = s as OrderSKU
           const orderSKUObject = new OrderSKUObject()
@@ -354,7 +352,7 @@ export namespace Functions {
     async getShops() {
       this.shops = await Promise.all(this.orderSKUObjects!.map(orderSKUObject => {
         return orderSKUObject.orderSKU.shop
-      }).filter((shopRef, index, self) => { // 重複排除
+      }).filter((shopRef, index, self) => { // deduplication
         return self.indexOf(shopRef) === index
       }).map(shopRef => {
         return shopRef.get().then(shopSnapshot => {
@@ -396,9 +394,7 @@ export namespace Functions {
 
     updateStock(operator: Operator, step?: string) {
       const orderSKUObjects = this.orderSKUObjects
-      // const order = this.order
       if (!orderSKUObjects) { throw Error('orderSKUObjects must be non-null') }
-      // if (!order) { throw Error('orderSKUObjects must be non-null') }
 
       return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
@@ -418,9 +414,8 @@ export namespace Functions {
           promises.push(t)
         }
 
-        // 重複実行された時に、2回目の実行を弾く
-        // step が undefined だったらこの処理は実行しない (在庫数を元に戻すことがあるため)
-        // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
+        // https://github.com/starhoshi/orderable.ts#what-happens-if-cloud-functions-fire-multiple-times
+        // Throw CompletedError when Cloud Functions fire multiple times.
         if (step) {
           const orderRef = firestore.doc(this.order.getPath())
           const orderPromise = transaction.get(orderRef).then(tref => {
@@ -464,12 +459,11 @@ export namespace Functions {
         if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
           const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
           orderObject.stripeCard = stripeCard
-          console.log('stripe', order.stripe)
         }
 
         return orderObject
       } catch (error) {
-        // ここで起きるエラーは取得エラーのみのはずなので retry
+        // This error may be a data preparetion error. In that case, it will be solved by retrying.
         orderObject.order = await NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error)
         throw new FlowError(error, orderObject.order.neoTask)
       }
@@ -481,15 +475,14 @@ export namespace Functions {
         const order = orderObject.order!
         const shops = orderObject.shops!
 
-        // 決済済みだったらスキップして良い
-        if (orderObject.isCharged) {
+        if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
 
         shops.forEach((shop, index) => {
           if (!shop.isActive) {
             throw new Retrycf.ValidationError(ValidationErrorType.ShopIsNotActive,
-              `ショップ「${shop.name}」は現在ご利用いただけません。`)
+              `Shop: ${shop.name} is not active.`)
           }
         })
 
@@ -511,15 +504,14 @@ export namespace Functions {
         const order = orderObject.order!
         const orderSKUObjects = orderObject.orderSKUObjects!
 
-        // 決済済みだったらスキップして良い
-        if (orderObject.isCharged) {
+        if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
 
         orderSKUObjects.forEach((orderSKUObject, index) => {
           if (!orderSKUObject.sku.isActive) {
             throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
-              `商品「${orderSKUObject.orderSKU.snapshotProduct!.name}」は現在ご利用いただけません。`)
+              `Product: ${orderSKUObject.orderSKU.snapshotProduct!.name}」 is not active.`)
           }
         })
 
@@ -540,8 +532,7 @@ export namespace Functions {
       try {
         const order = orderObject.order!
 
-        // 決済済みだったらスキップ
-        if (orderObject.isCharged) {
+        if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
 
@@ -552,11 +543,11 @@ export namespace Functions {
             const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1)
 
             if (expiredDate < now) {
-              throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。')
+              throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'This card is expired.')
             }
             break
           default:
-            throw new Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound, '決済情報が登録されていません。')
+            throw new Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound, 'Payment information is not registered.')
         }
 
         return orderObject
@@ -574,14 +565,13 @@ export namespace Functions {
   const validateAndDecreaseStock: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        // 決済済みだったらスキップして良い
-        if (orderObject.isCharged) {
+        if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
 
         await orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock')
 
-        // TODO: Remove the extra processing
+        // TODO: Delete the extra processing
         orderObject.order = await PringUtil.get(orderObject.initializableClass.order, orderObject.orderID)
 
         return orderObject
@@ -601,12 +591,11 @@ export namespace Functions {
       {
         amount: order.amount,
         currency: order.currency!,
-        customer: order.stripe!.customerID, // TODO: if stripe
-        source: order.stripe!.cardID, // TODO: if stripe
+        customer: order.stripe!.customerID,
+        source: order.stripe!.cardID,
         transfer_group: order.id,
         metadata: {
           orderID: order.id
-          // , rawValue: order.rawValue()
         }
       },
       {
@@ -623,8 +612,7 @@ export namespace Functions {
         const order = orderObject.order!
         const user = orderObject.user!
 
-        // 決済済み
-        if (orderObject.isCharged) {
+        if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
 
@@ -640,6 +628,7 @@ export namespace Functions {
       } catch (error) {
         // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
         await orderObject.updateStock(Operator.plus)
+        // 在庫数を元に戻したので、 completed も綺麗にする
         orderObject.order = await NeoTask.clearCompleted(orderObject.order)
 
         if (error.constructor === StripeError) {
@@ -658,8 +647,7 @@ export namespace Functions {
       try {
         const order = orderObject.order!
 
-        // 決済済み
-        if (orderObject.isCharged) {
+        if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
 
