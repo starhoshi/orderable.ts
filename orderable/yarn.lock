@@ -4686,6 +4686,13 @@ requires-port@1.x.x:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/requires-port/-/requires-port-1.0.0.tgz#925d2601d39ac485e091cf0da5c6e694dc3dcaff"
 
+rescue-fire@^0.0.1:
+  version "0.0.1"
+  resolved "https://registry.yarnpkg.com/rescue-fire/-/rescue-fire-0.0.1.tgz#57f15516bcc13a0870c28e2169d45129bff73568"
+  dependencies:
+    firebase-admin "^5.8.2"
+    firebase-functions "^0.8.1"
+
 resolve-cwd@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/resolve-cwd/-/resolve-cwd-2.0.0.tgz#00a9f7387556e27038eae232caa372a6a59b665a"

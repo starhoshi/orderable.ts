@@ -7,6 +7,7 @@ import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Helper from './firebaseHelper'
 import * as Retrycf from 'retrycf'
+import * as Rescue from 'rescue-fire'
 
 beforeAll(() => {
   const _ = Helper.Firebase.shared
@@ -18,7 +19,8 @@ describe('OrderObject', () => {
   let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
   beforeEach(() => {
     const order = new Model.SampleOrder()
-    const event = Helper.Firebase.shared.makeOrderEvent(order.reference, order.rawValue(), {})
+    // const event = Helper.Firebase.shared.makeOrderEvent(order.reference, order.rawValue(), {})
+    const event = Rescue.event(order.reference, order.rawValue(), { params: { orderID: order.id } })
     orderObject = Helper.Firebase.shared.orderObject(event)
     orderObject.order = order
   })
