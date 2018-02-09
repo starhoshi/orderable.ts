@@ -9,7 +9,8 @@
 
 for japanese: [README\.ja\.md](https://github.com/starhoshi/orderable.ts/blob/master/README.ja.md)
 
-orderable.ts is an npm library that works with Cloud Functions for Firebase and can easily execute payment.  
+orderable.ts is an npm library that works with Cloud Functions for Firebase and can easily execute payment.
+
 EC requires a lot of processing. For example, check number of stocks, payment process, create history, and so on. orderable.ts exec these troublesome tasks.
 
 For Client Side (iOS): [starhoshi/Orderable](https://github.com/starhoshi/Orderable)
@@ -65,11 +66,11 @@ Orderable.initialize({
 })
 ```
 
-### 2. Model definition
+### 2. Protocol
 
 You need to define the necessary Model in your project.
 
-The required interface is [here](https://github.com/starhoshi/orderable.ts/blob/master/orderable/src/orderable.ts#L118-L194), the sample model definition is [here](https://github.com/starhoshi/orderable.ts/blob/master/sample-cloud-functions/functions/src/sampleModel.ts).
+Required interface is [here](https://github.com/starhoshi/orderable.ts/blob/master/orderable/src/orderable.ts#L118-L194), sample model definition is [here](https://github.com/starhoshi/orderable.ts/blob/master/sample-cloud-functions/functions/src/sampleModel.ts).
 
 * User
   * Buyer
