@@ -212,8 +212,5 @@ If processing fails, you can catch an Error of type FlowError. FlowError has an 
 Cloud Functions rarely fire multiple times.  
 The inventory will be reduced more, or __multiple payout__ will occur.
 
-We use transactions to prevent it.  
-Once Orderable is started, save the flag in `neoTask.completed`.
-
-Once Orderable is started, save the flag in `neoTask.completed`. And if the flag is already on, Orderable will stop.
+We use transactions to prevent it. Once Orderable is started, save the flag in `neoTask.completed`. And if the flag is already true, Orderable will stop.
 https://github.com/starhoshi/orderable.ts/blob/master/orderable/src/orderable.ts#L433-L434
