@@ -626,9 +626,9 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
-        // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
+        // Since stripe.charge failed after reducing stock count, restore stock quantity.
         await orderObject.updateStock(Operator.plus)
-        // 在庫数を元に戻したので、 completed も綺麗にする
+        // Restored stock count, so clean up neoTask.completed for retry.
         orderObject.order = await NeoTask.clearCompleted(orderObject.order)
 
         if (error.constructor === StripeError) {
@@ -641,7 +641,10 @@ export namespace Functions {
       }
     })
 
-  /// ここでこけたらおわり、 charge が浮いている状態になる。
+  /**
+   * Save peymnent succeeded information.
+   * Set fatal error if this step failed.
+   */
   const updateOrder: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
@@ -675,7 +678,7 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
-        // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
+        // If this step failed, we can not remember chargeID. Because set fatal error.
         orderObject.order = await NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error)
         throw new FlowError(error, orderObject.order.neoTask)
       }
@@ -692,7 +695,7 @@ export namespace Functions {
           .then(snapshot => {
             const batch = firestore.batch()
 
-            // OrderShopStatus が Create のだけ Paid に更新する
+            // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
             snapshot.docs.filter(doc => {
               const orderShop = new orderObject.initializableClass.orderShop()
               orderShop.init(doc)
@@ -708,7 +711,7 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
-        // 失敗する可能性があるのは batch の失敗だけなので retry
+        // This step fails only when a batch error occurs. Because set retry.
         orderObject.order = await NeoTask.setRetry(orderObject.order, 'updateOrderShops', error)
         throw new FlowError(error, orderObject.order)
       }
@@ -721,28 +724,28 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
-        // 失敗する可能性があるのは update の失敗だけなので retry
+        // This step fails only when update error occurs. Because set retry.
         orderObject.order = await NeoTask.setRetry(orderObject.order, 'setOrderTask', error)
         throw new FlowError(error, orderObject.order)
       }
     })
 
+  /**
+   * Start order processing.
+   * @param orderObject 
+   */
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
-    // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(orderObject.order)
       orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order)
 
-      // status が payment requested に変更された時
-      // もしくは should retry が true だった時にこの functions は実行される
-      // TODO: Retry
+      // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
       if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
-        // 処理実行、リトライは実行されない
+        // continue
       } else {
-        return undefined
-      }
-      if (orderObject.order.paymentStatus !== OrderPaymentStatus.PaymentRequested && !shouldRetry) {
-        return undefined
+        if (!shouldRetry) {
+          return undefined // not continue
+        }
       }
 
       const flow = new Flow.Line([
@@ -765,13 +768,12 @@ export namespace Functions {
 
       return Promise.resolve()
     } catch (error) {
-      // console.error(error)
       if (error.constructor === Retrycf.CompletedError) {
-        // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
+        // If CompletedError was thrown, finish functions without setting neoTask.
         return undefined
       }
 
-      // FlowError としてキャッチされていない場合はここで FlowError をセット
+      // If not thrown as FlowError, set FlowError.
       if (error.constructor !== FlowError) {
         await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
       }
