@@ -115,82 +115,76 @@ export class PringUtil {
   }
 }
 
-export namespace Model {
-  // export interface HasNeoTask extends Base {
-  //   neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
-  // }
+export interface UserProtocol extends Pring.Base {
+  stripeCustomerID?: string
+}
 
-  export interface User extends Pring.Base {
-    stripeCustomerID?: string
-  }
+export interface ShopProtocol extends Pring.Base {
+  name?: string
+  isActive: boolean
+  freePostageMinimumPrice: number
+}
 
-  export interface Shop extends Pring.Base {
-    name?: string
-    isActive: boolean
-    freePostageMinimumPrice: number
-  }
+export interface ProductProtocol extends Pring.Base {
+  name?: string
+}
 
-  export interface Product extends Pring.Base {
-    name?: string
-  }
+export enum StockType {
+  Unknown = 'unknown',
+  Finite = 'finite',
+  Infinite = 'infinite'
+}
 
-  export enum StockType {
-    Unknown = 'unknown',
-    Finite = 'finite',
-    Infinite = 'infinite'
-  }
+export interface SKUProtocol extends Pring.Base {
+  price: number
+  stockType: StockType
+  stock: number
+  isPublished: boolean
+  isActive: boolean
+}
 
-  export interface SKU extends Pring.Base {
-    price: number
-    stockType: StockType
-    stock: number
-    isPublished: boolean
-    isActive: boolean
-  }
+export enum OrderPaymentStatus {
+  Unknown = 0,
+  Created = 1,
+  PaymentRequested = 2,
+  WaitingForPayment = 3,
+  Paid = 4
+}
 
-  export enum OrderPaymentStatus {
-    Unknown = 0,
-    Created = 1,
-    PaymentRequested = 2,
-    WaitingForPayment = 3,
-    Paid = 4
-  }
+export interface StripeProtocol extends Pring.Base {
+  cardID?: string
+  customerID?: string
+  chargeID?: string
+}
 
-  export interface StripeCharge extends Pring.Base {
-    cardID?: string
-    customerID?: string
-    chargeID?: string
-  }
+export interface OrderProtocol extends Pring.Base {
+  user: FirebaseFirestore.DocumentReference
+  amount: number
+  paidDate: FirebaseFirestore.FieldValue
+  expirationDate: FirebaseFirestore.FieldValue
+  currency?: string
+  orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
+  paymentStatus: OrderPaymentStatus
+  stripe?: StripeProtocol
+}
 
-  export interface Order extends Pring.Base {
-    user: FirebaseFirestore.DocumentReference
-    amount: number
-    paidDate: FirebaseFirestore.FieldValue
-    expirationDate: FirebaseFirestore.FieldValue
-    currency?: string
-    orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
-    paymentStatus: OrderPaymentStatus
-    stripe?: StripeCharge
-  }
+export enum OrderShopPaymentStatus {
+  Unknown = 0,
+  Created = 1,
+  Paid = 2
+}
+export interface OrderShopProtocol extends Pring.Base {
+  orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
+  paymentStatus: OrderShopPaymentStatus
+  user: FirebaseFirestore.DocumentReference
+}
 
-  export enum OrderShopPaymentStatus {
-    Unknown = 0,
-    Created = 1,
-    Paid = 2
-  }
-  export interface OrderShop extends Pring.Base {
-    orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>
-    paymentStatus: OrderShopPaymentStatus
-    user: FirebaseFirestore.DocumentReference
-  }
-
-  export interface OrderSKU<T extends SKU, P extends Product> extends Pring.Base {
-    snapshotSKU?: T
-    snapshotProduct?: P
-    quantity: number
-    sku: FirebaseFirestore.DocumentReference
-    shop: FirebaseFirestore.DocumentReference
-  }
+export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> extends Pring.Base {
+  snapshotSKU?: T
+  snapshotProduct?: P
+  quantity: number
+  sku: FirebaseFirestore.DocumentReference
+  shop: FirebaseFirestore.DocumentReference
 }
 
 export enum StripeErrorType {
@@ -284,12 +278,12 @@ export class StripeError extends Error {
 }
 
 export namespace Functions {
-  export class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
+  export class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
     orderSKU: OrderSKU
     sku: SKU
 
-    static async fetchFrom<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU>(order: Model.Order, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
-      // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+    static async fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: OrderProtocol, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
+      // const orderSKURefs = await order.orderSKUs.get(OrderSKU)
       const orderSKURefs = await order.orderSKUs.get(orderSKUType)
       const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
         // return new orderSKUType().get(orderSKURef.id).then(s => {
@@ -313,13 +307,14 @@ export namespace Functions {
   }
 
   export interface InitializableClass<
-    Order extends Model.Order  & Retrycf.HasNeoTask,
-    Shop extends Model.Shop,
-    User extends Model.User,
-    SKU extends Model.SKU,
-    Product extends Model.Product,
-    OrderShop extends Model.OrderShop,
-    OrderSKU extends Model.OrderSKU<SKU, Product>> {
+    Order extends OrderProtocol & Retrycf.HasNeoTask,
+    Shop extends ShopProtocol,
+    User extends UserProtocol,
+    SKU extends SKUProtocol,
+    Product extends ProductProtocol,
+    OrderShop extends OrderShopProtocol,
+    OrderSKU extends OrderSKUProtocol<SKU, Product>
+    > {
     order: { new(): Order }
     shop: { new(): Shop }
     user: { new(): User }
@@ -335,22 +330,23 @@ export namespace Functions {
   }
 
   export class OrderObject<
-    Order extends Model.Order & Retrycf.HasNeoTask,
-    Shop extends Model.Shop,
-    User extends Model.User,
-    SKU extends Model.SKU,
-    Product extends Model.Product,
-    OrderShop extends Model.OrderShop,
-    OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
+    Order extends OrderProtocol & Retrycf.HasNeoTask,
+    Shop extends ShopProtocol,
+    User extends UserProtocol,
+    SKU extends SKUProtocol,
+    Product extends ProductProtocol,
+    OrderShop extends OrderShopProtocol,
+    OrderSKU extends OrderSKUProtocol<SKU, Product>
+    > implements Flow.Dependency {
 
     initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>
 
     event: functions.Event<DeltaDocumentSnapshot>
     orderID: string
-    order: Model.Order  & Retrycf.HasNeoTask
-    previousOrder: Model.Order
-    shops?: Model.Shop[]
-    user?: Model.User
+    order: Order & Retrycf.HasNeoTask
+    previousOrder: Order
+    shops?: Shop[]
+    user?: User
     orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
     stripeCharge?: Stripe.charges.ICharge
     stripeCard?: Stripe.cards.ICard
@@ -452,7 +448,7 @@ export namespace Functions {
     minus = -1
   }
 
-  const prepareRequiredData: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const prepareRequiredData: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
@@ -479,7 +475,7 @@ export namespace Functions {
       }
     })
 
-  const validateShopIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const validateShopIsActive: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
@@ -509,7 +505,7 @@ export namespace Functions {
       }
     })
 
-  const validateSKUIsActive: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const validateSKUIsActive: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
@@ -539,7 +535,7 @@ export namespace Functions {
       }
     })
 
-  const validatePaymentMethod: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const validatePaymentMethod: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
@@ -575,7 +571,7 @@ export namespace Functions {
       }
     })
 
-  const validateAndDecreaseStock: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const validateAndDecreaseStock: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         // 決済済みだったらスキップして良い
@@ -600,7 +596,7 @@ export namespace Functions {
       }
     })
 
-  const stripeCharge = async (order: Model.Order) => {
+  const stripeCharge = async (order: OrderProtocol) => {
     return await stripe.charges.create(
       {
         amount: order.amount,
@@ -621,7 +617,7 @@ export namespace Functions {
     })
   }
 
-  const payment: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const payment: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
@@ -657,7 +653,7 @@ export namespace Functions {
     })
 
   /// ここでこけたらおわり、 charge が浮いている状態になる。
-  const updateOrder: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const updateOrder: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
@@ -671,13 +667,13 @@ export namespace Functions {
           case PaymentAgencyType.Stripe:
             const charge = orderObject.stripeCharge!
 
-            order.paymentStatus = Model.OrderPaymentStatus.Paid
+            order.paymentStatus = OrderPaymentStatus.Paid
             order.stripe!.chargeID = charge.id
             order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
             // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
             // await order.update()
             await order.reference.update({
-              paymentStatus: Model.OrderPaymentStatus.Paid,
+              paymentStatus: OrderPaymentStatus.Paid,
               stripe: { chargeID: charge.id },
               paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
               updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
@@ -697,7 +693,7 @@ export namespace Functions {
       }
     })
 
-  const updateOrderShops: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const updateOrderShops: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
@@ -712,10 +708,10 @@ export namespace Functions {
             snapshot.docs.filter(doc => {
               const orderShop = new orderObject.initializableClass.orderShop()
               orderShop.init(doc)
-              return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created
+              return orderShop.paymentStatus === OrderShopPaymentStatus.Created
             }).forEach(doc => {
               batch.update(doc.ref, {
-                paymentStatus: Model.OrderShopPaymentStatus.Paid,
+                paymentStatus: OrderShopPaymentStatus.Paid,
                 updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
               })
             })
@@ -730,7 +726,7 @@ export namespace Functions {
       }
     })
 
-  const setOrderTask: Flow.Step<OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>>
+  const setOrderTask: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         orderObject.order = await NeoTask.setSuccess(orderObject.order)
@@ -743,8 +739,8 @@ export namespace Functions {
       }
     })
 
-  export const orderPaymentRequested = async (orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => {
-  // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
+  export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
+    // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
     try {
       const shouldRetry = NeoTask.shouldRetry(orderObject.order)
       orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order)
@@ -752,12 +748,12 @@ export namespace Functions {
       // status が payment requested に変更された時
       // もしくは should retry が true だった時にこの functions は実行される
       // TODO: Retry
-      if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
+      if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
         // 処理実行、リトライは実行されない
       } else {
         return undefined
       }
-      if (orderObject.order.paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
+      if (orderObject.order.paymentStatus !== OrderPaymentStatus.PaymentRequested && !shouldRetry) {
         return undefined
       }
 

@@ -3,17 +3,17 @@ import * as Orderable from '../orderable'
 import * as Retrycf from 'retrycf'
 // import * as Orderable from '@star__hoshi/orderable'
 
-export class SampleUser extends Pring.Base implements Orderable.Model.User {
+export class SampleUser extends Pring.Base implements Orderable.UserProtocol {
   @property stripeCustomerID?: string
 }
 
-export class SampleShop extends Pring.Base implements Orderable.Model.Shop {
+export class SampleShop extends Pring.Base implements Orderable.ShopProtocol {
   @property name?: string
   @property isActive: boolean = true
   @property freePostageMinimumPrice: number = -1
 }
 
-export class SampleProduct extends Pring.Base implements Orderable.Model.Product {
+export class SampleProduct extends Pring.Base implements Orderable.ProductProtocol {
   @property name?: string
 
   static async default() {
@@ -24,9 +24,9 @@ export class SampleProduct extends Pring.Base implements Orderable.Model.Product
   }
 }
 
-export class SampleSKU extends Pring.Base implements Orderable.Model.SKU {
+export class SampleSKU extends Pring.Base implements Orderable.SKUProtocol {
   @property price: number = 0
-  @property stockType: Orderable.Model.StockType = Orderable.Model.StockType.Unknown
+  @property stockType: Orderable.StockType = Orderable.StockType.Unknown
   @property stock: number = 0
   @property isPublished: boolean = true
   @property isActive: boolean = true
@@ -34,14 +34,14 @@ export class SampleSKU extends Pring.Base implements Orderable.Model.SKU {
   static async default() {
     const sku = new SampleSKU()
     sku.price = 1000
-    sku.stockType = Orderable.Model.StockType.Finite
+    sku.stockType = Orderable.StockType.Finite
     sku.stock = 100
     await sku.save()
     return sku
   }
 }
 
-export class SampleStripeCharge extends Pring.Base implements Orderable.Model.StripeCharge {
+export class SampleStripeCharge extends Pring.Base implements Orderable.StripeProtocol {
   @property cardID?: string
   @property customerID?: string
   @property chargeID?: string
@@ -53,7 +53,7 @@ export class SampleStripeCharge extends Pring.Base implements Orderable.Model.St
   }
 }
 
-export class SampleOrder extends Pring.Base implements Orderable.Model.Order, Retrycf.HasNeoTask {
+export class SampleOrder extends Pring.Base implements Orderable.OrderProtocol, Retrycf.HasNeoTask {
   @property testParameter: string = 'hoge'
 
   @property user: FirebaseFirestore.DocumentReference
@@ -63,7 +63,7 @@ export class SampleOrder extends Pring.Base implements Orderable.Model.Order, Re
   @property currency?: string
   @property orderSKUs: Pring.ReferenceCollection<SampleOrderSKU> = new Pring.ReferenceCollection(this)
 
-  @property paymentStatus: Orderable.Model.OrderPaymentStatus = Orderable.Model.OrderPaymentStatus.Created
+  @property paymentStatus: Orderable.OrderPaymentStatus = Orderable.OrderPaymentStatus.Created
   @property stripe?: SampleStripeCharge
   @property neoTask?: Retrycf.NeoTask
 
@@ -72,7 +72,7 @@ export class SampleOrder extends Pring.Base implements Orderable.Model.Order, Re
     o.user = user.reference
     o.amount = 1000
     o.currency = 'jpy'
-    o.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+    o.paymentStatus = Orderable.OrderPaymentStatus.Created
     o.stripe = SampleStripeCharge.default()
     orderSKUs.forEach(s => {
       o.orderSKUs.insert(s)
@@ -82,15 +82,15 @@ export class SampleOrder extends Pring.Base implements Orderable.Model.Order, Re
   }
 }
 
-export class SampleOrderShop extends Pring.Base implements Orderable.Model.OrderShop {
+export class SampleOrderShop extends Pring.Base implements Orderable.OrderShopProtocol {
   @property orderSKUs: Pring.ReferenceCollection<SampleOrderSKU> = new Pring.ReferenceCollection(this)
-  @property paymentStatus: Orderable.Model.OrderShopPaymentStatus = Orderable.Model.OrderShopPaymentStatus.Unknown
+  @property paymentStatus: Orderable.OrderShopPaymentStatus = Orderable.OrderShopPaymentStatus.Unknown
 
   @property order: FirebaseFirestore.DocumentReference
   @property user: FirebaseFirestore.DocumentReference
 }
 
-export class SampleOrderSKU extends Pring.Base implements Orderable.Model.OrderSKU<SampleSKU, SampleProduct> {
+export class SampleOrderSKU extends Pring.Base implements Orderable.OrderSKUProtocol<SampleSKU, SampleProduct> {
   // @property orderShop: FirebaseFirestore.DocumentReference
   @property snapshotSKU?: SampleSKU
   @property snapshotProduct?: SampleProduct

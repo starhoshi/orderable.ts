@@ -41,69 +41,67 @@ export declare class PringUtil {
         new (): T;
     }, id: string): Promise<T>;
 }
-export declare namespace Model {
-    interface User extends Pring.Base {
-        stripeCustomerID?: string;
-    }
-    interface Shop extends Pring.Base {
-        name?: string;
-        isActive: boolean;
-        freePostageMinimumPrice: number;
-    }
-    interface Product extends Pring.Base {
-        name?: string;
-    }
-    enum StockType {
-        Unknown = "unknown",
-        Finite = "finite",
-        Infinite = "infinite",
-    }
-    interface SKU extends Pring.Base {
-        price: number;
-        stockType: StockType;
-        stock: number;
-        isPublished: boolean;
-        isActive: boolean;
-    }
-    enum OrderPaymentStatus {
-        Unknown = 0,
-        Created = 1,
-        PaymentRequested = 2,
-        WaitingForPayment = 3,
-        Paid = 4,
-    }
-    interface StripeCharge extends Pring.Base {
-        cardID?: string;
-        customerID?: string;
-        chargeID?: string;
-    }
-    interface Order extends Pring.Base {
-        user: FirebaseFirestore.DocumentReference;
-        amount: number;
-        paidDate: FirebaseFirestore.FieldValue;
-        expirationDate: FirebaseFirestore.FieldValue;
-        currency?: string;
-        orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>;
-        paymentStatus: OrderPaymentStatus;
-        stripe?: StripeCharge;
-    }
-    enum OrderShopPaymentStatus {
-        Unknown = 0,
-        Created = 1,
-        Paid = 2,
-    }
-    interface OrderShop extends Pring.Base {
-        orderSKUs: Pring.ReferenceCollection<OrderSKU<SKU, Product>>;
-        paymentStatus: OrderShopPaymentStatus;
-        user: FirebaseFirestore.DocumentReference;
-    }
-    interface OrderSKU<T extends SKU, P extends Product> extends Pring.Base {
-        snapshotSKU?: T;
-        snapshotProduct?: P;
-        quantity: number;
-        sku: FirebaseFirestore.DocumentReference;
-        shop: FirebaseFirestore.DocumentReference;
-    }
+export interface UserProtocol extends Pring.Base {
+    stripeCustomerID?: string;
+}
+export interface ShopProtocol extends Pring.Base {
+    name?: string;
+    isActive: boolean;
+    freePostageMinimumPrice: number;
+}
+export interface ProductProtocol extends Pring.Base {
+    name?: string;
+}
+export declare enum StockType {
+    Unknown = "unknown",
+    Finite = "finite",
+    Infinite = "infinite",
+}
+export interface SKUProtocol extends Pring.Base {
+    price: number;
+    stockType: StockType;
+    stock: number;
+    isPublished: boolean;
+    isActive: boolean;
+}
+export declare enum OrderPaymentStatus {
+    Unknown = 0,
+    Created = 1,
+    PaymentRequested = 2,
+    WaitingForPayment = 3,
+    Paid = 4,
+}
+export interface StripeProtocol extends Pring.Base {
+    cardID?: string;
+    customerID?: string;
+    chargeID?: string;
+}
+export interface OrderProtocol extends Pring.Base {
+    user: FirebaseFirestore.DocumentReference;
+    amount: number;
+    paidDate: FirebaseFirestore.FieldValue;
+    expirationDate: FirebaseFirestore.FieldValue;
+    currency?: string;
+    orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>;
+    paymentStatus: OrderPaymentStatus;
+    stripe?: StripeProtocol;
+}
+export declare enum OrderShopPaymentStatus {
+    Unknown = 0,
+    Created = 1,
+    Paid = 2,
+}
+export interface OrderShopProtocol extends Pring.Base {
+    orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>;
+    paymentStatus: OrderShopPaymentStatus;
+    user: FirebaseFirestore.DocumentReference;
+}
+export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> extends Pring.Base {
+    snapshotSKU?: T;
+    snapshotProduct?: P;
+    quantity: number;
+    sku: FirebaseFirestore.DocumentReference;
+    shop: FirebaseFirestore.DocumentReference;
 }
 export declare enum StripeErrorType {
     StripeCardError = "StripeCardError",
@@ -124,16 +122,16 @@ export declare class StripeError extends Error {
     setNeoTask<T extends Retrycf.HasNeoTask>(model: T, step: string): Promise<T>;
 }
 export declare namespace Functions {
-    class OrderSKUObject<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU> {
+    class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
         orderSKU: OrderSKU;
         sku: SKU;
-        static fetchFrom<OrderSKU extends Model.OrderSKU<Model.SKU, Model.Product>, SKU extends Model.SKU>(order: Model.Order, orderSKUType: {
+        static fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: OrderProtocol, orderSKUType: {
             new (): OrderSKU;
         }, skuType: {
             new (): SKU;
-        }): Promise<OrderSKUObject<Model.OrderSKU<Model.SKU, Model.Product>, Model.SKU>[]>;
+        }): Promise<OrderSKUObject<OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKUProtocol>[]>;
     }
-    interface InitializableClass<Order extends Model.Order & Retrycf.HasNeoTask, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> {
+    interface InitializableClass<Order extends OrderProtocol & Retrycf.HasNeoTask, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> {
         order: {
             new (): Order;
         };
@@ -160,14 +158,14 @@ export declare namespace Functions {
         Unknown = 0,
         Stripe = 1,
     }
-    class OrderObject<Order extends Model.Order & Retrycf.HasNeoTask, Shop extends Model.Shop, User extends Model.User, SKU extends Model.SKU, Product extends Model.Product, OrderShop extends Model.OrderShop, OrderSKU extends Model.OrderSKU<SKU, Product>> implements Flow.Dependency {
+    class OrderObject<Order extends OrderProtocol & Retrycf.HasNeoTask, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> implements Flow.Dependency {
         initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
         event: functions.Event<DeltaDocumentSnapshot>;
         orderID: string;
-        order: Model.Order & Retrycf.HasNeoTask;
-        previousOrder: Model.Order;
-        shops?: Model.Shop[];
-        user?: Model.User;
+        order: Order & Retrycf.HasNeoTask;
+        previousOrder: Order;
+        shops?: Shop[];
+        user?: User;
         orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[];
         stripeCharge?: Stripe.charges.ICharge;
         stripeCard?: Stripe.cards.ICard;
@@ -181,5 +179,5 @@ export declare namespace Functions {
         plus = 1,
         minus = -1,
     }
-    const orderPaymentRequested: (orderObject: OrderObject<Model.Order, Model.Shop, Model.User, Model.SKU, Model.Product, Model.OrderShop, Model.OrderSKU<Model.SKU, Model.Product>>) => Promise<void>;
+    const orderPaymentRequested: (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => Promise<void>;
 }

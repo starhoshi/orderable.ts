@@ -81,7 +81,7 @@ describe('OrderObject', () => {
         beforeEach(async () => {
           for (const sku of model.skus) {
             sku.stock = stock
-            sku.stockType = Orderable.Model.StockType.Finite
+            sku.stockType = Orderable.StockType.Finite
             await sku.update()
           }
           let quantity = 0
@@ -224,7 +224,7 @@ describe('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}) => {
       const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
       const preOrder = model.order.rawValue()
-      model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
       await model.order.update()
 
       const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
@@ -441,7 +441,7 @@ describe('orderPaymentRequested', () => {
       await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
       // prepare for restart
-      data.model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+      data.model.order.paymentStatus = Orderable.OrderPaymentStatus.Created
       data.model.order.stripe = new Model.SampleStripeCharge()
       const stripeCharge = new Model.SampleStripeCharge()
       stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
@@ -451,7 +451,7 @@ describe('orderPaymentRequested', () => {
       await data.model.order.update()
 
       const preOrder = data.model.order.rawValue()
-      data.model.order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+      data.model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
       await data.model.order.update()
 
       const event = Helper.Firebase.shared.makeOrderEvent(data.model.order.reference, data.model.order.rawValue(), preOrder)

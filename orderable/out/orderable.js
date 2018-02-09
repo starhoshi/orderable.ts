@@ -111,32 +111,26 @@ class PringUtil {
     }
 }
 exports.PringUtil = PringUtil;
-var Model;
-(function (Model) {
-    // export interface HasNeoTask extends Base {
-    //   neoTask?: HasNeoTask | FirebaseFirestore.FieldValue
-    // }
-    let StockType;
-    (function (StockType) {
-        StockType["Unknown"] = "unknown";
-        StockType["Finite"] = "finite";
-        StockType["Infinite"] = "infinite";
-    })(StockType = Model.StockType || (Model.StockType = {}));
-    let OrderPaymentStatus;
-    (function (OrderPaymentStatus) {
-        OrderPaymentStatus[OrderPaymentStatus["Unknown"] = 0] = "Unknown";
-        OrderPaymentStatus[OrderPaymentStatus["Created"] = 1] = "Created";
-        OrderPaymentStatus[OrderPaymentStatus["PaymentRequested"] = 2] = "PaymentRequested";
-        OrderPaymentStatus[OrderPaymentStatus["WaitingForPayment"] = 3] = "WaitingForPayment";
-        OrderPaymentStatus[OrderPaymentStatus["Paid"] = 4] = "Paid";
-    })(OrderPaymentStatus = Model.OrderPaymentStatus || (Model.OrderPaymentStatus = {}));
-    let OrderShopPaymentStatus;
-    (function (OrderShopPaymentStatus) {
-        OrderShopPaymentStatus[OrderShopPaymentStatus["Unknown"] = 0] = "Unknown";
-        OrderShopPaymentStatus[OrderShopPaymentStatus["Created"] = 1] = "Created";
-        OrderShopPaymentStatus[OrderShopPaymentStatus["Paid"] = 2] = "Paid";
-    })(OrderShopPaymentStatus = Model.OrderShopPaymentStatus || (Model.OrderShopPaymentStatus = {}));
-})(Model = exports.Model || (exports.Model = {}));
+var StockType;
+(function (StockType) {
+    StockType["Unknown"] = "unknown";
+    StockType["Finite"] = "finite";
+    StockType["Infinite"] = "infinite";
+})(StockType = exports.StockType || (exports.StockType = {}));
+var OrderPaymentStatus;
+(function (OrderPaymentStatus) {
+    OrderPaymentStatus[OrderPaymentStatus["Unknown"] = 0] = "Unknown";
+    OrderPaymentStatus[OrderPaymentStatus["Created"] = 1] = "Created";
+    OrderPaymentStatus[OrderPaymentStatus["PaymentRequested"] = 2] = "PaymentRequested";
+    OrderPaymentStatus[OrderPaymentStatus["WaitingForPayment"] = 3] = "WaitingForPayment";
+    OrderPaymentStatus[OrderPaymentStatus["Paid"] = 4] = "Paid";
+})(OrderPaymentStatus = exports.OrderPaymentStatus || (exports.OrderPaymentStatus = {}));
+var OrderShopPaymentStatus;
+(function (OrderShopPaymentStatus) {
+    OrderShopPaymentStatus[OrderShopPaymentStatus["Unknown"] = 0] = "Unknown";
+    OrderShopPaymentStatus[OrderShopPaymentStatus["Created"] = 1] = "Created";
+    OrderShopPaymentStatus[OrderShopPaymentStatus["Paid"] = 2] = "Paid";
+})(OrderShopPaymentStatus = exports.OrderShopPaymentStatus || (exports.OrderShopPaymentStatus = {}));
 var StripeErrorType;
 (function (StripeErrorType) {
     StripeErrorType["StripeCardError"] = "StripeCardError";
@@ -221,7 +215,7 @@ var Functions;
     class OrderSKUObject {
         static fetchFrom(order, orderSKUType, skuType) {
             return __awaiter(this, void 0, void 0, function* () {
-                // const orderSKURefs = await order.orderSKUs.get(Model.OrderSKU)
+                // const orderSKURefs = await order.orderSKUs.get(OrderSKU)
                 const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
                     // return new orderSKUType().get(orderSKURef.id).then(s => {
@@ -517,13 +511,13 @@ var Functions;
             switch (orderObject.paymentAgencyType) {
                 case PaymentAgencyType.Stripe:
                     const charge = orderObject.stripeCharge;
-                    order.paymentStatus = Model.OrderPaymentStatus.Paid;
+                    order.paymentStatus = OrderPaymentStatus.Paid;
                     order.stripe.chargeID = charge.id;
                     order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
                     // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
                     // await order.update()
                     yield order.reference.update({
-                        paymentStatus: Model.OrderPaymentStatus.Paid,
+                        paymentStatus: OrderPaymentStatus.Paid,
                         stripe: { chargeID: charge.id },
                         paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
                         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
@@ -553,10 +547,10 @@ var Functions;
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();
                     orderShop.init(doc);
-                    return orderShop.paymentStatus === Model.OrderShopPaymentStatus.Created;
+                    return orderShop.paymentStatus === OrderShopPaymentStatus.Created;
                 }).forEach(doc => {
                     batch.update(doc.ref, {
-                        paymentStatus: Model.OrderShopPaymentStatus.Paid,
+                        paymentStatus: OrderShopPaymentStatus.Paid,
                         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
                     });
                 });
@@ -589,13 +583,13 @@ var Functions;
             // status が payment requested に変更された時
             // もしくは should retry が true だった時にこの functions は実行される
             // TODO: Retry
-            if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === Model.OrderPaymentStatus.PaymentRequested) {
+            if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
                 // 処理実行、リトライは実行されない
             }
             else {
                 return undefined;
             }
-            if (orderObject.order.paymentStatus !== Model.OrderPaymentStatus.PaymentRequested && !shouldRetry) {
+            if (orderObject.order.paymentStatus !== OrderPaymentStatus.PaymentRequested && !shouldRetry) {
                 return undefined;
             }
             const flow = new Flow.Line([

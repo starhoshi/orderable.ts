@@ -22,7 +22,7 @@ export interface SampleModel {
 export interface DataSetOrder {
   amount?: number,
   currency?: string,
-  paymentStatus?: Orderable.Model.OrderPaymentStatus,
+  paymentStatus?: Orderable.OrderPaymentStatus,
   stripe?: {
     cardID: string,
     customerID: string
@@ -36,7 +36,7 @@ export interface DataSet {
     skus: {
       name?: string,
       price?: number,
-      stockType?: Orderable.Model.StockType,
+      stockType?: Orderable.StockType,
       stock?: number,
       isActive?: boolean,
       quantity?: number
@@ -113,7 +113,7 @@ export class Firebase {
         {
           name: 'sku1',
           price: 1000,
-          stockType: Orderable.Model.StockType.Finite,
+          stockType: Orderable.StockType.Finite,
           stock: 100,
           isActive: true,
           quantity: 1
@@ -121,7 +121,7 @@ export class Firebase {
         {
           name: 'sku2',
           price: 2000,
-          stockType: Orderable.Model.StockType.Finite,
+          stockType: Orderable.StockType.Finite,
           stock: 150,
           isActive: true,
           quantity: 2
@@ -134,7 +134,7 @@ export class Firebase {
     return <DataSetOrder>{
       amount: 1000,
       currency: 'jpy',
-      paymentStatus: Orderable.Model.OrderPaymentStatus.Created,
+      paymentStatus: Orderable.OrderPaymentStatus.Created,
       stripe: {
         cardID: 'card_1BnhthKZcOra3JxsKaxABsRj',
         customerID: 'cus_CC65RZ8Gf6zi7V'
@@ -168,7 +168,7 @@ export class Firebase {
 
         const sk = new Model.SampleSKU()
         sk.price = sku.price || 1000
-        sk.stockType = sku.stockType || Orderable.Model.StockType.Infinite
+        sk.stockType = sku.stockType || Orderable.StockType.Infinite
         sk.stock = sku.stock || 100
         sk.isActive = !!sku.isActive
         promises1.push(sk.save())
@@ -187,7 +187,7 @@ export class Firebase {
     order.user = user.reference
     order.amount = dataSet.order.amount || 10000
     order.currency = dataSet.order.currency || 'jpy'
-    order.paymentStatus = dataSet.order.paymentStatus || Orderable.Model.OrderPaymentStatus.Created
+    order.paymentStatus = dataSet.order.paymentStatus || Orderable.OrderPaymentStatus.Created
     if (dataSet.order.stripe) {
       const stripeCharge = new Model.SampleStripeCharge()
       stripeCharge.cardID = dataSet.order.stripe.cardID
@@ -199,7 +199,7 @@ export class Firebase {
     const orderShopsForReturn: Model.SampleOrderShop[] = []
     for (const shop of shops) {
       const orderShop = new Model.SampleOrderShop()
-      orderShop.paymentStatus = Orderable.Model.OrderShopPaymentStatus.Created
+      orderShop.paymentStatus = Orderable.OrderShopPaymentStatus.Created
       orderShop.user = user.reference
       orderShop.order = order.reference
 
@@ -225,7 +225,7 @@ export class Firebase {
     await Promise.all(promises2)
 
     const preOrder = order.rawValue()
-    preOrder.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+    preOrder.paymentStatus = Orderable.OrderPaymentStatus.Created
 
     return <SampleModel>{
       user: user,
@@ -246,7 +246,7 @@ export class Firebase {
       expect(order.neoTask!.completed).toEqual({[this.step]: true})
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
-      expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.Paid)
+      expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)
   }
 
   async expectStock(model: SampleModel) {
@@ -269,13 +269,13 @@ export class Firebase {
     const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
     // completed not contain step
     expect(order.neoTask!.completed).toBeUndefined()
-    expect(order.paymentStatus).toEqual(Orderable.Model.OrderPaymentStatus.PaymentRequested)
+    expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
   }
 
   async expectOrderShop(model: SampleModel) {
     for (const orderShop of model.orderShops) {
       const fetchedOrderShop = await Model.SampleOrderShop.get(orderShop.id) as Model.SampleOrderShop
-      expect(fetchedOrderShop.paymentStatus).toEqual(Orderable.Model.OrderShopPaymentStatus.Paid)
+      expect(fetchedOrderShop.paymentStatus).toEqual(Orderable.OrderShopPaymentStatus.Paid)
     }
   }
 
