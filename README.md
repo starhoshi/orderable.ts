@@ -33,8 +33,7 @@ Sample function is [orderable\.ts/index\.ts](https://github.com/starhoshi/ordera
 
 ### tsconfig.json
 
-orderable.ts depends on [1amageek/pring\.ts](https://github.com/1amageek/pring.ts).  
-So, set `experimentalDecorators` to` true`.
+orderable.ts depends on [1amageek/pring\.ts](https://github.com/1amageek/pring.ts). So, set `experimentalDecorators` to` true`.
 
 ```json
 {
@@ -73,7 +72,7 @@ You need to define the necessary Model in your project.
 The required interface is [here](https://github.com/starhoshi/orderable.ts/blob/master/orderable/src/orderable.ts#L118-L194), the sample model definition is [here](https://github.com/starhoshi/orderable.ts/blob/master/sample-cloud-functions/functions/src/sampleModel.ts).
 
 * User
-  * buyer
+  * Buyer
 * Shop
   * Seller
 * Product
@@ -173,46 +172,48 @@ Please set the necessary conditions again and execute the trigger of `4. Start p
 
 #### NeoTask.fatal
 
-回復不能なエラーが発生した時にセットされます。  
-例えば決済が完了したフラグを保存しようとした時、などです。
+This error will be set when an unrecoverable problem occurs. For example, when saving payment completion data failed, etc.
 
-この場合はどうしようもないので、デベロッパーが直接データを見て修正してください。
+In this case retry can not solve it, so you have to check and correct the data directly.
 
 #### NeoTask.retry
 
-retry は、全く同じ状態のまま Cloud Functions を再実行すれば解決できる状態です。  
-この場合、 __Orderable が自動で__ retry を行います。
+This state can be solved by re-running Cloud Functions.
+In this case, __Orderable automatically__ retries the function.
 
-retry を 2 回行い、それでも失敗した場合は fatal エラーが書き込まれます。  
-成功した場合は neoTask.status が 1 になります。
-
-retry の後すぐに fatal か success に変わるため、それを待ってください。
+If retry can not be solved twice, a fatal error will be set. If it succeeds, `neoTask.status === 1`.  
+As soon as it changes to fatal or success, please wait for it.
 
 ### FlowError
 
-処理が途中で失敗すると、 FlowError という型の Error を catch できます。  
-FlowError の中にはさらに error があり、それを見てデベロッパー側でもエラーハンドリングができます。
+If processing fails, you can catch an Error of type FlowError. FlowError has an error, you can handle error handling as well.
 
 ```ts
     try {
       Orderable.Functions.orderPaymentRequested(event, orderObject)
     } catch (e) {
       console.error(e)
-      if (e.error.constructor === Orderable.StripeError) {
-        // post to slack ...
+      if (e.constructor === Orderable.FlowError) {
+        console.log(e.step)
+        if (e.error.constructor === Orderable.StripeError) {
+          // post to slack ...
+        }
       }
     }
 ```
 
 ## Q & A
 
-### Cloud Functions が複数回発火した場合は?
+### What happens if Cloud Functions fire multiple times?
 
 > Note: Trigger events are delivered at least once, which means that rarely, spurious duplicates may occur.
 > https://cloud.google.com/functions/docs/concepts/events-triggers#triggers
 
-Cloud Functions は稀に複数回発火することがあります。  
-そうすると複数回在庫が減ったり、 __多重決済__ が起きてしまいます。
+Cloud Functions rarely fire multiple times.  
+The inventory will be reduced more, or __multiple payout__ will occur.
 
-関数が複数回実行されてしまうのを防ぐために transaction を使い、処理が完了したことを保存し2回目の関数実行では決済処理までたどり着かないようになっています。  
+We use transactions to prevent it.  
+Once Orderable is started, save the flag in `neoTask.completed`.
+
+Once Orderable is started, save the flag in `neoTask.completed`. And if the flag is already on, Orderable will stop.
 https://github.com/starhoshi/orderable.ts/blob/master/orderable/src/orderable.ts#L433-L434
