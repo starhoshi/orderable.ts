@@ -215,10 +215,8 @@ var Functions;
     class OrderSKUObject {
         static fetchFrom(order, orderSKUType, skuType) {
             return __awaiter(this, void 0, void 0, function* () {
-                // const orderSKURefs = await order.orderSKUs.get(OrderSKU)
                 const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
-                    // return new orderSKUType().get(orderSKURef.id).then(s => {
                     return PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
                         const orderSKU = s;
                         const orderSKUObject = new OrderSKUObject();
@@ -285,11 +283,9 @@ var Functions;
         }
         updateStock(operator, step) {
             const orderSKUObjects = this.orderSKUObjects;
-            // const order = this.order
             if (!orderSKUObjects) {
                 throw Error('orderSKUObjects must be non-null');
             }
-            // if (!order) { throw Error('orderSKUObjects must be non-null') }
             return firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
@@ -306,9 +302,8 @@ var Functions;
                     });
                     promises.push(t);
                 }
-                // 重複実行された時に、2回目の実行を弾く
-                // step が undefined だったらこの処理は実行しない (在庫数を元に戻すことがあるため)
-                // promises.push(KomercoNeoTask.markComplete(this.event, transaction, 'validateAndDecreaseStock'))
+                // https://github.com/starhoshi/orderable.ts#what-happens-if-cloud-functions-fire-multiple-times
+                // Throw CompletedError when Cloud Functions fire multiple times.
                 if (step) {
                     const orderRef = firestore.doc(this.order.getPath());
                     const orderPromise = transaction.get(orderRef).then(tref => {
@@ -347,12 +342,11 @@ var Functions;
             if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
                 const stripeCard = yield stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
                 orderObject.stripeCard = stripeCard;
-                console.log('stripe', order.stripe);
             }
             return orderObject;
         }
         catch (error) {
-            // ここで起きるエラーは取得エラーのみのはずなので retry
+            // This error may be a data preparetion error. In that case, it will be solved by retrying.
             orderObject.order = yield NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error);
             throw new FlowError(error, orderObject.order.neoTask);
         }
@@ -361,13 +355,12 @@ var Functions;
         try {
             const order = orderObject.order;
             const shops = orderObject.shops;
-            // 決済済みだったらスキップして良い
             if (orderObject.isCharged) {
                 return orderObject;
             }
             shops.forEach((shop, index) => {
                 if (!shop.isActive) {
-                    throw new Retrycf.ValidationError(ValidationErrorType.ShopIsNotActive, `ショップ「${shop.name}」は現在ご利用いただけません。`);
+                    throw new Retrycf.ValidationError(ValidationErrorType.ShopIsNotActive, `Shop: ${shop.name} is not active.`);
                 }
             });
             return orderObject;
@@ -385,13 +378,12 @@ var Functions;
         try {
             const order = orderObject.order;
             const orderSKUObjects = orderObject.orderSKUObjects;
-            // 決済済みだったらスキップして良い
             if (orderObject.isCharged) {
                 return orderObject;
             }
             orderSKUObjects.forEach((orderSKUObject, index) => {
                 if (!orderSKUObject.sku.isActive) {
-                    throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive, `商品「${orderSKUObject.orderSKU.snapshotProduct.name}」は現在ご利用いただけません。`);
+                    throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive, `Product: ${orderSKUObject.orderSKU.snapshotProduct.name}」 is not active.`);
                 }
             });
             return orderObject;
@@ -408,7 +400,6 @@ var Functions;
     const validatePaymentMethod = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            // 決済済みだったらスキップ
             if (orderObject.isCharged) {
                 return orderObject;
             }
@@ -418,11 +409,11 @@ var Functions;
                     const now = new Date(new Date().getFullYear(), new Date().getMonth());
                     const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1);
                     if (expiredDate < now) {
-                        throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'カードの有効期限が切れています。');
+                        throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired, 'This card is expired.');
                     }
                     break;
                 default:
-                    throw new Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound, '決済情報が登録されていません。');
+                    throw new Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound, 'Payment information is not registered.');
             }
             return orderObject;
         }
@@ -437,12 +428,11 @@ var Functions;
     }));
     const validateAndDecreaseStock = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            // 決済済みだったらスキップして良い
             if (orderObject.isCharged) {
                 return orderObject;
             }
             yield orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock');
-            // TODO: Remove the extra processing
+            // TODO: Delete the extra processing
             orderObject.order = yield PringUtil.get(orderObject.initializableClass.order, orderObject.orderID);
             return orderObject;
         }
@@ -464,7 +454,6 @@ var Functions;
             transfer_group: order.id,
             metadata: {
                 orderID: order.id
-                // , rawValue: order.rawValue()
             }
         }, {
             idempotency_key: order.id
@@ -476,7 +465,6 @@ var Functions;
         try {
             const order = orderObject.order;
             const user = orderObject.user;
-            // 決済済み
             if (orderObject.isCharged) {
                 return orderObject;
             }
@@ -489,8 +477,9 @@ var Functions;
             return orderObject;
         }
         catch (error) {
-            // 在庫数を減らした後に stripe.charge が失敗したので、在庫数を元に戻す
+            // Since stripe.charge failed after reducing stock count, restore stock quantity.
             yield orderObject.updateStock(Operator.plus);
+            // Restored stock count, so clean up neoTask.completed for retry.
             orderObject.order = yield NeoTask.clearCompleted(orderObject.order);
             if (error.constructor === StripeError) {
                 const stripeError = error;
@@ -500,11 +489,13 @@ var Functions;
             throw (error);
         }
     }));
-    /// ここでこけたらおわり、 charge が浮いている状態になる。
+    /**
+     * Save peymnent succeeded information.
+     * Set fatal error if this step failed.
+     */
     const updateOrder = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            // 決済済み
             if (orderObject.isCharged) {
                 return orderObject;
             }
@@ -529,7 +520,7 @@ var Functions;
             return orderObject;
         }
         catch (error) {
-            // ここでコケたら stripeChargeID すらわからなくなってしまうので retry もできないので fatal
+            // If this step failed, we can not remember chargeID. Because set fatal error.
             orderObject.order = yield NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error);
             throw new FlowError(error, orderObject.order.neoTask);
         }
@@ -543,7 +534,7 @@ var Functions;
                 .get()
                 .then(snapshot => {
                 const batch = firestore.batch();
-                // OrderShopStatus が Create のだけ Paid に更新する
+                // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();
                     orderShop.init(doc);
@@ -559,7 +550,7 @@ var Functions;
             return orderObject;
         }
         catch (error) {
-            // 失敗する可能性があるのは batch の失敗だけなので retry
+            // This step fails only when a batch error occurs. Because set retry.
             orderObject.order = yield NeoTask.setRetry(orderObject.order, 'updateOrderShops', error);
             throw new FlowError(error, orderObject.order);
         }
@@ -570,27 +561,27 @@ var Functions;
             return orderObject;
         }
         catch (error) {
-            // 失敗する可能性があるのは update の失敗だけなので retry
+            // This step fails only when update error occurs. Because set retry.
             orderObject.order = yield NeoTask.setRetry(orderObject.order, 'setOrderTask', error);
             throw new FlowError(error, orderObject.order);
         }
     }));
+    /**
+     * Start order processing.
+     * @param orderObject
+     */
     Functions.orderPaymentRequested = (orderObject) => __awaiter(this, void 0, void 0, function* () {
-        // functions.firestore.document(`version/1/order/{orderID}`).onUpdate(async event => {
         try {
             const shouldRetry = NeoTask.shouldRetry(orderObject.order);
             orderObject.order = yield NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order);
-            // status が payment requested に変更された時
-            // もしくは should retry が true だった時にこの functions は実行される
-            // TODO: Retry
+            // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
             if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
-                // 処理実行、リトライは実行されない
+                // continue
             }
             else {
-                return undefined;
-            }
-            if (orderObject.order.paymentStatus !== OrderPaymentStatus.PaymentRequested && !shouldRetry) {
-                return undefined;
+                if (!shouldRetry) {
+                    return undefined; // not continue
+                }
             }
             const flow = new Flow.Line([
                 prepareRequiredData,
@@ -612,12 +603,11 @@ var Functions;
             return Promise.resolve();
         }
         catch (error) {
-            // console.error(error)
             if (error.constructor === Retrycf.CompletedError) {
-                // 関数の重複実行エラーだった場合は task にエラーを書かずに undefined を返して処理を抜ける
+                // If CompletedError was thrown, finish functions without setting neoTask.
                 return undefined;
             }
-            // FlowError としてキャッチされていない場合はここで FlowError をセット
+            // If not thrown as FlowError, set FlowError.
             if (error.constructor !== FlowError) {
                 yield NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString());
             }

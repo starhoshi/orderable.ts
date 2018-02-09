@@ -732,7 +732,7 @@ export namespace Functions {
 
   /**
    * Start order processing.
-   * @param orderObject 
+   * @param orderObject
    */
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     try {

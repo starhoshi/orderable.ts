@@ -179,5 +179,9 @@ export declare namespace Functions {
         plus = 1,
         minus = -1,
     }
+    /**
+     * Start order processing.
+     * @param orderObject
+     */
     const orderPaymentRequested: (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => Promise<void>;
 }
