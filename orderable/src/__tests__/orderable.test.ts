@@ -19,7 +19,6 @@ describe('OrderObject', () => {
   let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
   beforeEach(() => {
     const order = new Model.SampleOrder()
-    // const event = Helper.Firebase.shared.makeOrderEvent(order.reference, order.rawValue(), {})
     const event = Rescue.event(order.reference, order.rawValue(), { params: { orderID: order.id } })
     orderObject = Helper.Firebase.shared.orderObject(event)
     orderObject.order = order
@@ -128,7 +127,7 @@ describe('OrderObject', () => {
             model.order.neoTask.completed = completed
             await model.order.reference.update({ neoTask: { completed: completed } })
 
-            const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, { neoTask: { completed: { [step]: true } } }, {})
+            const event = Rescue.event(model.order.reference, { neoTask: { completed: { [step]: true } } }, { params: { orderID: model.order.id } })
             orderObject = Helper.Firebase.shared.orderObject(event)
             orderObject.order = model.order
             orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
@@ -196,7 +195,7 @@ describe('OrderObject', () => {
           model.order.neoTask.completed = completed
           await model.order.reference.update({ neoTask: { completed: completed } })
 
-          const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, { neoTask: { completed: { [step]: true } } }, {})
+          const event = Rescue.event(model.order.reference, { neoTask: { completed: { [step]: true } } }, { params: { orderID: model.order.id } })
           orderObject = Helper.Firebase.shared.orderObject(event)
           orderObject.order = model.order
           const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
@@ -229,7 +228,7 @@ describe('orderPaymentRequested', () => {
       model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
       await model.order.update()
 
-      const event = Helper.Firebase.shared.makeOrderEvent(model.order.reference, model.order.rawValue(), preOrder)
+      const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
       const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
         order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
       })
@@ -456,7 +455,7 @@ describe('orderPaymentRequested', () => {
       data.model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
       await data.model.order.update()
 
-      const event = Helper.Firebase.shared.makeOrderEvent(data.model.order.reference, data.model.order.rawValue(), preOrder)
+      const event = Rescue.event(data.model.order.reference, data.model.order.rawValue(), { params: { orderID: data.model.order.id }, previousData: preOrder })
       const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
         order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
       })

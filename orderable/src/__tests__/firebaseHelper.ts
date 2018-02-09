@@ -76,23 +76,6 @@ export class Firebase {
     return this._shared
   }
 
-  makeOrderEvent(ref: FirebaseFirestore.DocumentReference, data: any, previousData: any) {
-    return <functions.Event<DeltaDocumentSnapshot>>{
-      params: { orderID: ref.id },
-      data: {
-        exists: true,
-        ref: ref,
-        id: ref.id,
-        createTime: '',
-        updateTime: '',
-        readTime: '',
-        previous: { data: () => { return previousData } },
-        data: () => { return data },
-        get: (key: string) => { return undefined }
-      }
-    }
-  }
-
   orderObject(event: functions.Event<DeltaDocumentSnapshot>) {
     return new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
       order: Model.SampleOrder,
