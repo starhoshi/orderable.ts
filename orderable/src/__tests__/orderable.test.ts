@@ -486,9 +486,25 @@ describe('orderPaymentRequested', () => {
     })
   })
 
+  describe('charge completed before fire functions', () => {
+    test('skip steps', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.stripe!.chargeID = 'charged'
+      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+      const data = await makeTestData(customModel)
+
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
+
+      const updatedOrder = await Model.SampleOrder.get(data.model.order.id) as Model.SampleOrder
+      await Promise.all([
+        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model)
+      ])
+    })
+  })
+
   // TODO
   // stripe charge error type cover
-  // skip enabled
   // retry 2 times
   // fatal error when retry 3 times
   // order timelimit

@@ -25,7 +25,8 @@ export interface DataSetOrder {
   paymentStatus?: Orderable.OrderPaymentStatus,
   stripe?: {
     cardID: string,
-    customerID: string
+    customerID: string,
+    chargeID?: string
   },
   neoTask?: {
     status?: Retrycf.NeoTaskStatus,
@@ -191,6 +192,9 @@ export class Firebase {
       const stripeCharge = new Model.SampleStripeCharge()
       stripeCharge.cardID = dataSet.order.stripe.cardID
       stripeCharge.customerID = dataSet.order.stripe.customerID
+      if (dataSet.order.stripe.chargeID) {
+        stripeCharge.chargeID = dataSet.order.stripe.chargeID
+      }
       order.stripe = stripeCharge.rawValue()
     }
 
