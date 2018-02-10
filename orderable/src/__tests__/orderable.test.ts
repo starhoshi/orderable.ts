@@ -223,17 +223,17 @@ describe('OrderObject', () => {
 
 describe('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}) => {
-      const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
-      const preOrder = model.order.rawValue()
-      model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
-      await model.order.update()
+    const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
+    const preOrder = model.order.rawValue()
+    model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
+    await model.order.update()
 
-      const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
-      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-      })
+    const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
+    const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+      order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+    })
 
-      return {model: model, orderObject: orderObject}
+    return { model: model, orderObject: orderObject }
   }
 
   describe('when one shop (Normal Scenario)', () => {
@@ -256,7 +256,7 @@ describe('orderPaymentRequested', () => {
   describe('when multiple shops (Normal Scenario)', () => {
     test('neoTask === 1', async () => {
       const shops = Helper.Firebase.shared.defaultShops.concat(Helper.Firebase.shared.defaultShops)
-      const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
       const data = await makeTestData(customModel)
 
@@ -277,7 +277,7 @@ describe('orderPaymentRequested', () => {
     test('Retrycf.ValidationError ShopIsNotActive', async () => {
       const shops = Helper.Firebase.shared.defaultShops
       shops[0].isActive = false
-      const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
       const data = await makeTestData(customModel)
 
@@ -289,7 +289,7 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-        const validationError  = flowError.error as Retrycf.ValidationError
+        const validationError = flowError.error as Retrycf.ValidationError
         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.ShopIsNotActive)
       }
     })
@@ -299,7 +299,7 @@ describe('orderPaymentRequested', () => {
     test('Retrycf.ValidationError SKUIsNotActive', async () => {
       const shops = Helper.Firebase.shared.defaultShops
       shops[0].skus[0].isActive = false
-      const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder}
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
       const data = await makeTestData(customModel)
 
@@ -311,7 +311,7 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-        const validationError  = flowError.error as Retrycf.ValidationError
+        const validationError = flowError.error as Retrycf.ValidationError
         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.SKUIsNotActive)
       }
     })
@@ -322,7 +322,7 @@ describe('orderPaymentRequested', () => {
       const order = Helper.Firebase.shared.defaultOrder
       order.stripe!.customerID = 'cus_C1vUA7cpCejmHN'
       order.stripe!.cardID = 'card_1Bdre0KZcOra3Jxs6IOjm4WO' // 12/2017
-      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
       const data = await makeTestData(customModel)
 
@@ -334,7 +334,7 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-        const validationError  = flowError.error as Retrycf.ValidationError
+        const validationError = flowError.error as Retrycf.ValidationError
         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.StripeCardExpired)
       }
     })
@@ -342,7 +342,7 @@ describe('orderPaymentRequested', () => {
     test('Retrycf.ValidationError PaymentInfoNotFount', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       order.stripe = undefined
-      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
       const data = await makeTestData(customModel)
 
@@ -354,7 +354,7 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-        const validationError  = flowError.error as Retrycf.ValidationError
+        const validationError = flowError.error as Retrycf.ValidationError
         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.PaymentInfoNotFound)
       }
     })
@@ -364,7 +364,7 @@ describe('orderPaymentRequested', () => {
     test('Retrycf.ValidationError OutOfStock', async () => {
       const shops = Helper.Firebase.shared.defaultShops
       shops[0].skus[0].quantity = 100000000000
-      const customModel = {shops: shops, order: Helper.Firebase.shared.defaultOrder }
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
       const data = await makeTestData(customModel)
 
@@ -376,7 +376,7 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-        const validationError  = flowError.error as Retrycf.ValidationError
+        const validationError = flowError.error as Retrycf.ValidationError
         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
         await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
@@ -410,7 +410,7 @@ describe('orderPaymentRequested', () => {
     test('Retrycf.ValidationError StripeInvalidRequestError', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       order.amount = 1000000000000000
-      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
       const data = await makeTestData(customModel)
 
@@ -422,7 +422,7 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         const flowError = e as Orderable.FlowError
         expect(flowError.error).toBeInstanceOf(Orderable.StripeError)
-        const stripeError  = flowError.error as Orderable.StripeError
+        const stripeError = flowError.error as Orderable.StripeError
         expect(stripeError.type).toEqual(Orderable.StripeErrorType.StripeInvalidRequestError)
         expect(stripeError.statusCode).toEqual(400)
 
@@ -468,7 +468,7 @@ describe('orderPaymentRequested', () => {
   describe('data reference is broken', () => {
     test('retry error', async () => {
       const order = Helper.Firebase.shared.defaultOrder
-      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
       const data = await makeTestData(customModel)
       data.orderObject.order.user = 'username' as any
@@ -490,7 +490,7 @@ describe('orderPaymentRequested', () => {
     test('skip steps', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       order.stripe!.chargeID = 'charged'
-      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
       const data = await makeTestData(customModel)
 
       await Orderable.Functions.orderPaymentRequested(data.orderObject)
