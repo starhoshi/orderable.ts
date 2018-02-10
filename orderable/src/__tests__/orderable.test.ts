@@ -465,7 +465,7 @@ describe('orderPaymentRequested', () => {
     })
   })
 
-  describe.only('data reference is broken', () => {
+  describe('data reference is broken', () => {
     test('retry error', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
@@ -491,7 +491,6 @@ describe('orderPaymentRequested', () => {
   // skip enabled
   // retry 2 times
   // fatal error when retry 3 times
-  // reference data is broken
   // order timelimit
   // stock count Threshold test
 })

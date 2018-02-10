@@ -26,6 +26,22 @@ export interface DataSetOrder {
   stripe?: {
     cardID: string,
     customerID: string
+  },
+  neoTask?: {
+    status?: Retrycf.NeoTaskStatus,
+    completed?: { [id: string]: string },
+    invalid?: {
+      validationError: string;
+      reason: string;
+    };
+    retry?: {
+      error: any[];
+      count: number;
+    };
+    fatal?: {
+      step: string;
+      error: string;
+    };
   }
 }
 
@@ -170,7 +186,7 @@ export class Firebase {
     order.user = user.reference
     order.amount = dataSet.order.amount || 10000
     order.currency = dataSet.order.currency || 'jpy'
-    order.paymentStatus = dataSet.order.paymentStatus || Orderable.OrderPaymentStatus.Created
+    order.paymentStatus = dataSet.order.paymentStatus || Orderable.OrderPaymentStatus.PaymentRequested
     if (dataSet.order.stripe) {
       const stripeCharge = new Model.SampleStripeCharge()
       stripeCharge.cardID = dataSet.order.stripe.cardID
