@@ -255,6 +255,12 @@ export class Firebase {
     expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
   }
 
+  async expectRetry(model: SampleModel, retryCount: number = 1) {
+      const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
+      expect(order.neoTask!.retry!.count).toBe(retryCount)
+  }
+
   async expectOrderShop(model: SampleModel) {
     for (const orderShop of model.orderShops) {
       const fetchedOrderShop = await Model.SampleOrderShop.get(orderShop.id) as Model.SampleOrderShop

@@ -465,6 +465,27 @@ describe('orderPaymentRequested', () => {
     })
   })
 
+  describe.only('data reference is broken', () => {
+    test('retry error', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      const customModel = {shops: Helper.Firebase.shared.defaultShops, order: order }
+
+      const data = await makeTestData(customModel)
+      data.orderObject.order.user = 'username' as any
+      await data.orderObject.order.update()
+
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.FlowError)
+        await Helper.Firebase.shared.expectRetry(data.model)
+        await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+      }
+    })
+  })
+
   // TODO
   // stripe charge error type cover
   // skip enabled
