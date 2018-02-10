@@ -32,7 +32,7 @@ export declare class FlowError extends Error {
     constructor(error: any, task?: Retrycf.NeoTask);
 }
 export declare class NeoTask extends Retrycf.NeoTask {
-    static setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T): Promise<T>;
+    static setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T): Promise<T>;
     static setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any): Promise<T>;
 }
 export declare class PringUtil {

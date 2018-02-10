@@ -197,6 +197,9 @@ export class Firebase {
       }
       order.stripe = stripeCharge.rawValue()
     }
+    if (dataSet.order.neoTask) {
+      order.neoTask = dataSet.order.neoTask as any
+    }
 
     const orderSKUsForReturn: Model.SampleOrderSKU[] = []
     const orderShopsForReturn: Model.SampleOrderShop[] = []
@@ -226,9 +229,6 @@ export class Firebase {
     // await order.save()
     promises2.push(order.save())
     await Promise.all(promises2)
-
-    const preOrder = order.rawValue()
-    preOrder.paymentStatus = Orderable.OrderPaymentStatus.Created
 
     return <SampleModel>{
       user: user,
@@ -279,6 +279,12 @@ export class Firebase {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
       expect(order.neoTask!.retry!.count).toBe(retryCount)
+  }
+
+  async expectFatal(model: SampleModel, step: string) {
+      const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
+      expect(order.neoTask!.fatal!.step).toBe(step)
   }
 
   async expectOrderShop(model: SampleModel) {

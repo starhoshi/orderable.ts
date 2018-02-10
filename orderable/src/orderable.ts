@@ -87,10 +87,10 @@ export class FlowError extends Error {
 }
 
 export class NeoTask extends Retrycf.NeoTask {
-  static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T) {
-    model = await NeoTask.setFatalIfRetryCountIsMax(model)
+  static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T) {
+    model = await NeoTask.setFatalIfRetryCountIsMax(model, previousModel)
     if (model.neoTask && model.neoTask.fatal) {
-      Webhook.postError('retry error', JSON.stringify(model.neoTask.rawValue()), model.reference.path)
+      Webhook.postError('retry error', JSON.stringify(model.neoTask.fatal), model.reference.path)
     }
     return model
   }
@@ -736,8 +736,8 @@ export namespace Functions {
    */
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     try {
-      const shouldRetry = NeoTask.shouldRetry(orderObject.order)
-      orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order)
+      const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder)
+      orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder)
 
       // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
       if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {

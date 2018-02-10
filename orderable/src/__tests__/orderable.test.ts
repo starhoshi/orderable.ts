@@ -222,9 +222,9 @@ describe('OrderObject', () => {
 })
 
 describe('orderPaymentRequested', () => {
-  const makeTestData = async (dataSet: Helper.DataSet = {}) => {
+  const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
     const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
-    const preOrder = model.order.rawValue()
+    preOrder = preOrder || model.order.rawValue()
     model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
     await model.order.update()
 
@@ -503,12 +503,29 @@ describe('orderPaymentRequested', () => {
     })
   })
 
+  describe('when retry 3 times', () => {
+    test('fatal error', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.neoTask = { status: Retrycf.NeoTaskStatus.failure, retry: { count: 3, error: ['', '', ''] } }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+      const data = await makeTestData(customModel, { neoTask: {retry: { count: 2}}})
+      await data.model.order.update()
+      data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
+
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
+
+      const updatedOrder = await Model.SampleOrder.get(data.model.order.id) as Model.SampleOrder
+      await Promise.all([
+        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
+        Helper.Firebase.shared.expectFatal(data.model, 'retry_failed')
+      ])
+    })
+  })
+
   // TODO
   // stripe charge error type cover
   // retry 2 times
-  // fatal error when retry 3 times
   // order timelimit
-  // stock count Threshold test
 })
 
 // TODO
