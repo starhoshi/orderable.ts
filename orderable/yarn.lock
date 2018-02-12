@@ -1730,6 +1730,14 @@ event-emitter@~0.3.5:
     d "1"
     es5-ext "~0.10.14"
 
+event-response@^0.2.1:
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/event-response/-/event-response-0.2.1.tgz#96dc44986d8d373e52464fa18d605c88d7c8560c"
+  dependencies:
+    "@google-cloud/firestore" "^0.11.2"
+    firebase-admin "^5.8.2"
+    firebase-functions "^0.8.1"
+
 eventemitter3@1.x.x:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/eventemitter3/-/eventemitter3-1.2.0.tgz#1c86991d816ad1e504750e73874224ecf3bec508"
@@ -3740,6 +3748,14 @@ minizlib@^1.0.3:
   resolved "https://registry.yarnpkg.com/minizlib/-/minizlib-1.1.0.tgz#11e13658ce46bc3a70a267aac58359d1e0c29ceb"
   dependencies:
     minipass "^2.2.1"
+
+mission-completed@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/mission-completed/-/mission-completed-0.1.2.tgz#37c0f036cc0e3091343a549346853983f21423f9"
+  dependencies:
+    "@google-cloud/firestore" "^0.11.2"
+    firebase-admin "^5.8.2"
+    firebase-functions "^0.8.1"
 
 mkdirp@0.5.x, mkdirp@0.x.x, "mkdirp@>=0.5 0", mkdirp@^0.5.0, mkdirp@^0.5.1:
   version "0.5.1"
