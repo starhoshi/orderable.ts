@@ -6,6 +6,7 @@ import { Pring } from 'pring';
 import * as Retrycf from 'retrycf';
 import * as Flow from '@1amageek/flow';
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
+import * as EventResponse from 'event-response';
 export declare const initialize: (options: {
     adminOptions: any;
     stripeToken: string;
@@ -88,6 +89,7 @@ export interface OrderProtocol extends Pring.Base {
     completed?: {
         [id: string]: boolean;
     };
+    response?: EventResponse.IResponse;
 }
 export declare enum OrderShopPaymentStatus {
     Unknown = 0,

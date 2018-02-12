@@ -1,6 +1,7 @@
 import { Pring, property } from 'pring'
 import * as Orderable from '../orderable'
 import * as Retrycf from 'retrycf'
+import * as EventResponse from 'event-response'
 // import * as Orderable from '@star__hoshi/orderable'
 
 export class SampleUser extends Pring.Base implements Orderable.UserProtocol {
@@ -67,6 +68,7 @@ export class SampleOrder extends Pring.Base implements Orderable.OrderProtocol, 
   @property stripe?: SampleStripeCharge
   @property neoTask?: Retrycf.NeoTask
   @property completed?: { [id: string]: boolean }
+  @property response?: EventResponse.IResponse
 
   static async default(user: SampleUser, orderSKUs: SampleOrderSKU[]) {
     const o = new SampleOrder()

@@ -10,6 +10,7 @@ import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestor
 import * as request from 'request'
 import * as Slack from 'slack-node'
 import * as Mission from 'mission-completed'
+import * as EventResponse from 'event-response'
 
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
@@ -21,6 +22,8 @@ export const initialize = (options: { adminOptions: any, stripeToken: string, sl
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   Mission.initialize(options.adminOptions)
+  EventResponse.initialize(options.adminOptions)
+  EventResponse.configure({ collectionPath: 'version/1/failure' })
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
   adminOptions = options.adminOptions
@@ -171,6 +174,8 @@ export interface OrderProtocol extends Pring.Base {
 
   // Mission
   completed?: { [id: string]: boolean }
+  // EventResponse
+  response?: EventResponse.IResponse
 }
 
 export enum OrderShopPaymentStatus {
@@ -768,11 +773,7 @@ export namespace Functions {
         setOrderTask
       ])
 
-      try {
-        await flow.run(orderObject)
-      } catch (e) {
-        throw e
-      }
+      await flow.run(orderObject)
 
       return Promise.resolve()
     } catch (error) {

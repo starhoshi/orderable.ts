@@ -15,6 +15,7 @@ const Retrycf = require("retrycf");
 const Flow = require("@1amageek/flow");
 const Slack = require("slack-node");
 const Mission = require("mission-completed");
+const EventResponse = require("event-response");
 let stripe;
 let firestore;
 let slackParams = undefined;
@@ -24,6 +25,8 @@ exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
     Retrycf.initialize(options.adminOptions);
     Mission.initialize(options.adminOptions);
+    EventResponse.initialize(options.adminOptions);
+    EventResponse.configure({ collectionPath: 'version/1/failure' });
     firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
     adminOptions = options.adminOptions;
@@ -595,12 +598,7 @@ var Functions;
                 updateOrderShops,
                 setOrderTask
             ]);
-            try {
-                yield flow.run(orderObject);
-            }
-            catch (e) {
-                throw e;
-            }
+            yield flow.run(orderObject);
             return Promise.resolve();
         }
         catch (error) {
