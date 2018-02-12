@@ -9,6 +9,7 @@ import * as Flow from '@1amageek/flow'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as request from 'request'
 import * as Slack from 'slack-node'
+import * as Mission from 'mission-completed'
 
 let stripe: Stripe
 let firestore: FirebaseFirestore.Firestore
@@ -19,6 +20,7 @@ let adminOptions: any
 export const initialize = (options: { adminOptions: any, stripeToken: string, slack?: SlackParams }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
+  Mission.initialize(options.adminOptions)
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
   adminOptions = options.adminOptions
@@ -166,6 +168,9 @@ export interface OrderProtocol extends Pring.Base {
   orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
   paymentStatus: OrderPaymentStatus
   stripe?: StripeProtocol
+
+  // Mission
+  completed?: { [id: string]: boolean }
 }
 
 export enum OrderShopPaymentStatus {
@@ -416,22 +421,22 @@ export namespace Functions {
 
         // https://github.com/starhoshi/orderable.ts#what-happens-if-cloud-functions-fire-multiple-times
         // Throw CompletedError when Cloud Functions fire multiple times.
-        if (step) {
-          const orderRef = firestore.doc(this.order.getPath())
-          const orderPromise = transaction.get(orderRef).then(tref => {
-            const transactionOrder = new this.initializableClass.order()
-            transactionOrder.init(tref)
-            if (Retrycf.NeoTask.isCompleted(transactionOrder, step)) {
-              throw new Retrycf.CompletedError(step)
-            } else {
-              const neoTask = Retrycf.NeoTask.makeNeoTask(transactionOrder)
-              const completed = { [step]: true }
-              neoTask.completed = completed
-              transaction.update(orderRef, { neoTask: neoTask.rawValue() })
-            }
-          })
-          promises.push(orderPromise)
-        }
+        // if (step) {
+        //   const orderRef = firestore.doc(this.order.getPath())
+        //   const orderPromise = transaction.get(orderRef).then(tref => {
+        //     const transactionOrder = new this.initializableClass.order()
+        //     transactionOrder.init(tref)
+        //     if (Retrycf.NeoTask.isCompleted(transactionOrder, step)) {
+        //       throw new Retrycf.CompletedError(step)
+        //     } else {
+        //       const neoTask = Retrycf.NeoTask.makeNeoTask(transactionOrder)
+        //       const completed = { [step]: true }
+        //       neoTask.completed = completed
+        //       transaction.update(orderRef, { neoTask: neoTask.rawValue() })
+        //     }
+        //   })
+        //   promises.push(orderPromise)
+        // }
 
         return Promise.all(promises)
       })
@@ -442,6 +447,21 @@ export namespace Functions {
     plus = +1,
     minus = -1
   }
+
+  const preventMultipleProcessing: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        if (orderObject.isCharged) { // skip if payment completed
+          return orderObject
+        }
+
+        const completed = await Mission.markCompleted(orderObject.order.reference, 'preventMultipleProcessing')
+
+        return orderObject
+      } catch (error) {
+        throw error
+      }
+    })
 
   const prepareRequiredData: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
@@ -576,6 +596,9 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
+        await Mission.clear(orderObject.order.reference)
+        orderObject.order.completed = {}
+
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
           orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
@@ -629,7 +652,9 @@ export namespace Functions {
         // Since stripe.charge failed after reducing stock count, restore stock quantity.
         await orderObject.updateStock(Operator.plus)
         // Restored stock count, so clean up neoTask.completed for retry.
-        orderObject.order = await NeoTask.clearCompleted(orderObject.order)
+        // orderObject.order = await NeoTask.clearCompleted(orderObject.order)
+        await Mission.clear(orderObject.order.reference)
+        orderObject.order.completed = {}
 
         if (error.constructor === StripeError) {
           const stripeError = error as StripeError
@@ -753,6 +778,7 @@ export namespace Functions {
         validateShopIsActive,
         validateSKUIsActive,
         validatePaymentMethod,
+        preventMultipleProcessing,
         validateAndDecreaseStock,
         payment,
         updateOrder,
@@ -768,7 +794,7 @@ export namespace Functions {
 
       return Promise.resolve()
     } catch (error) {
-      if (error.constructor === Retrycf.CompletedError) {
+      if (error.constructor === Mission.CompletedError) {
         // If CompletedError was thrown, finish functions without setting neoTask.
         return undefined
       }

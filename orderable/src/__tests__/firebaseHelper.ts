@@ -241,12 +241,13 @@ export class Firebase {
     }
   }
 
-  step = 'validateAndDecreaseStock'
+  step = 'preventMultipleProcessing'
 
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
-      expect(order.neoTask!.completed).toEqual({[this.step]: true})
+      // expect(order.neoTask!.completed).toEqual({[this.step]: true})
+      expect(order.completed).toEqual({[this.step]: true})
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
       expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)

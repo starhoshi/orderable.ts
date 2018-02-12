@@ -85,6 +85,9 @@ export interface OrderProtocol extends Pring.Base {
     orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>;
     paymentStatus: OrderPaymentStatus;
     stripe?: StripeProtocol;
+    completed?: {
+        [id: string]: boolean;
+    };
 }
 export declare enum OrderShopPaymentStatus {
     Unknown = 0,
