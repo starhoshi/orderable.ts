@@ -118,46 +118,6 @@ describe('OrderObject', () => {
             expect(sku.stock).toEqual(stock + quantity)
           }
         })
-
-        describe('when completed but step is undefined', () => {
-          test('stock decremented', async () => {
-            const step = 'step'
-
-            model.order.neoTask = await Retrycf.NeoTask.makeNeoTask(model.order)
-            const completed = { [step]: true }
-            model.order.neoTask.completed = completed
-            await model.order.reference.update({ neoTask: { completed: completed } })
-
-            const event = Rescue.event(model.order.reference, { neoTask: { completed: { [step]: true } } }, { params: { orderID: model.order.id } })
-            orderObject = Helper.Firebase.shared.orderObject(event)
-            orderObject.order = model.order
-            orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-
-            await orderObject.updateStock(Orderable.Functions.Operator.plus, undefined)
-
-            let quantity = 0
-            for (const orderSKU of model.orderSKUs) {
-              quantity += 1
-              const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-              const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-              expect(sku.stock).toEqual(stock + quantity)
-            }
-          })
-        })
-
-        describe('when not completed and step is undefined', () => {
-          test('stock decremented', async () => {
-            await orderObject.updateStock(Orderable.Functions.Operator.plus, undefined)
-
-            let quantity = 0
-            for (const orderSKU of model.orderSKUs) {
-              quantity += 1
-              const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-              const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-              expect(sku.stock).toEqual(stock + quantity)
-            }
-          })
-        })
       })
 
       describe('when sku is out of stock', () => {
@@ -186,38 +146,6 @@ describe('OrderObject', () => {
           }
         })
       })
-
-      // describe('when already this stap completed', () => {
-      //   test('CompletedError', async () => {
-      //     const step = 'step'
-
-      //     model.order.neoTask = await Retrycf.NeoTask.makeNeoTask(model.order)
-      //     const completed = { [step]: true }
-      //     model.order.neoTask.completed = completed
-      //     await model.order.reference.update({ neoTask: { completed: completed } })
-
-      //     const event = Rescue.event(model.order.reference, { neoTask: { completed: { [step]: true } } }, { params: { orderID: model.order.id } })
-      //     orderObject = Helper.Firebase.shared.orderObject(event)
-      //     orderObject.order = model.order
-      //     const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-      //     orderObject.orderSKUObjects = orderSKUObjects
-
-      //     expect.hasAssertions()
-      //     try {
-      //       await orderObject.updateStock(Orderable.Functions.Operator.minus, step)
-      //     } catch (e) {
-      //       expect(e).toBeInstanceOf(Mission.CompletedError)
-      //       const completedError = e as Mission.CompletedError
-      //       expect(completedError).toEqual(step)
-
-      //       // check stock did not decrement
-      //       for (const sku of model.skus) {
-      //         const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
-      //         expect(updatedSKU.stock).toEqual(sku.stock)
-      //       }
-      //     }
-      //   })
-      // })
     })
   })
 })
@@ -406,8 +334,6 @@ describe('orderPaymentRequested', () => {
       ])
     })
   })
-  // completed した後に戻すテスト - SKU 減らすの失敗
-  // completed した後に戻すテスト - Charge 失敗
 
   describe('over limit of stripe', () => {
     test('Retrycf.ValidationError StripeInvalidRequestError', async () => {
@@ -428,8 +354,6 @@ describe('orderPaymentRequested', () => {
         const stripeError = flowError.error as Orderable.StripeError
         expect(stripeError.type).toEqual(Orderable.StripeErrorType.StripeInvalidRequestError)
         expect(stripeError.statusCode).toEqual(400)
-        const updatedOrder = await Model.SampleOrder.get(data.model.order.id) as Model.SampleOrder
-        expect(updatedOrder.completed).toEqual({})
 
         await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
       }
@@ -487,8 +411,6 @@ describe('orderPaymentRequested', () => {
         expect(e).toBeInstanceOf(Orderable.FlowError)
         await Helper.Firebase.shared.expectRetry(data.model)
         await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
-        const updatedOrder = await Model.SampleOrder.get(data.model.order.id) as Model.SampleOrder
-        expect(updatedOrder.completed).toBeUndefined()
       }
     })
   })
@@ -506,8 +428,6 @@ describe('orderPaymentRequested', () => {
         Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
         Helper.Firebase.shared.expectOrderShop(data.model)
       ])
-      const updatedOrder = await Model.SampleOrder.get(data.model.order.id) as Model.SampleOrder
-      expect(updatedOrder.completed).toBeUndefined()
     })
   })
 
@@ -526,8 +446,6 @@ describe('orderPaymentRequested', () => {
         Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
         Helper.Firebase.shared.expectFatal(data.model, 'retry_failed')
       ])
-      const updatedOrder = await Model.SampleOrder.get(data.model.order.id) as Model.SampleOrder
-      expect(updatedOrder.completed).toBeUndefined()
     })
   })
 

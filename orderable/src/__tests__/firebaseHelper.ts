@@ -271,8 +271,7 @@ export class Firebase {
     }
 
     const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    // completed not contain step
-    expect(order.neoTask!.completed).toBeUndefined()
+    expect((order.completed || {})[this.step]).toBeUndefined()
     expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
   }
 

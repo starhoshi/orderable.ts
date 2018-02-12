@@ -419,25 +419,6 @@ export namespace Functions {
           promises.push(t)
         }
 
-        // https://github.com/starhoshi/orderable.ts#what-happens-if-cloud-functions-fire-multiple-times
-        // Throw CompletedError when Cloud Functions fire multiple times.
-        // if (step) {
-        //   const orderRef = firestore.doc(this.order.getPath())
-        //   const orderPromise = transaction.get(orderRef).then(tref => {
-        //     const transactionOrder = new this.initializableClass.order()
-        //     transactionOrder.init(tref)
-        //     if (Retrycf.NeoTask.isCompleted(transactionOrder, step)) {
-        //       throw new Retrycf.CompletedError(step)
-        //     } else {
-        //       const neoTask = Retrycf.NeoTask.makeNeoTask(transactionOrder)
-        //       const completed = { [step]: true }
-        //       neoTask.completed = completed
-        //       transaction.update(orderRef, { neoTask: neoTask.rawValue() })
-        //     }
-        //   })
-        //   promises.push(orderPromise)
-        // }
-
         return Promise.all(promises)
       })
     }
@@ -456,6 +437,7 @@ export namespace Functions {
         }
 
         const completed = await Mission.markCompleted(orderObject.order.reference, 'preventMultipleProcessing')
+        orderObject.order.completed = completed
 
         return orderObject
       } catch (error) {
@@ -596,6 +578,7 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
+        // clear function started flag for retry.
         await Mission.clear(orderObject.order.reference)
         orderObject.order.completed = {}
 
@@ -651,8 +634,7 @@ export namespace Functions {
       } catch (error) {
         // Since stripe.charge failed after reducing stock count, restore stock quantity.
         await orderObject.updateStock(Operator.plus)
-        // Restored stock count, so clean up neoTask.completed for retry.
-        // orderObject.order = await NeoTask.clearCompleted(orderObject.order)
+        // Restored stock count, so clean up `completed` for retry.
         await Mission.clear(orderObject.order.reference)
         orderObject.order.completed = {}
 
@@ -795,7 +777,7 @@ export namespace Functions {
       return Promise.resolve()
     } catch (error) {
       if (error.constructor === Mission.CompletedError) {
-        // If CompletedError was thrown, finish functions without setting neoTask.
+        // If CompletedError was thrown, finish functions without set result.
         return undefined
       }
 
