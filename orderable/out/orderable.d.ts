@@ -32,10 +32,6 @@ export declare class FlowError extends Error {
     error: any;
     constructor(error: any, task?: Retrycf.NeoTask);
 }
-export declare class NeoTask extends Retrycf.NeoTask {
-    static setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T): Promise<T>;
-    static setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any): Promise<T>;
-}
 export declare class PringUtil {
     static collectionPath<T extends Pring.Base>(model: T): string;
     static get<T extends Pring.Base>(klass: {
@@ -89,7 +85,7 @@ export interface OrderProtocol extends Pring.Base {
     completed?: {
         [id: string]: boolean;
     };
-    response?: EventResponse.IResponse;
+    result?: EventResponse.IResult;
 }
 export declare enum OrderShopPaymentStatus {
     Unknown = 0,
@@ -124,7 +120,7 @@ export declare class StripeError extends Error {
     requestId: string;
     error: any;
     constructor(error: any);
-    setNeoTask<T extends Retrycf.HasNeoTask>(model: T, step: string): Promise<T>;
+    setNeoTask<T extends OrderProtocol>(model: T, step: string): Promise<T>;
 }
 export declare namespace Functions {
     class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {

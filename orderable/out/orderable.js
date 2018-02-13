@@ -83,24 +83,24 @@ class FlowError extends Error {
     }
 }
 exports.FlowError = FlowError;
-class NeoTask extends Retrycf.NeoTask {
-    static setFatalAndPostToSlackIfRetryCountIsMax(model, previousModel) {
-        return __awaiter(this, void 0, void 0, function* () {
-            model = yield NeoTask.setFatalIfRetryCountIsMax(model, previousModel);
-            if (model.neoTask && model.neoTask.fatal) {
-                Webhook.postError('retry error', JSON.stringify(model.neoTask.fatal), model.reference.path);
-            }
-            return model;
-        });
-    }
-    static setFatalAndPostToSlack(model, step, error) {
-        return __awaiter(this, void 0, void 0, function* () {
-            Webhook.postError(step, error.toString(), model.reference.path);
-            return NeoTask.setFatal(model, step, error);
-        });
-    }
-}
-exports.NeoTask = NeoTask;
+// TODO: Webhook 外す
+// 失敗したらどんな形でも Error を返すようにする
+// Error を見て利用者がどうハンドリングすればいいかわかるようにする
+// NeoTask を消す
+// EventResponse に変更する
+// export class NeoTask extends Retrycf.NeoTask {
+//   static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T) {
+//     model = await NeoTask.setFatalIfRetryCountIsMax(model, previousModel)
+//     if (model.neoTask && model.neoTask.fatal) {
+//       Webhook.postError('retry error', JSON.stringify(model.neoTask.fatal), model.reference.path)
+//     }
+//     return model
+//   }
+//   static async setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any) {
+//     Webhook.postError(step, error.toString(), model.reference.path)
+//     return NeoTask.setFatal(model, step, error)
+//   }
+// }
 class PringUtil {
     static collectionPath(model) {
         return `version/${model.getVersion()}/${model.getModelName()}`;
@@ -188,27 +188,32 @@ class StripeError extends Error {
                 // validate
                 case StripeErrorType.StripeCardError: {
                     const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeCardError, this.message);
-                    model = yield NeoTask.setInvalid(model, validationError);
+                    // model = await NeoTask.setInvalid(model, validationError)
+                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, this.message);
                     break;
                 }
                 case StripeErrorType.StripeInvalidRequestError: {
                     const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeInvalidRequestError, this.message);
-                    model = yield NeoTask.setInvalid(model, validationError);
+                    // model = await NeoTask.setInvalid(model, validationError)
+                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, this.message);
                     break;
                 }
                 // retry
                 case StripeErrorType.StripeAPIError:
                 case StripeErrorType.StripeConnectionError:
-                    model = yield NeoTask.setRetry(model, step, this.message);
+                    // model = await NeoTask.setRetry(model, step, this.message)
+                    // TODO: Retry
                     break;
                 // fatal
                 case StripeErrorType.RateLimitError:
                 case StripeErrorType.StripeAuthenticationError:
                 case StripeErrorType.UnexpectedError:
-                    model = yield NeoTask.setFatalAndPostToSlack(model, step, this.type);
+                    // model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
                     break;
                 default:
-                    model = yield NeoTask.setFatalAndPostToSlack(model, step, this.type);
+                    // model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
             }
             return model;
         });
@@ -347,7 +352,8 @@ var Functions;
         }
         catch (error) {
             // This error may be a data preparetion error. In that case, it will be solved by retrying.
-            orderObject.order = yield NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error);
+            // orderObject.order = await NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error)
+            // TODO: Retry
             throw new FlowError(error, orderObject.order.neoTask);
         }
     }));
@@ -368,7 +374,8 @@ var Functions;
         catch (error) {
             if (error.constructor === Retrycf.ValidationError) {
                 const validationError = error;
-                orderObject.order = yield NeoTask.setInvalid(orderObject.order, validationError);
+                // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(ValidationErrorType.ShopIsNotActive, validationError.reason);
                 throw new FlowError(error, orderObject.order.neoTask);
             }
             throw (error);
@@ -391,7 +398,8 @@ var Functions;
         catch (error) {
             if (error.constructor === Retrycf.ValidationError) {
                 const validationError = error;
-                orderObject.order = yield NeoTask.setInvalid(orderObject.order, validationError);
+                // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason);
                 throw new FlowError(error, orderObject.order.neoTask);
             }
             throw (error);
@@ -420,7 +428,8 @@ var Functions;
         catch (error) {
             if (error.constructor === Retrycf.ValidationError) {
                 const validationError = error;
-                orderObject.order = yield NeoTask.setInvalid(orderObject.order, validationError);
+                // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason);
                 throw new FlowError(error, orderObject.order.neoTask);
             }
             throw (error);
@@ -441,7 +450,8 @@ var Functions;
             orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
             if (error.constructor === Retrycf.ValidationError) {
                 const validationError = error;
-                orderObject.order = yield NeoTask.setInvalid(orderObject.order, validationError);
+                // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason);
                 throw new FlowError(error, orderObject.order.neoTask);
             }
             throw (error);
@@ -523,7 +533,8 @@ var Functions;
         }
         catch (error) {
             // If this step failed, we can not remember chargeID. Because set fatal error.
-            orderObject.order = yield NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error);
+            // orderObject.order = await NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error)
+            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest('updateOrder', error);
             throw new FlowError(error, orderObject.order.neoTask);
         }
     }));
@@ -553,18 +564,21 @@ var Functions;
         }
         catch (error) {
             // This step fails only when a batch error occurs. Because set retry.
-            orderObject.order = yield NeoTask.setRetry(orderObject.order, 'updateOrderShops', error);
+            // orderObject.order = await NeoTask.setRetry(orderObject.order, 'updateOrderShops', error)
+            // TODO: set retry
             throw new FlowError(error, orderObject.order);
         }
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            orderObject.order = yield NeoTask.setSuccess(orderObject.order);
+            // orderObject.order = await NeoTask.setSuccess(orderObject.order)
+            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setOK();
             return orderObject;
         }
         catch (error) {
             // This step fails only when update error occurs. Because set retry.
-            orderObject.order = yield NeoTask.setRetry(orderObject.order, 'setOrderTask', error);
+            // orderObject.order = await NeoTask.setRetry(orderObject.order, 'setOrderTask', error)
+            // TODO: Retry
             throw new FlowError(error, orderObject.order);
         }
     }));
@@ -574,8 +588,10 @@ var Functions;
      */
     Functions.orderPaymentRequested = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder);
-            orderObject.order = yield NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder);
+            const shouldRetry = false;
+            // TODO: Retry
+            // const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder)
+            // orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder)
             // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
             if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
                 // continue
@@ -607,7 +623,8 @@ var Functions;
             }
             // If not thrown as FlowError, set FlowError.
             if (error.constructor !== FlowError) {
-                yield NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString());
+                // await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest('orderPaymentRequested', error.toString());
             }
             return Promise.reject(error);
         }

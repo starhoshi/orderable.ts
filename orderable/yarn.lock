@@ -1822,9 +1822,9 @@ event-emitter@~0.3.5:
     d "1"
     es5-ext "~0.10.14"
 
-event-response@^0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/event-response/-/event-response-0.2.1.tgz#96dc44986d8d373e52464fa18d605c88d7c8560c"
+event-response@^0.2.3:
+  version "0.2.3"
+  resolved "https://registry.yarnpkg.com/event-response/-/event-response-0.2.3.tgz#b195077296bd0f055afc5fe0a0a9add4ade7386a"
   dependencies:
     "@google-cloud/firestore" "^0.11.2"
     firebase-admin "^5.8.2"

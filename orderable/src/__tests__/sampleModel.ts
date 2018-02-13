@@ -68,7 +68,7 @@ export class SampleOrder extends Pring.Base implements Orderable.OrderProtocol, 
   @property stripe?: SampleStripeCharge
   @property neoTask?: Retrycf.NeoTask
   @property completed?: { [id: string]: boolean }
-  @property response?: EventResponse.IResponse
+  @property result?: EventResponse.IResult
 
   static async default(user: SampleUser, orderSKUs: SampleOrderSKU[]) {
     const o = new SampleOrder()

@@ -91,20 +91,26 @@ export class FlowError extends Error {
   }
 }
 
-export class NeoTask extends Retrycf.NeoTask {
-  static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T) {
-    model = await NeoTask.setFatalIfRetryCountIsMax(model, previousModel)
-    if (model.neoTask && model.neoTask.fatal) {
-      Webhook.postError('retry error', JSON.stringify(model.neoTask.fatal), model.reference.path)
-    }
-    return model
-  }
+// TODO: Webhook 外す
+// 失敗したらどんな形でも Error を返すようにする
+// Error を見て利用者がどうハンドリングすればいいかわかるようにする
+// NeoTask を消す
+// EventResponse に変更する
 
-  static async setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any) {
-    Webhook.postError(step, error.toString(), model.reference.path)
-    return NeoTask.setFatal(model, step, error)
-  }
-}
+// export class NeoTask extends Retrycf.NeoTask {
+//   static async setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T) {
+//     model = await NeoTask.setFatalIfRetryCountIsMax(model, previousModel)
+//     if (model.neoTask && model.neoTask.fatal) {
+//       Webhook.postError('retry error', JSON.stringify(model.neoTask.fatal), model.reference.path)
+//     }
+//     return model
+//   }
+
+//   static async setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any) {
+//     Webhook.postError(step, error.toString(), model.reference.path)
+//     return NeoTask.setFatal(model, step, error)
+//   }
+// }
 
 export class PringUtil {
   static collectionPath<T extends Pring.Base>(model: T): string {
@@ -175,7 +181,7 @@ export interface OrderProtocol extends Pring.Base {
   // Mission
   completed?: { [id: string]: boolean }
   // EventResponse
-  response?: EventResponse.IResponse
+  result?: EventResponse.IResult
 }
 
 export enum OrderShopPaymentStatus {
@@ -253,35 +259,40 @@ export class StripeError extends Error {
     }
   }
 
-  async setNeoTask<T extends Retrycf.HasNeoTask>(model: T, step: string): Promise<T> {
+  async setNeoTask<T extends OrderProtocol>(model: T, step: string): Promise<T> {
     switch (this.type) {
       // validate
       case StripeErrorType.StripeCardError: {
         const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeCardError, this.message)
-        model = await NeoTask.setInvalid(model, validationError)
+        // model = await NeoTask.setInvalid(model, validationError)
+        model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, this.message)
         break
       }
       case StripeErrorType.StripeInvalidRequestError: {
         const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeInvalidRequestError, this.message)
-        model = await NeoTask.setInvalid(model, validationError)
+        // model = await NeoTask.setInvalid(model, validationError)
+        model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, this.message)
         break
       }
 
       // retry
       case StripeErrorType.StripeAPIError:
       case StripeErrorType.StripeConnectionError:
-        model = await NeoTask.setRetry(model, step, this.message)
+        // model = await NeoTask.setRetry(model, step, this.message)
+        // TODO: Retry
         break
 
       // fatal
       case StripeErrorType.RateLimitError:
       case StripeErrorType.StripeAuthenticationError:
       case StripeErrorType.UnexpectedError:
-        model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+        // model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+        model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
         break
 
       default:
-        model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+        // model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
+        model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
     }
     return model
   }
@@ -472,7 +483,8 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // This error may be a data preparetion error. In that case, it will be solved by retrying.
-        orderObject.order = await NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error)
+        // orderObject.order = await NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error)
+        // TODO: Retry
         throw new FlowError(error, orderObject.order.neoTask)
       }
     })
@@ -498,7 +510,8 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(ValidationErrorType.ShopIsNotActive, validationError.reason)
           throw new FlowError(error, orderObject.order.neoTask)
         }
 
@@ -527,7 +540,8 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason)
           throw new FlowError(error, orderObject.order.neoTask)
         }
 
@@ -562,7 +576,8 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason)
           throw new FlowError(error, orderObject.order.neoTask)
         }
 
@@ -589,7 +604,8 @@ export namespace Functions {
 
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
-          orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
+          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason)
           throw new FlowError(error, orderObject.order.neoTask)
         }
 
@@ -690,7 +706,8 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // If this step failed, we can not remember chargeID. Because set fatal error.
-        orderObject.order = await NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error)
+        // orderObject.order = await NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error)
+        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest('updateOrder', error)
         throw new FlowError(error, orderObject.order.neoTask)
       }
     })
@@ -723,7 +740,8 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // This step fails only when a batch error occurs. Because set retry.
-        orderObject.order = await NeoTask.setRetry(orderObject.order, 'updateOrderShops', error)
+        // orderObject.order = await NeoTask.setRetry(orderObject.order, 'updateOrderShops', error)
+        // TODO: set retry
         throw new FlowError(error, orderObject.order)
       }
     })
@@ -731,12 +749,14 @@ export namespace Functions {
   const setOrderTask: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        orderObject.order = await NeoTask.setSuccess(orderObject.order)
+        // orderObject.order = await NeoTask.setSuccess(orderObject.order)
+        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setOK()
 
         return orderObject
       } catch (error) {
         // This step fails only when update error occurs. Because set retry.
-        orderObject.order = await NeoTask.setRetry(orderObject.order, 'setOrderTask', error)
+        // orderObject.order = await NeoTask.setRetry(orderObject.order, 'setOrderTask', error)
+        // TODO: Retry
         throw new FlowError(error, orderObject.order)
       }
     })
@@ -747,8 +767,10 @@ export namespace Functions {
    */
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     try {
-      const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder)
-      orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder)
+      const shouldRetry = false
+      // TODO: Retry
+      // const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder)
+      // orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder)
 
       // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
       if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
@@ -783,7 +805,8 @@ export namespace Functions {
 
       // If not thrown as FlowError, set FlowError.
       if (error.constructor !== FlowError) {
-        await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
+        // await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
+        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest('orderPaymentRequested', error.toString())
       }
 
       return Promise.reject(error)
