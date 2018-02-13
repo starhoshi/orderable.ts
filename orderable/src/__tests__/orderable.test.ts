@@ -335,6 +335,7 @@ describe('orderPaymentRequested', () => {
     })
   })
 
+  // TODO: test Amount must be at least 50 JPY
   describe('over limit of stripe', () => {
     test('Retrycf.ValidationError StripeInvalidRequestError', async () => {
       const order = Helper.Firebase.shared.defaultOrder
