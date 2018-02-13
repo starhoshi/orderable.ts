@@ -317,12 +317,13 @@ var Functions;
         Operator[Operator["plus"] = 1] = "plus";
         Operator[Operator["minus"] = -1] = "minus";
     })(Operator = Functions.Operator || (Functions.Operator = {}));
+    const preventStepName = 'preventMultipleProcessing';
     const preventMultipleProcessing = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             if (orderObject.isCharged) {
                 return orderObject;
             }
-            const completed = yield Mission.markCompleted(orderObject.order.reference, 'preventMultipleProcessing');
+            const completed = yield Mission.markCompleted(orderObject.order.reference, preventStepName);
             orderObject.order.completed = completed;
             return orderObject;
         }
@@ -437,8 +438,7 @@ var Functions;
         }
         catch (error) {
             // clear function started flag for retry.
-            yield Mission.clear(orderObject.order.reference);
-            orderObject.order.completed = {};
+            orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
             if (error.constructor === Retrycf.ValidationError) {
                 const validationError = error;
                 orderObject.order = yield NeoTask.setInvalid(orderObject.order, validationError);
@@ -482,8 +482,7 @@ var Functions;
             // Since stripe.charge failed after reducing stock count, restore stock quantity.
             yield orderObject.updateStock(Operator.plus);
             // Restored stock count, so clean up `completed` for retry.
-            yield Mission.clear(orderObject.order.reference);
-            orderObject.order.completed = {};
+            orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
             if (error.constructor === StripeError) {
                 const stripeError = error;
                 orderObject.order = yield stripeError.setNeoTask(orderObject.order, 'payment');

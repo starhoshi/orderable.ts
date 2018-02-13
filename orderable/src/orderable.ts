@@ -434,6 +434,7 @@ export namespace Functions {
     minus = -1
   }
 
+  const preventStepName = 'preventMultipleProcessing'
   const preventMultipleProcessing: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
@@ -441,7 +442,7 @@ export namespace Functions {
           return orderObject
         }
 
-        const completed = await Mission.markCompleted(orderObject.order.reference, 'preventMultipleProcessing')
+        const completed = await Mission.markCompleted(orderObject.order.reference, preventStepName)
         orderObject.order.completed = completed
 
         return orderObject
@@ -584,8 +585,7 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // clear function started flag for retry.
-        await Mission.clear(orderObject.order.reference)
-        orderObject.order.completed = {}
+        orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
 
         if (error.constructor === Retrycf.ValidationError) {
           const validationError = error as Retrycf.ValidationError
@@ -640,8 +640,7 @@ export namespace Functions {
         // Since stripe.charge failed after reducing stock count, restore stock quantity.
         await orderObject.updateStock(Operator.plus)
         // Restored stock count, so clean up `completed` for retry.
-        await Mission.clear(orderObject.order.reference)
-        orderObject.order.completed = {}
+        orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
 
         if (error.constructor === StripeError) {
           const stripeError = error as StripeError
