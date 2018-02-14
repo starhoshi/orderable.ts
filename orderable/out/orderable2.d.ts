@@ -101,18 +101,20 @@ export declare class BaseError extends Error {
     constructor(id: string, message: string);
     toString(): string;
 }
-export declare class RetryableError extends BaseError {
-    name: 'RetryableError';
-    constructor(id: string, message: string);
-}
 export declare class BadRequestError extends BaseError {
     name: 'BadRequestError';
     constructor(id: string, message: string);
 }
+export declare enum ErrorType {
+    Retry = "Retry",
+    Completed = "Completed",
+    BadRequest = "BadRequest",
+    Internal = "Internal",
+}
 export declare class OrderableError extends Error {
     step: string;
-    type: 'retry' | 'completed' | 'badRequest' | 'internal';
-    constructor(step: string, type: string, error: Error);
+    type: ErrorType;
+    constructor(step: string, errorType: ErrorType, error: Error);
 }
 export declare enum StripeErrorType {
     StripeCardError = "StripeCardError",
@@ -130,6 +132,7 @@ export declare class StripeError extends Error {
     requestId: string;
     error: any;
     constructor(error: any);
+    setError<T extends OrderProtocol>(model: T, step: string): Promise<ErrorType.Retry | ErrorType.BadRequest | ErrorType.Internal>;
 }
 export declare namespace Functions {
     class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {

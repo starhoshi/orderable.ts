@@ -92,20 +92,21 @@ class BaseError extends Error {
     }
 }
 exports.BaseError = BaseError;
-class RetryableError extends BaseError {
-    constructor(id, message) {
-        super(id, message);
-    }
-}
-exports.RetryableError = RetryableError;
 class BadRequestError extends BaseError {
     constructor(id, message) {
         super(id, message);
     }
 }
 exports.BadRequestError = BadRequestError;
+var ErrorType;
+(function (ErrorType) {
+    ErrorType["Retry"] = "Retry";
+    ErrorType["Completed"] = "Completed";
+    ErrorType["BadRequest"] = "BadRequest";
+    ErrorType["Internal"] = "Internal";
+})(ErrorType = exports.ErrorType || (exports.ErrorType = {}));
 class OrderableError extends Error {
-    constructor(step, type, error) {
+    constructor(step, errorType, error) {
         super(`An error occurred in step: ${step}`);
         Object.defineProperty(this, 'step', {
             get: () => step
@@ -167,6 +168,42 @@ class StripeError extends Error {
                 this.type = StripeErrorType.UnexpectedError;
                 break;
         }
+    }
+    setError(model, step) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let errorType = ErrorType.Internal;
+            switch (this.type) {
+                // validate
+                case StripeErrorType.StripeCardError: {
+                    errorType = ErrorType.BadRequest;
+                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`);
+                    break;
+                }
+                case StripeErrorType.StripeInvalidRequestError: {
+                    errorType = ErrorType.BadRequest;
+                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`);
+                    break;
+                }
+                // retry
+                case StripeErrorType.StripeAPIError:
+                case StripeErrorType.StripeConnectionError:
+                    errorType = ErrorType.Retry;
+                    model.retry = yield Retrycf.setRetry(model.reference, model.rawValue(), `${this.type}: ${this.message}`);
+                    break;
+                // fatal
+                case StripeErrorType.RateLimitError:
+                case StripeErrorType.StripeAuthenticationError:
+                case StripeErrorType.UnexpectedError:
+                    errorType = ErrorType.Internal;
+                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
+                    break;
+                default:
+                    errorType = ErrorType.Internal;
+                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
+                    break;
+            }
+            return errorType;
+        });
     }
 }
 exports.StripeError = StripeError;
@@ -286,11 +323,11 @@ var Functions;
         }
         catch (error) {
             if (error.constructor === Mission.CompletedError) {
-                throw new OrderableError(preventStepName, 'completed', error);
+                throw new OrderableError(preventStepName, ErrorType.Completed, error);
             }
             // if not CompletedError, it maybe firebase internal error, because retry.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError(preventStepName, 'retry', error);
+            throw new OrderableError(preventStepName, ErrorType.Retry, error);
         }
     }));
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -314,7 +351,7 @@ var Functions;
             // throw new FlowError(error, orderObject.order.neoTask)
             // This error may be a data preparetion error. In that case, it will be solved by retrying.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError(preventStepName, 'retry', error);
+            throw new OrderableError(preventStepName, ErrorType.Retry, error);
         }
     }));
     const validateShopIsActive = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -343,10 +380,10 @@ var Functions;
             if (error.constructor === BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validateShopIsActive', 'badRequest', error);
+                throw new OrderableError('validateShopIsActive', ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validateShopIsActive', 'internal', error);
+            throw new OrderableError('validateShopIsActive', ErrorType.Internal, error);
         }
     }));
     const validateSKUIsActive = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -376,10 +413,10 @@ var Functions;
             if (error.constructor === BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validateSKUIsActive', 'badRequest', error);
+                throw new OrderableError('validateSKUIsActive', ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validateSKUIsActive', 'internal', error);
+            throw new OrderableError('validateSKUIsActive', ErrorType.Internal, error);
         }
     }));
     const validatePaymentMethod = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -415,10 +452,10 @@ var Functions;
             if (error.constructor === BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validatePaymentMethod', 'badRequest', error);
+                throw new OrderableError('validatePaymentMethod', ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validatePaymentMethod', 'internal', error);
+            throw new OrderableError('validatePaymentMethod', ErrorType.Internal, error);
         }
     }));
     const validateAndDecreaseStock = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -443,10 +480,10 @@ var Functions;
             if (error.constructor === BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validateAndDecreaseStock', 'badRequest', error);
+                throw new OrderableError('validateAndDecreaseStock', ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validateAndDecreaseStock', 'internal', error);
+            throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error);
             // throw (error)
         }
     }));
@@ -490,10 +527,11 @@ var Functions;
                 const stripeError = error;
                 // orderObject.order = await stripeError.setNeoTask(orderObject.order, 'payment')
                 // TODO: striperror handling
-                throw new OrderableError('payment', '処理タイプ', error);
+                const errorType = yield stripeError.setError(orderObject.order, 'payment');
+                throw new OrderableError('payment', errorType, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('payment', 'internal', error);
+            throw new OrderableError('payment', ErrorType.Internal, error);
         }
     }));
     /**
@@ -532,7 +570,7 @@ var Functions;
             // orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest('updateOrder', error)
             // throw new FlowError(error, orderObject.order.neoTask)
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('updateOrder', 'internal', error);
+            throw new OrderableError('updateOrder', ErrorType.Internal, error);
         }
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -565,7 +603,7 @@ var Functions;
             // throw new FlowError(error, orderObject.order)
             // This step fails only when a batch error occurs. Because set retry.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError('updateOrderShops', 'retry', error);
+            throw new OrderableError('updateOrderShops', ErrorType.Retry, error);
         }
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -580,7 +618,7 @@ var Functions;
             // TODO: Retry
             // throw new FlowError(error, orderObject.order)
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError('setOrderTask', 'retry', error);
+            throw new OrderableError('setOrderTask', ErrorType.Retry, error);
         }
     }));
     /**
@@ -629,7 +667,7 @@ var Functions;
             // }
             if (error.constructor !== OrderableError) {
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-                throw new OrderableError('orderPaymentRequested', 'internal', error);
+                throw new OrderableError('orderPaymentRequested', ErrorType.Internal, error);
             }
             return Promise.reject(error);
         }

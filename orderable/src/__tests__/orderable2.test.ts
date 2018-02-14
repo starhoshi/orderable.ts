@@ -1,154 +1,154 @@
-// import 'jest'
-// import * as admin from 'firebase-admin'
-// import * as functions from 'firebase-functions'
-// import { Pring, property } from 'pring'
-// import * as Orderable from '../orderable'
-// import * as Model from './sampleModel'
-// import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
-// import * as Helper from './firebaseHelper'
-// import * as Retrycf from 'retrycf'
-// import * as Rescue from 'rescue-fire'
-// import * as Mission from 'mission-completed'
+import 'jest'
+import * as admin from 'firebase-admin'
+import * as functions from 'firebase-functions'
+import { Pring, property } from 'pring'
+import * as Orderable from '../orderable'
+import * as Model from './sampleModel'
+import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
+import * as Helper from './firebaseHelper'
+import * as Retrycf from 'retrycf'
+import * as Rescue from 'rescue-fire'
+import * as Mission from 'mission-completed'
 
-// beforeAll(() => {
-//   const _ = Helper.Firebase.shared
-// })
+beforeAll(() => {
+  const _ = Helper.Firebase.shared
+})
 
-// jest.setTimeout(20000)
+jest.setTimeout(20000)
 
-// describe('OrderObject', () => {
-//   let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
-//   beforeEach(() => {
-//     const order = new Model.SampleOrder()
-//     const event = Rescue.event(order.reference, order.rawValue(), { params: { orderID: order.id } })
-//     orderObject = Helper.Firebase.shared.orderObject(event)
-//     orderObject.order = order
-//   })
+describe('OrderObject', () => {
+  let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
+  beforeEach(() => {
+    const order = new Model.SampleOrder()
+    const event = Rescue.event(order.reference, order.rawValue(), { params: { orderID: order.id } })
+    orderObject = Helper.Firebase.shared.orderObject(event)
+    orderObject.order = order
+  })
 
-//   describe('getShops', () => {
-//     expect('TODO')
-//   })
+  describe('getShops', () => {
+    expect('TODO')
+  })
 
-//   describe('isCharged', () => {
-//     test('return true when charge completed', () => {
-//       orderObject.order!.stripe = new Model.SampleStripeCharge()
-//       orderObject.order!.stripe!.chargeID = 'test'
+  describe('isCharged', () => {
+    test('return true when charge completed', () => {
+      orderObject.order!.stripe = new Model.SampleStripeCharge()
+      orderObject.order!.stripe!.chargeID = 'test'
 
-//       expect(orderObject.isCharged).toBeTruthy()
-//     })
+      expect(orderObject.isCharged).toBeTruthy()
+    })
 
-//     test('return false when stripe is undefined', () => {
-//       orderObject.order!.stripe = undefined
+    test('return false when stripe is undefined', () => {
+      orderObject.order!.stripe = undefined
 
-//       expect(orderObject.isCharged).toBeFalsy()
-//     })
+      expect(orderObject.isCharged).toBeFalsy()
+    })
 
-//     test('return false when stripe.chargeID is undefined', () => {
-//       orderObject.order!.stripe = new Model.SampleStripeCharge()
-//       orderObject.order!.stripe!.chargeID = undefined
+    test('return false when stripe.chargeID is undefined', () => {
+      orderObject.order!.stripe = new Model.SampleStripeCharge()
+      orderObject.order!.stripe!.chargeID = undefined
 
-//       expect(orderObject.isCharged).toBeFalsy()
-//     })
-//   })
+      expect(orderObject.isCharged).toBeFalsy()
+    })
+  })
 
-//   describe('paymentAgencyType', () => {
-//     test('return Stripe when exist stripe', () => {
-//       orderObject.order!.stripe = new Model.SampleStripeCharge()
+  describe('paymentAgencyType', () => {
+    test('return Stripe when exist stripe', () => {
+      orderObject.order!.stripe = new Model.SampleStripeCharge()
 
-//       expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
-//     })
+      expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
+    })
 
-//     test('return Unknown when stripe is undefined', () => {
-//       orderObject.order!.stripe = undefined
+    test('return Unknown when stripe is undefined', () => {
+      orderObject.order!.stripe = undefined
 
-//       expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
-//     })
+      expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
+    })
 
-//     test('return Unknown when order is undefined', () => {
-//       expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
-//     })
-//   })
+    test('return Unknown when order is undefined', () => {
+      expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
+    })
+  })
 
-//   describe('updateStock', () => {
-//     let model: Helper.SampleModel
+  describe('updateStock', () => {
+    let model: Helper.SampleModel
 
-//     beforeEach(async () => {
-//       model = await Helper.Firebase.shared.makeValidateModel()
-//       orderObject.order = model.order
-//     })
+    beforeEach(async () => {
+      model = await Helper.Firebase.shared.makeValidateModel()
+      orderObject.order = model.order
+    })
 
-//     describe('finite', async () => {
-//       describe('when update succeeded', () => {
-//         const stock = 100
-//         beforeEach(async () => {
-//           for (const sku of model.skus) {
-//             sku.stock = stock
-//             sku.stockType = Orderable.StockType.Finite
-//             await sku.update()
-//           }
-//           let quantity = 0
-//           for (const orderSKU of model.orderSKUs) {
-//             quantity += 1
-//             orderSKU.quantity = quantity
-//             await orderSKU.update()
-//           }
-//           orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-//         })
+    describe('finite', async () => {
+      describe('when update succeeded', () => {
+        const stock = 100
+        beforeEach(async () => {
+          for (const sku of model.skus) {
+            sku.stock = stock
+            sku.stockType = Orderable.StockType.Finite
+            await sku.update()
+          }
+          let quantity = 0
+          for (const orderSKU of model.orderSKUs) {
+            quantity += 1
+            orderSKU.quantity = quantity
+            await orderSKU.update()
+          }
+          orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+        })
 
-//         test('stock decremented', async () => {
-//           await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
+        test('stock decremented', async () => {
+          await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
 
-//           let quantity = 0
-//           for (const orderSKU of model.orderSKUs) {
-//             quantity += 1
-//             const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-//             const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-//             expect(sku.stock).toEqual(stock - quantity)
-//           }
-//         })
+          let quantity = 0
+          for (const orderSKU of model.orderSKUs) {
+            quantity += 1
+            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+            const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+            expect(sku.stock).toEqual(stock - quantity)
+          }
+        })
 
-//         test('stock incremented', async () => {
-//           await orderObject.updateStock(Orderable.Functions.Operator.plus, 'step')
+        test('stock incremented', async () => {
+          await orderObject.updateStock(Orderable.Functions.Operator.plus, 'step')
 
-//           let quantity = 0
-//           for (const orderSKU of model.orderSKUs) {
-//             quantity += 1
-//             const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-//             const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-//             expect(sku.stock).toEqual(stock + quantity)
-//           }
-//         })
-//       })
+          let quantity = 0
+          for (const orderSKU of model.orderSKUs) {
+            quantity += 1
+            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+            const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
+            expect(sku.stock).toEqual(stock + quantity)
+          }
+        })
+      })
 
-//       describe('when sku is out of stock', () => {
-//         test('ValidationError.OutOfStock', async () => {
-//           let quantity = 10000000000000
-//           for (const orderSKU of model.orderSKUs) {
-//             orderSKU.quantity = quantity
-//             await orderSKU.update()
-//           }
-//           const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
-//           orderObject.orderSKUObjects = orderSKUObjects
+      describe('when sku is out of stock', () => {
+        test('ValidationError.OutOfStock', async () => {
+          let quantity = 10000000000000
+          for (const orderSKU of model.orderSKUs) {
+            orderSKU.quantity = quantity
+            await orderSKU.update()
+          }
+          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          orderObject.orderSKUObjects = orderSKUObjects
 
-//           expect.hasAssertions()
-//           try {
-//             await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
-//           } catch (e) {
-//             expect(e).toBeInstanceOf(Retrycf.ValidationError)
-//             const validationError = e as Retrycf.ValidationError
-//             expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
+          expect.hasAssertions()
+          try {
+            await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
+          } catch (e) {
+            expect(e).toBeInstanceOf(Retrycf.ValidationError)
+            const validationError = e as Retrycf.ValidationError
+            expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
-//             // check stock did not decrement
-//             for (const sku of model.skus) {
-//               const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
-//               expect(updatedSKU.stock).toEqual(sku.stock)
-//             }
-//           }
-//         })
-//       })
-//     })
-//   })
-// })
+            // check stock did not decrement
+            for (const sku of model.skus) {
+              const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
+              expect(updatedSKU.stock).toEqual(sku.stock)
+            }
+          }
+        })
+      })
+    })
+  })
+})
 
 // describe('orderPaymentRequested', () => {
 //   const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
