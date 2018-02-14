@@ -151,7 +151,7 @@ describe('OrderObject', () => {
   })
 })
 
-describe.only('orderPaymentRequested', () => {
+describe('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
     const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
     preOrder = preOrder || model.order.rawValue()
@@ -456,14 +456,32 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-  // TODO
+  describe('when retry 2 times', () => {
+    test('success', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.retry = { count: 2, errors: ['', ''] }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+      const data = await makeTestData(customModel, { retry: { count: 1 } })
+      await data.model.order.update()
+      data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
+
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
+
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
+      ])
+    })
+  })
+
   describe('when retry 3 times', () => {
     test('fatal error', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       order.retry = { count: 3, errors: ['', '', ''] }
-      // order.neoTask = { status: Retrycf.NeoTaskStatus.failure, retry: { count: 3, error: ['', '', ''] } }
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
-      const data = await makeTestData(customModel, { retry: { count: 2}})
+      const data = await makeTestData(customModel, { retry: { count: 2 } })
       await data.model.order.update()
       data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
@@ -489,10 +507,10 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-//   // TODO
-//   // stripe charge error type cover
-//   // retry 2 times
-//   // order timelimit
+  //   // TODO
+  //   // stripe charge error type cover
+  //   // retry 2 times
+  //   // order timelimit
 })
 
 describe('OrderSKUObject', async () => {
