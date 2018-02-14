@@ -378,7 +378,7 @@ describe('orderPaymentRequested', () => {
       stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
       stripeCharge.customerID = Helper.Firebase.shared.defaultOrder.stripe!.customerID
       data.model.order.stripe = stripeCharge.rawValue()
-      data.model.order.neoTask = {} as any
+      // data.model.order.neoTask = {} as any
       await data.model.order.update()
 
       const preOrder = data.model.order.rawValue()

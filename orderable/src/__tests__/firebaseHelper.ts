@@ -197,9 +197,9 @@ export class Firebase {
       }
       order.stripe = stripeCharge.rawValue()
     }
-    if (dataSet.order.neoTask) {
-      order.neoTask = dataSet.order.neoTask as any
-    }
+    // if (dataSet.order.neoTask) {
+    //   order.neoTask = dataSet.order.neoTask as any
+    // }
 
     const orderSKUsForReturn: Model.SampleOrderSKU[] = []
     const orderShopsForReturn: Model.SampleOrderShop[] = []
@@ -245,7 +245,7 @@ export class Firebase {
 
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
+      // expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
       // expect(order.neoTask!.completed).toEqual({[this.step]: true})
       expect(order.completed).toEqual({[this.step]: true})
       expect(order.stripe!.chargeID).toBeDefined()
@@ -277,14 +277,14 @@ export class Firebase {
 
   async expectRetry(model: SampleModel, retryCount: number = 1) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
-      expect(order.neoTask!.retry!.count).toBe(retryCount)
+      // expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
+      // expect(order.neoTask!.retry!.count).toBe(retryCount)
   }
 
   async expectFatal(model: SampleModel, step: string) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
-      expect(order.neoTask!.fatal!.step).toBe(step)
+      // expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
+      // expect(order.neoTask!.fatal!.step).toBe(step)
   }
 
   async expectOrderShop(model: SampleModel) {
