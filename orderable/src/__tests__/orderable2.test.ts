@@ -227,27 +227,29 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-//   describe('sku is not active', () => {
-//     test('Retrycf.ValidationError SKUIsNotActive', async () => {
-//       const shops = Helper.Firebase.shared.defaultShops
-//       shops[0].skus[0].isActive = false
-//       const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
+  describe('sku is not active', () => {
+    test('Retrycf.ValidationError SKUIsNotActive', async () => {
+      const shops = Helper.Firebase.shared.defaultShops
+      shops[0].skus[0].isActive = false
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         const flowError = e as Orderable.FlowError
-//         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-//         const validationError = flowError.error as Retrycf.ValidationError
-//         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.SKUIsNotActive)
-//       }
-//     })
-//   })
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+        expect(orderableError.step).toBe('validateSKUIsActive')
+        const badRequestError = orderableError.error as Orderable.BadRequestError
+        expect(badRequestError).toBeInstanceOf(Orderable.BadRequestError)
+        expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.SKUIsNotActive)
+      }
+    })
+  })
 
 //   describe('stripe card is expired', () => {
 //     test('Retrycf.ValidationError SKUIsNotActive', async () => {
