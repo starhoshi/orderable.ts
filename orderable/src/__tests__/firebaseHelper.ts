@@ -279,6 +279,7 @@ export class Firebase {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.result!.status).toEqual(EventResponse.Status.InternalError)
       expect(order.result!.id!).toBe(step)
+      expect(order.result!.error).toBeDefined()
   }
 
   async expectOrderShop(model: SampleModel) {

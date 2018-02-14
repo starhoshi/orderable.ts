@@ -98,6 +98,12 @@ class BadRequestError extends BaseError {
     }
 }
 exports.BadRequestError = BadRequestError;
+class RetryFailedError extends BaseError {
+    constructor(id, message) {
+        super(id, message);
+    }
+}
+exports.RetryFailedError = RetryFailedError;
 var ErrorType;
 (function (ErrorType) {
     ErrorType["Retry"] = "Retry";
@@ -575,16 +581,21 @@ var Functions;
      */
     Functions.orderPaymentRequested = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const shouldRetry = false;
+            // const shouldRetry = false
             // TODO: Retry
             // const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder)
             // orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder)
+            const retryStatus = Retrycf.retryStatus(orderObject.order.rawValue(), orderObject.previousOrder.rawValue());
+            if (retryStatus === Retrycf.Status.RetryFailed) {
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('orderPaymentRequested', 'Retry Failed');
+                throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.retry.errors.toString()));
+            }
             // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
             if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
                 // continue
             }
             else {
-                if (!shouldRetry) {
+                if (retryStatus !== Retrycf.Status.ShouldRetry) {
                     return undefined; // not continue
                 }
             }

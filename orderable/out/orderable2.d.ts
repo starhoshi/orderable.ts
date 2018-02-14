@@ -105,6 +105,10 @@ export declare class BadRequestError extends BaseError {
     name: 'BadRequestError';
     constructor(id: string, message: string);
 }
+export declare class RetryFailedError extends BaseError {
+    name: 'RetryFailedError';
+    constructor(id: string, message: string);
+}
 export declare enum ErrorType {
     Retry = "Retry",
     Completed = "Completed",

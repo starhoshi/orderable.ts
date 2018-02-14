@@ -164,6 +164,14 @@ export class BadRequestError extends BaseError {
   }
 }
 
+export class RetryFailedError extends BaseError {
+  name: 'RetryFailedError'
+
+  constructor(id: string, message: string) {
+    super(id, message)
+  }
+}
+
 export enum ErrorType {
   Retry = 'Retry',
   Completed = 'Completed',
@@ -760,16 +768,22 @@ export namespace Functions {
    */
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     try {
-      const shouldRetry = false
+      // const shouldRetry = false
       // TODO: Retry
       // const shouldRetry = NeoTask.shouldRetry(orderObject.order, orderObject.previousOrder)
       // orderObject.order = await NeoTask.setFatalAndPostToSlackIfRetryCountIsMax(orderObject.order, orderObject.previousOrder)
+
+      const retryStatus = Retrycf.retryStatus(orderObject.order.rawValue(), orderObject.previousOrder.rawValue())
+      if (retryStatus === Retrycf.Status.RetryFailed) {
+        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('orderPaymentRequested', 'Retry Failed')
+        throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.retry!.errors.toString()))
+      }
 
       // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
       if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
         // continue
       } else {
-        if (!shouldRetry) {
+        if (retryStatus !== Retrycf.Status.ShouldRetry) {
           return undefined // not continue
         }
       }

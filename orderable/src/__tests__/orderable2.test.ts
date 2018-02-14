@@ -467,12 +467,25 @@ describe.only('orderPaymentRequested', () => {
       await data.model.order.update()
       data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
-      await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      try {
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.Internal)
+        expect(orderableError.step).toBe('orderPaymentRequested')
+        const retryError = orderableError.error as Orderable.RetryFailedError
+        expect(retryError).toBeInstanceOf(Orderable.RetryFailedError)
+        expect(retryError.id).toEqual('orderPaymentRequested')
+        expect(retryError.message).toBeDefined()
+        expect(retryError.stack).toBeDefined()
+        expect(retryError.name).toBeDefined()
 
-      await Promise.all([
-        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
-        Helper.Firebase.shared.expectFatal(data.model, 'retry_failed')
-      ])
+        await Promise.all([
+          Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
+          Helper.Firebase.shared.expectFatal(data.model, 'orderPaymentRequested')
+        ])
+      }
     })
   })
 
