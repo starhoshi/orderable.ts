@@ -6,17 +6,11 @@ import { Pring } from 'pring';
 import * as Retrycf from 'retrycf';
 import * as Flow from '@1amageek/flow';
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
+import * as EventResponse from 'event-response';
 export declare const initialize: (options: {
     adminOptions: any;
     stripeToken: string;
-    slack?: SlackParams | undefined;
 }) => void;
-export interface SlackParams {
-    url: string;
-    channel: string;
-    username?: string;
-    iconEmoji?: string;
-}
 export declare enum ValidationErrorType {
     ShopIsNotActive = "ShopIsNotActive",
     SKUIsNotActive = "SKUIsNotActive",
@@ -25,15 +19,6 @@ export declare enum ValidationErrorType {
     StripeInvalidRequestError = "StripeInvalidRequestError",
     StripeCardExpired = "StripeCardExpired",
     PaymentInfoNotFound = "PaymentInfoNotFound",
-}
-export declare class FlowError extends Error {
-    task?: Retrycf.NeoTask;
-    error: any;
-    constructor(error: any, task?: Retrycf.NeoTask);
-}
-export declare class NeoTask extends Retrycf.NeoTask {
-    static setFatalAndPostToSlackIfRetryCountIsMax<T extends Retrycf.HasNeoTask>(model: T, previousModel: T): Promise<T>;
-    static setFatalAndPostToSlack<T extends Retrycf.HasNeoTask>(model: T, step: string, error: any): Promise<T>;
 }
 export declare class PringUtil {
     static collectionPath<T extends Pring.Base>(model: T): string;
@@ -85,6 +70,11 @@ export interface OrderProtocol extends Pring.Base {
     orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>;
     paymentStatus: OrderPaymentStatus;
     stripe?: StripeProtocol;
+    completed?: {
+        [id: string]: boolean;
+    };
+    result?: EventResponse.IResult;
+    retry?: Retrycf.IRetry;
 }
 export declare enum OrderShopPaymentStatus {
     Unknown = 0,
@@ -103,6 +93,34 @@ export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtoc
     sku: FirebaseFirestore.DocumentReference;
     shop: FirebaseFirestore.DocumentReference;
 }
+export declare class BaseError extends Error {
+    id: string;
+    name: string;
+    message: string;
+    stack?: string;
+    constructor(id: string, message: string);
+    toString(): string;
+}
+export declare class BadRequestError extends BaseError {
+    name: 'BadRequestError';
+    constructor(id: string, message: string);
+}
+export declare class RetryFailedError extends BaseError {
+    name: 'RetryFailedError';
+    constructor(id: string, message: string);
+}
+export declare enum ErrorType {
+    Retry = "Retry",
+    Completed = "Completed",
+    BadRequest = "BadRequest",
+    Internal = "Internal",
+}
+export declare class OrderableError extends Error {
+    step: string;
+    type: ErrorType;
+    error: Error;
+    constructor(step: string, errorType: ErrorType, error: Error);
+}
 export declare enum StripeErrorType {
     StripeCardError = "StripeCardError",
     RateLimitError = "RateLimitError",
@@ -119,7 +137,7 @@ export declare class StripeError extends Error {
     requestId: string;
     error: any;
     constructor(error: any);
-    setNeoTask<T extends Retrycf.HasNeoTask>(model: T, step: string): Promise<T>;
+    setError<T extends OrderProtocol>(model: T, step: string): Promise<ErrorType.Retry | ErrorType.BadRequest | ErrorType.Internal>;
 }
 export declare namespace Functions {
     class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
@@ -131,7 +149,7 @@ export declare namespace Functions {
             new (): SKU;
         }): Promise<OrderSKUObject<OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKUProtocol>[]>;
     }
-    interface InitializableClass<Order extends OrderProtocol & Retrycf.HasNeoTask, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> {
+    interface InitializableClass<Order extends OrderProtocol, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> {
         order: {
             new (): Order;
         };
@@ -158,11 +176,11 @@ export declare namespace Functions {
         Unknown = 0,
         Stripe = 1,
     }
-    class OrderObject<Order extends OrderProtocol & Retrycf.HasNeoTask, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> implements Flow.Dependency {
+    class OrderObject<Order extends OrderProtocol, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> implements Flow.Dependency {
         initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
         event: functions.Event<DeltaDocumentSnapshot>;
         orderID: string;
-        order: Order & Retrycf.HasNeoTask;
+        order: Order;
         previousOrder: Order;
         shops?: Shop[];
         user?: User;

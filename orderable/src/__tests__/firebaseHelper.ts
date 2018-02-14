@@ -6,6 +6,7 @@ import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Retrycf from 'retrycf'
 import * as Stripe from 'stripe'
+import * as EventResponse from 'event-response'
 
 const stripe = new Stripe(process.env.STRIPE as string)
 
@@ -20,29 +21,17 @@ export interface SampleModel {
 }
 
 export interface DataSetOrder {
-  amount?: number,
-  currency?: string,
-  paymentStatus?: Orderable.OrderPaymentStatus,
+  amount?: number
+  currency?: string
+  paymentStatus?: Orderable.OrderPaymentStatus
   stripe?: {
     cardID: string,
     customerID: string,
     chargeID?: string
-  },
-  neoTask?: {
-    status?: Retrycf.NeoTaskStatus,
-    completed?: { [id: string]: string },
-    invalid?: {
-      validationError: string;
-      reason: string;
-    };
-    retry?: {
-      error: any[];
-      count: number;
-    };
-    fatal?: {
-      step: string;
-      error: string;
-    };
+  }
+  retry?: {
+    count: number,
+    errors: Array<any>
   }
 }
 
@@ -85,8 +74,7 @@ export class Firebase {
           projectId: 'sandbox-329fc',
           keyFilename: '../sandbox-329fc-firebase-adminsdk.json'
         },
-        stripeToken: process.env.STRIPE as string,
-        slack: undefined
+        stripeToken: process.env.STRIPE as string
       })
     }
 
@@ -138,6 +126,10 @@ export class Firebase {
       stripe: {
         cardID: 'card_1BnhthKZcOra3JxsKaxABsRj',
         customerID: 'cus_CC65RZ8Gf6zi7V'
+      },
+      retry: {
+        count: 0,
+        errors: []
       }
     }
   }
@@ -197,8 +189,8 @@ export class Firebase {
       }
       order.stripe = stripeCharge.rawValue()
     }
-    if (dataSet.order.neoTask) {
-      order.neoTask = dataSet.order.neoTask as any
+    if (dataSet.order.retry) {
+      order.retry = dataSet.order.retry
     }
 
     const orderSKUsForReturn: Model.SampleOrderSKU[] = []
@@ -241,12 +233,14 @@ export class Firebase {
     }
   }
 
-  step = 'validateAndDecreaseStock'
+  step = 'preventMultipleProcessing'
 
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
-      expect(order.neoTask!.completed).toEqual({[this.step]: true})
+      expect(order.completed).toEqual({[this.step]: true})
+      expect(order.result).toEqual({status: EventResponse.Status.OK})
+      expect(order.stripe!.cardID).toBeDefined()
+      expect(order.stripe!.customerID).toBeDefined()
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
       expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)
@@ -270,21 +264,22 @@ export class Firebase {
     }
 
     const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    // completed not contain step
-    expect(order.neoTask!.completed).toBeUndefined()
+    expect((order.completed || {})[this.step]).toBeUndefined()
     expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
   }
 
   async expectRetry(model: SampleModel, retryCount: number = 1) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
-      expect(order.neoTask!.retry!.count).toBe(retryCount)
+      expect(order.retry!.count).toBe(retryCount)
+      expect(order.retry!.errors.length).toEqual(retryCount)
+      expect(order.retry!.errors.length).toEqual(retryCount)
   }
 
   async expectFatal(model: SampleModel, step: string) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
-      expect(order.neoTask!.fatal!.step).toBe(step)
+      expect(order.result!.status).toEqual(EventResponse.Status.InternalError)
+      expect(order.result!.id!).toBe(step)
+      expect(order.result!.error).toBeDefined()
   }
 
   async expectOrderShop(model: SampleModel) {
@@ -311,6 +306,12 @@ export class Firebase {
     var observer = Function()
 
     return new Promise((resolve, reject) => {
+      documentRef.get().then(s => {
+        callback(s.data(), resolve, reject)
+      }, error => {
+        reject(error)
+      })
+
       observer = documentRef.onSnapshot(s => {
         callback(s.data(), resolve, reject)
       }, error => {
