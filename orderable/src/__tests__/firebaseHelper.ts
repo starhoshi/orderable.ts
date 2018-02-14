@@ -21,13 +21,17 @@ export interface SampleModel {
 }
 
 export interface DataSetOrder {
-  amount?: number,
-  currency?: string,
-  paymentStatus?: Orderable.OrderPaymentStatus,
+  amount?: number
+  currency?: string
+  paymentStatus?: Orderable.OrderPaymentStatus
   stripe?: {
     cardID: string,
     customerID: string,
     chargeID?: string
+  }
+  retry?: {
+    count: number,
+    errors: Array<any>
   }
 }
 
@@ -122,6 +126,10 @@ export class Firebase {
       stripe: {
         cardID: 'card_1BnhthKZcOra3JxsKaxABsRj',
         customerID: 'cus_CC65RZ8Gf6zi7V'
+      },
+      retry: {
+        count: 0,
+        errors: []
       }
     }
   }
@@ -181,9 +189,9 @@ export class Firebase {
       }
       order.stripe = stripeCharge.rawValue()
     }
-    // if (dataSet.order.neoTask) {
-    //   order.neoTask = dataSet.order.neoTask as any
-    // }
+    if (dataSet.order.retry) {
+      order.retry = dataSet.order.retry
+    }
 
     const orderSKUsForReturn: Model.SampleOrderSKU[] = []
     const orderShopsForReturn: Model.SampleOrderShop[] = []
@@ -269,8 +277,8 @@ export class Firebase {
 
   async expectFatal(model: SampleModel, step: string) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      // expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
-      // expect(order.neoTask!.fatal!.step).toBe(step)
+      expect(order.result!.status).toEqual(EventResponse.Status.InternalError)
+      expect(order.result!.id!).toBe(step)
   }
 
   async expectOrderShop(model: SampleModel) {

@@ -332,9 +332,6 @@ describe.only('orderPaymentRequested', () => {
       try {
         await Promise.all([
           Orderable.Functions.orderPaymentRequested(data.orderObject),
-          Orderable.Functions.orderPaymentRequested(data.orderObject),
-          Orderable.Functions.orderPaymentRequested(data.orderObject),
-          Orderable.Functions.orderPaymentRequested(data.orderObject),
           Orderable.Functions.orderPaymentRequested(data.orderObject)
         ])
       } catch (e) {
@@ -422,7 +419,7 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-  describe.only('data reference is broken', () => {
+  describe('data reference is broken', () => {
     test('retry error', async () => {
       const order = Helper.Firebase.shared.defaultOrder
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
@@ -443,39 +440,41 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-//   describe('charge completed before fire functions', () => {
-//     test('skip steps', async () => {
-//       const order = Helper.Firebase.shared.defaultOrder
-//       order.stripe!.chargeID = 'charged'
-//       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
-//       const data = await makeTestData(customModel)
+  describe('charge completed before fire functions', () => {
+    test('skip steps', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.stripe!.chargeID = 'charged'
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+      const data = await makeTestData(customModel)
 
-//       await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
-//       await Promise.all([
-//         Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
-//         Helper.Firebase.shared.expectOrderShop(data.model)
-//       ])
-//     })
-//   })
+      await Promise.all([
+        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model)
+      ])
+    })
+  })
 
-//   describe('when retry 3 times', () => {
-//     test('fatal error', async () => {
-//       const order = Helper.Firebase.shared.defaultOrder
-//       order.neoTask = { status: Retrycf.NeoTaskStatus.failure, retry: { count: 3, error: ['', '', ''] } }
-//       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
-//       const data = await makeTestData(customModel, { neoTask: {retry: { count: 2}}})
-//       await data.model.order.update()
-//       data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
+  // TODO
+  describe('when retry 3 times', () => {
+    test('fatal error', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.retry = { count: 3, errors: ['', '', ''] }
+      // order.neoTask = { status: Retrycf.NeoTaskStatus.failure, retry: { count: 3, error: ['', '', ''] } }
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+      const data = await makeTestData(customModel, { retry: { count: 2}})
+      await data.model.order.update()
+      data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
-//       await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
-//       await Promise.all([
-//         Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
-//         Helper.Firebase.shared.expectFatal(data.model, 'retry_failed')
-//       ])
-//     })
-//   })
+      await Promise.all([
+        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
+        Helper.Firebase.shared.expectFatal(data.model, 'retry_failed')
+      ])
+    })
+  })
 
 //   // TODO
 //   // stripe charge error type cover
@@ -483,16 +482,14 @@ describe.only('orderPaymentRequested', () => {
 //   // order timelimit
 })
 
-// // TODO
-// describe('OrderSKUObject', async () => {
-//   test('fetchFrom', async () => {
-//     expect(true)
-//   })
-// })
+describe('OrderSKUObject', async () => {
+  test('fetchFrom', async () => {
+    expect('TODO')
+  })
+})
 
-// // TODO
 describe('StripeError', async () => {
   test('StripeCardError', async () => {
-    expect(true)
+    expect('TODO')
   })
 })

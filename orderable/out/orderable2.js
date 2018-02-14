@@ -353,7 +353,6 @@ var Functions;
             // This error may be a data preparetion error. In that case, it will be solved by retrying.
             // console.log(error)
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            console.log(orderObject.order.retry);
             throw new OrderableError(preventStepName, ErrorType.Retry, error);
         }
     }));
