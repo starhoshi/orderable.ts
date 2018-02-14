@@ -251,48 +251,52 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-//   describe('stripe card is expired', () => {
-//     test('Retrycf.ValidationError SKUIsNotActive', async () => {
-//       const order = Helper.Firebase.shared.defaultOrder
-//       order.stripe!.customerID = 'cus_C1vUA7cpCejmHN'
-//       order.stripe!.cardID = 'card_1Bdre0KZcOra3Jxs6IOjm4WO' // 12/2017
-//       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+  describe('stripe error', () => {
+    test('Retrycf.ValidationError SKUIsNotActive', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.stripe!.customerID = 'cus_C1vUA7cpCejmHN'
+      order.stripe!.cardID = 'card_1Bdre0KZcOra3Jxs6IOjm4WO' // 12/2017
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         const flowError = e as Orderable.FlowError
-//         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-//         const validationError = flowError.error as Retrycf.ValidationError
-//         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.StripeCardExpired)
-//       }
-//     })
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+        expect(orderableError.step).toBe('validatePaymentMethod')
+        const badRequestError = orderableError.error as Orderable.BadRequestError
+        expect(badRequestError).toBeInstanceOf(Orderable.BadRequestError)
+        expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.StripeCardExpired)
+      }
+    })
 
-//     test('Retrycf.ValidationError PaymentInfoNotFount', async () => {
-//       const order = Helper.Firebase.shared.defaultOrder
-//       order.stripe = undefined
-//       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+    test('Retrycf.ValidationError PaymentInfoNotFount', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.stripe = undefined
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         const flowError = e as Orderable.FlowError
-//         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-//         const validationError = flowError.error as Retrycf.ValidationError
-//         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.PaymentInfoNotFound)
-//       }
-//     })
-//   })
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+        expect(orderableError.step).toBe('validatePaymentMethod')
+        const badRequestError = orderableError.error as Orderable.BadRequestError
+        expect(badRequestError).toBeInstanceOf(Orderable.BadRequestError)
+        expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.PaymentInfoNotFound)
+      }
+    })
+  })
 
 //   describe('out of stock', () => {
 //     test('Retrycf.ValidationError OutOfStock', async () => {
