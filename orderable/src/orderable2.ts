@@ -174,16 +174,19 @@ export enum ErrorType {
 export class OrderableError extends Error {
   step: string
   type: ErrorType
+  error: Error
 
   constructor(step: string, errorType: ErrorType, error: Error) {
     super(`An error occurred in step: ${step}`)
+
+    this.error = error
 
     Object.defineProperty(this, 'step', {
       get: () => step
     })
 
     Object.defineProperty(this, 'type', {
-      get: () => step
+      get: () => errorType
     })
 
     if (typeof Error.captureStackTrace === 'function') {

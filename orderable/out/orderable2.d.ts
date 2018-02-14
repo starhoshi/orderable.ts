@@ -114,6 +114,7 @@ export declare enum ErrorType {
 export declare class OrderableError extends Error {
     step: string;
     type: ErrorType;
+    error: Error;
     constructor(step: string, errorType: ErrorType, error: Error);
 }
 export declare enum StripeErrorType {

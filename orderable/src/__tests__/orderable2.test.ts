@@ -136,8 +136,8 @@ describe('OrderObject', () => {
             await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
           } catch (e) {
             expect(e).toBeInstanceOf(Orderable.BadRequestError)
-            const validationError = e as Orderable.BadRequestError
-            expect(validationError.id).toEqual(Orderable.ValidationErrorType.OutOfStock)
+            const badRequestError = e as Orderable.BadRequestError
+            expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
             // check stock did not decrement
             for (const sku of model.skus) {
@@ -151,7 +151,7 @@ describe('OrderObject', () => {
   })
 })
 
-describe('orderPaymentRequested', () => {
+describe.only('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
     const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
     preOrder = preOrder || model.order.rawValue()
@@ -203,27 +203,29 @@ describe('orderPaymentRequested', () => {
     })
   })
 
-//   describe('shop is not active', () => {
-//     test('Retrycf.ValidationError ShopIsNotActive', async () => {
-//       const shops = Helper.Firebase.shared.defaultShops
-//       shops[0].isActive = false
-//       const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
+  describe('shop is not active', () => {
+    test('Retrycf.ValidationError ShopIsNotActive', async () => {
+      const shops = Helper.Firebase.shared.defaultShops
+      shops[0].isActive = false
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         const flowError = e as Orderable.FlowError
-//         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-//         const validationError = flowError.error as Retrycf.ValidationError
-//         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.ShopIsNotActive)
-//       }
-//     })
-//   })
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+        expect(orderableError.step).toBe('validateShopIsActive')
+        const badRequestError = orderableError.error as Orderable.BadRequestError
+        expect(badRequestError).toBeInstanceOf(Orderable.BadRequestError)
+        expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.ShopIsNotActive)
+      }
+    })
+  })
 
 //   describe('sku is not active', () => {
 //     test('Retrycf.ValidationError SKUIsNotActive', async () => {

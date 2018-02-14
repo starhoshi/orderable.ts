@@ -108,11 +108,12 @@ var ErrorType;
 class OrderableError extends Error {
     constructor(step, errorType, error) {
         super(`An error occurred in step: ${step}`);
+        this.error = error;
         Object.defineProperty(this, 'step', {
             get: () => step
         });
         Object.defineProperty(this, 'type', {
-            get: () => step
+            get: () => errorType
         });
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, this.constructor);

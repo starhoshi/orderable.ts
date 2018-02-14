@@ -231,7 +231,6 @@ export class Firebase {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
       expect(order.completed).toEqual({[this.step]: true})
       expect(order.result).toEqual({status: EventResponse.Status.OK})
-      console.log(order.stripe)
       expect(order.stripe!.cardID).toBeDefined()
       expect(order.stripe!.customerID).toBeDefined()
       expect(order.stripe!.chargeID).toBeDefined()
