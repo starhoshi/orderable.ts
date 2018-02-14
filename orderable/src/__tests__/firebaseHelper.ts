@@ -1,11 +1,12 @@
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
 import { Pring, property } from 'pring'
-import * as Orderable from '../orderable'
+import * as Orderable from '../orderable2'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
-import * as Retrycf from 'retrycf'
+import * as Retrycf from '../retrycf'
 import * as Stripe from 'stripe'
+import * as EventResponse from 'event-response'
 
 const stripe = new Stripe(process.env.STRIPE as string)
 
@@ -27,22 +28,6 @@ export interface DataSetOrder {
     cardID: string,
     customerID: string,
     chargeID?: string
-  },
-  neoTask?: {
-    status?: Retrycf.NeoTaskStatus,
-    completed?: { [id: string]: string },
-    invalid?: {
-      validationError: string;
-      reason: string;
-    };
-    retry?: {
-      error: any[];
-      count: number;
-    };
-    fatal?: {
-      step: string;
-      error: string;
-    };
   }
 }
 
@@ -85,8 +70,7 @@ export class Firebase {
           projectId: 'sandbox-329fc',
           keyFilename: '../sandbox-329fc-firebase-adminsdk.json'
         },
-        stripeToken: process.env.STRIPE as string,
-        slack: undefined
+        stripeToken: process.env.STRIPE as string
       })
     }
 
@@ -245,9 +229,11 @@ export class Firebase {
 
   async expectOrder(model: SampleModel) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      // expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.success)
-      // expect(order.neoTask!.completed).toEqual({[this.step]: true})
       expect(order.completed).toEqual({[this.step]: true})
+      expect(order.result).toEqual({status: EventResponse.Status.OK})
+      console.log(order.stripe)
+      expect(order.stripe!.cardID).toBeDefined()
+      expect(order.stripe!.customerID).toBeDefined()
       expect(order.stripe!.chargeID).toBeDefined()
       expect(order.paidDate).toBeInstanceOf(Date)
       expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)

@@ -554,7 +554,7 @@ var Functions;
                     // await order.update()
                     yield order.reference.update({
                         paymentStatus: OrderPaymentStatus.Paid,
-                        stripe: { chargeID: charge.id },
+                        stripe: orderObject.order.rawValue().stripe,
                         paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
                         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
                     });

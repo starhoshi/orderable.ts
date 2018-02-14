@@ -733,7 +733,7 @@ export namespace Functions {
             // await order.update()
             await order.reference.update({
               paymentStatus: OrderPaymentStatus.Paid,
-              stripe: { chargeID: charge.id },
+              stripe: orderObject.order.rawValue().stripe ,
               paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
               updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
             })

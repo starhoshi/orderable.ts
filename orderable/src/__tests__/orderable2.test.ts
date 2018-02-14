@@ -2,13 +2,14 @@ import 'jest'
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
 import { Pring, property } from 'pring'
-import * as Orderable from '../orderable'
+import * as Orderable from '../orderable2'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Helper from './firebaseHelper'
-import * as Retrycf from 'retrycf'
+import * as Retrycf from '../retrycf'
 import * as Rescue from 'rescue-fire'
 import * as Mission from 'mission-completed'
+import * as EventResponse from 'event-response'
 
 beforeAll(() => {
   const _ = Helper.Firebase.shared
@@ -134,9 +135,9 @@ describe('OrderObject', () => {
           try {
             await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
           } catch (e) {
-            expect(e).toBeInstanceOf(Retrycf.ValidationError)
-            const validationError = e as Retrycf.ValidationError
-            expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
+            expect(e).toBeInstanceOf(Orderable.BadRequestError)
+            const validationError = e as Orderable.BadRequestError
+            expect(validationError.id).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
             // check stock did not decrement
             for (const sku of model.skus) {
@@ -150,37 +151,37 @@ describe('OrderObject', () => {
   })
 })
 
-// describe('orderPaymentRequested', () => {
-//   const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
-//     const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
-//     preOrder = preOrder || model.order.rawValue()
-//     model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
-//     await model.order.update()
+describe('orderPaymentRequested', () => {
+  const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
+    const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
+    preOrder = preOrder || model.order.rawValue()
+    model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
+    await model.order.update()
 
-//     const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
-//     const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-//       order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-//     })
+    const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
+    const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+      order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+    })
 
-//     return { model: model, orderObject: orderObject }
-//   }
+    return { model: model, orderObject: orderObject }
+  }
 
-//   describe('when one shop (Normal Scenario)', () => {
-//     test('neoTask === 1', async () => {
-//       const data = await makeTestData()
+  describe('when one shop (Normal Scenario)', () => {
+    test('neoTask === 1', async () => {
+      const data = await makeTestData()
 
-//       // run functions
-//       await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      // run functions
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
-//       // expect
-//       await Promise.all([
-//         Helper.Firebase.shared.expectOrder(data.model),
-//         Helper.Firebase.shared.expectStock(data.model),
-//         Helper.Firebase.shared.expectOrderShop(data.model),
-//         Helper.Firebase.shared.expectStripe(data.model)
-//       ])
-//     })
-//   })
+      // expect
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
+      ])
+    })
+  })
 
 //   describe('when multiple shops (Normal Scenario)', () => {
 //     test('neoTask === 1', async () => {
@@ -454,7 +455,7 @@ describe('OrderObject', () => {
 //   // stripe charge error type cover
 //   // retry 2 times
 //   // order timelimit
-// })
+})
 
 // // TODO
 // describe('OrderSKUObject', async () => {
