@@ -1824,9 +1824,9 @@ event-emitter@~0.3.5:
     d "1"
     es5-ext "~0.10.14"
 
-event-response@^0.2.3:
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/event-response/-/event-response-0.2.3.tgz#b195077296bd0f055afc5fe0a0a9add4ade7386a"
+event-response@^0.2.4:
+  version "0.2.4"
+  resolved "https://registry.yarnpkg.com/event-response/-/event-response-0.2.4.tgz#e13abff1db6a94c00661ebed446d182c1778a25b"
   dependencies:
     "@google-cloud/firestore" "^0.11.2"
     firebase-admin "^5.8.2"
@@ -4472,7 +4472,7 @@ pretty-format@^22.1.0:
     ansi-regex "^3.0.0"
     ansi-styles "^3.2.0"
 
-pring@^0.5.1, pring@^0.5.2:
+pring@^0.5.2:
   version "0.5.2"
   resolved "https://registry.yarnpkg.com/pring/-/pring-0.5.2.tgz#3ae20b7fc012ff4e09a9ffda181245355cfcfc77"
   dependencies:
@@ -4939,14 +4939,14 @@ retry-request@^3.0.0, retry-request@^3.1.0, retry-request@^3.3.1:
     request "^2.81.0"
     through2 "^2.0.0"
 
-retrycf@^0.1.3:
-  version "0.1.3"
-  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.1.3.tgz#df337f14ece408e35ee765898de2875972a5b7b0"
+retrycf@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.2.0.tgz#70b4b56bba9489345654c62b31ecb1c035817f05"
   dependencies:
     "@google-cloud/firestore" "^0.11.2"
     firebase-admin "^5.8.2"
     firebase-functions "^0.8.1"
-    pring "^0.5.1"
+    pring "^0.5.2"
 
 revalidator@0.1.x:
   version "0.1.8"

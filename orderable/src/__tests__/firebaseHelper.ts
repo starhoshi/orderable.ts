@@ -1,10 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
 import { Pring, property } from 'pring'
-import * as Orderable from '../orderable2'
+import * as Orderable from '../orderable'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
-import * as Retrycf from '../retrycf'
+import * as Retrycf from 'retrycf'
 import * as Stripe from 'stripe'
 import * as EventResponse from 'event-response'
 
