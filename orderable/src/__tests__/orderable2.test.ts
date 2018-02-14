@@ -298,51 +298,66 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-//   describe('out of stock', () => {
-//     test('Retrycf.ValidationError OutOfStock', async () => {
-//       const shops = Helper.Firebase.shared.defaultShops
-//       shops[0].skus[0].quantity = 100000000000
-//       const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
+  describe('out of stock', () => {
+    test('Retrycf.ValidationError OutOfStock', async () => {
+      const shops = Helper.Firebase.shared.defaultShops
+      shops[0].skus[0].quantity = 100000000000
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         const flowError = e as Orderable.FlowError
-//         expect(flowError.error).toBeInstanceOf(Retrycf.ValidationError)
-//         const validationError = flowError.error as Retrycf.ValidationError
-//         expect(validationError.validationErrorType).toEqual(Orderable.ValidationErrorType.OutOfStock)
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+        expect(orderableError.step).toBe('validateAndDecreaseStock')
+        const badRequestError = orderableError.error as Orderable.BadRequestError
+        expect(badRequestError).toBeInstanceOf(Orderable.BadRequestError)
+        expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.OutOfStock)
 
-//         await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
-//       }
-//     })
-//   })
+        await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+      }
+    })
+  })
 
-//   describe('cloud functions fired multiple times', () => {
-//     test('successflly only once', async () => {
-//       const data = await makeTestData()
+  describe.only('cloud functions fired multiple times', () => {
+    test('successflly only once', async () => {
+      const data = await makeTestData()
 
-//       await Promise.all([
-//         Orderable.Functions.orderPaymentRequested(data.orderObject),
-//         Orderable.Functions.orderPaymentRequested(data.orderObject),
-//         Orderable.Functions.orderPaymentRequested(data.orderObject),
-//         Orderable.Functions.orderPaymentRequested(data.orderObject),
-//         Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       ])
+      try {
+        await Promise.all([
+          Orderable.Functions.orderPaymentRequested(data.orderObject),
+          Orderable.Functions.orderPaymentRequested(data.orderObject),
+          Orderable.Functions.orderPaymentRequested(data.orderObject),
+          Orderable.Functions.orderPaymentRequested(data.orderObject),
+          Orderable.Functions.orderPaymentRequested(data.orderObject)
+        ])
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.Completed)
+        expect(orderableError.step).toBe('preventMultipleProcessing')
+        const completedError = orderableError.error as Mission.CompletedError
+        expect(completedError).toBeInstanceOf(Mission.CompletedError)
+        expect(completedError.id).toEqual('preventMultipleProcessing')
+      }
 
-//       // multiple fired, but successfully only once
-//       await Promise.all([
-//         Helper.Firebase.shared.expectOrder(data.model),
-//         Helper.Firebase.shared.expectStock(data.model),
-//         Helper.Firebase.shared.expectOrderShop(data.model),
-//         Helper.Firebase.shared.expectStripe(data.model)
-//       ])
-//     })
-//   })
+      await Helper.Firebase.shared.observe(data.orderObject.order.reference, (d, r) => {
+        if (d.result && d.result.status === EventResponse.Status.OK) { return r() }
+      })
+
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
+      ])
+    })
+  })
 
 //   // TODO: test Amount must be at least 50 JPY
 //   describe('over limit of stripe', () => {

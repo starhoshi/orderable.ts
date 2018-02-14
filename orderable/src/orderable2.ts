@@ -448,11 +448,14 @@ export namespace Functions {
           return orderObject
         }
 
+        console.log('start')
         const completed = await Mission.markCompleted(orderObject.order.reference, preventStepName)
+        console.log('ok')
         orderObject.order.completed = completed
 
         return orderObject
       } catch (error) {
+        console.log(error)
         if (error.constructor === Mission.CompletedError) {
           throw new OrderableError(preventStepName, ErrorType.Completed, error)
         }
@@ -632,8 +635,8 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
-        // // clear function started flag for retry.
-        // orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
+        // clear completed mark for retry.
+        orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
 
         // if (error.constructor === Retrycf.ValidationError) {
         //   const validationError = error as Retrycf.ValidationError
@@ -860,6 +863,8 @@ export namespace Functions {
       //   // await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
       //   orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest('orderPaymentRequested', error.toString())
       // }
+
+      console.log(error)
 
       if (error.constructor !== OrderableError) {
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
