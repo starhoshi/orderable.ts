@@ -35,11 +35,11 @@ export interface IRetry {
   /** retry count */
   count: number
   /** Record retry reason */
-  errors: { createdAt: Date, error: any }[]
+  errors: { createdAt: Date, error: any, stack: string }[]
 }
 
-const makeRetry = (data: any, error: any): IRetry => {
-  const currentError = { createdAt: new Date(), error: error }
+const makeRetry = (data: any, error: Error): IRetry => {
+  const currentError = { createdAt: new Date(), error: error.toString(), stack: error.stack || '' }
   let retry = { count: 0, errors: new Array() }
   if (data.retry && data.retry.count) {
     retry = data.retry
@@ -56,7 +56,7 @@ const makeRetry = (data: any, error: any): IRetry => {
  * @param data event.data.data()
  * @param error Error
  */
-export const setRetry = async (ref: FirebaseFirestore.DocumentReference, data: any, error: any): Promise<IRetry> => {
+export const setRetry = async (ref: FirebaseFirestore.DocumentReference, data: any, error: Error): Promise<IRetry> => {
   const retry = makeRetry(data, error)
   await ref.update({ retry: retry })
   return retry

@@ -324,7 +324,8 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-  describe.only('cloud functions fired multiple times', () => {
+  describe('cloud functions fired multiple times', () => {
+    jest.setTimeout(40000)
     test('successflly only once', async () => {
       const data = await makeTestData()
 
@@ -346,6 +347,7 @@ describe.only('orderPaymentRequested', () => {
         expect(completedError.id).toEqual('preventMultipleProcessing')
       }
 
+      // Wait until the process is completed
       await Helper.Firebase.shared.observe(data.orderObject.order.reference, (d, r) => {
         if (d.result && d.result.status === EventResponse.Status.OK) { return r() }
       })
@@ -359,86 +361,87 @@ describe.only('orderPaymentRequested', () => {
     })
   })
 
-//   // TODO: test Amount must be at least 50 JPY
-//   describe('over limit of stripe', () => {
-//     test('Retrycf.ValidationError StripeInvalidRequestError', async () => {
-//       const order = Helper.Firebase.shared.defaultOrder
-//       order.amount = 1000000000000000
-//       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+  // TODO: test Amount must be at least 50 JPY
+  describe('over limit of stripe', () => {
+    test('Retrycf.ValidationError StripeInvalidRequestError', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      order.amount = 1000000000000000
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         const flowError = e as Orderable.FlowError
-//         expect(flowError.error).toBeInstanceOf(Orderable.StripeError)
-//         const stripeError = flowError.error as Orderable.StripeError
-//         expect(stripeError.type).toEqual(Orderable.StripeErrorType.StripeInvalidRequestError)
-//         expect(stripeError.statusCode).toEqual(400)
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        const orderableError = e as Orderable.OrderableError
+        expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+        expect(orderableError.step).toBe('payment')
+        const stripeError = orderableError.error as Orderable.StripeError
+        expect(stripeError).toBeInstanceOf(Orderable.StripeError)
+        expect(stripeError.type).toEqual(Orderable.StripeErrorType.StripeInvalidRequestError)
 
-//         await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
-//       }
-//     })
-//   })
+        await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+      }
+    })
+  })
 
-//   // Stripe's Idempotent Requests do not return an error...
-//   describe.skip('stripe multiple charged', () => {
-//     jest.setTimeout(300000)
-//     test('?', async () => {
-//       const data = await makeTestData()
+  // Stripe's Idempotent Requests do not return an error...
+  describe.skip('stripe multiple charged', () => {
+    jest.setTimeout(300000)
+    test('?', async () => {
+      const data = await makeTestData()
 
-//       expect.hasAssertions()
-//       // run functions
-//       await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      expect.hasAssertions()
+      // run functions
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
-//       // prepare for restart
-//       data.model.order.paymentStatus = Orderable.OrderPaymentStatus.Created
-//       data.model.order.stripe = new Model.SampleStripeCharge()
-//       const stripeCharge = new Model.SampleStripeCharge()
-//       stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
-//       stripeCharge.customerID = Helper.Firebase.shared.defaultOrder.stripe!.customerID
-//       data.model.order.stripe = stripeCharge.rawValue()
-//       // data.model.order.neoTask = {} as any
-//       await data.model.order.update()
+      // prepare for restart
+      data.model.order.paymentStatus = Orderable.OrderPaymentStatus.Created
+      data.model.order.stripe = new Model.SampleStripeCharge()
+      const stripeCharge = new Model.SampleStripeCharge()
+      stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
+      stripeCharge.customerID = Helper.Firebase.shared.defaultOrder.stripe!.customerID
+      data.model.order.stripe = stripeCharge.rawValue()
+      // data.model.order.neoTask = {} as any
+      await data.model.order.update()
 
-//       const preOrder = data.model.order.rawValue()
-//       data.model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
-//       await data.model.order.update()
+      const preOrder = data.model.order.rawValue()
+      data.model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
+      await data.model.order.update()
 
-//       const event = Rescue.event(data.model.order.reference, data.model.order.rawValue(), { params: { orderID: data.model.order.id }, previousData: preOrder })
-//       const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-//         order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-//       })
+      const event = Rescue.event(data.model.order.reference, data.model.order.rawValue(), { params: { orderID: data.model.order.id }, previousData: preOrder })
+      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
+        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
+      })
 
-//       // restart
-//       await Orderable.Functions.orderPaymentRequested(orderObject)
-//     })
-//   })
+      // restart
+      await Orderable.Functions.orderPaymentRequested(orderObject)
+    })
+  })
 
-//   describe('data reference is broken', () => {
-//     test('retry error', async () => {
-//       const order = Helper.Firebase.shared.defaultOrder
-//       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+  describe.only('data reference is broken', () => {
+    test('retry error', async () => {
+      const order = Helper.Firebase.shared.defaultOrder
+      const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
-//       const data = await makeTestData(customModel)
-//       data.orderObject.order.user = 'username' as any
-//       await data.orderObject.order.update()
+      const data = await makeTestData(customModel)
+      data.orderObject.order.user = 'username' as any
+      await data.orderObject.order.update()
 
-//       expect.hasAssertions()
-//       try {
-//         // run functions
-//         await Orderable.Functions.orderPaymentRequested(data.orderObject)
-//       } catch (e) {
-//         expect(e).toBeInstanceOf(Orderable.FlowError)
-//         await Helper.Firebase.shared.expectRetry(data.model)
-//         await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
-//       }
-//     })
-//   })
+      expect.hasAssertions()
+      try {
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Orderable.OrderableError)
+        await Helper.Firebase.shared.expectRetry(data.model)
+        await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+      }
+    })
+  })
 
 //   describe('charge completed before fire functions', () => {
 //     test('skip steps', async () => {

@@ -262,8 +262,9 @@ export class Firebase {
 
   async expectRetry(model: SampleModel, retryCount: number = 1) {
       const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      // expect(order.neoTask!.status).toEqual(Retrycf.NeoTaskStatus.failure)
-      // expect(order.neoTask!.retry!.count).toBe(retryCount)
+      expect(order.retry!.count).toBe(retryCount)
+      expect(order.retry!.errors.length).toEqual(retryCount)
+      expect(order.retry!.errors.length).toEqual(retryCount)
   }
 
   async expectFatal(model: SampleModel, step: string) {

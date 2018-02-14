@@ -189,7 +189,7 @@ class StripeError extends Error {
                 case StripeErrorType.StripeAPIError:
                 case StripeErrorType.StripeConnectionError:
                     errorType = ErrorType.Retry;
-                    model.retry = yield Retrycf.setRetry(model.reference, model.rawValue(), `${this.type}: ${this.message}`);
+                    model.retry = yield Retrycf.setRetry(model.reference, model.rawValue(), Error(`${this.type}: ${this.message}`));
                     break;
                 // fatal
                 case StripeErrorType.RateLimitError:
@@ -318,14 +318,11 @@ var Functions;
             if (orderObject.isCharged) {
                 return orderObject;
             }
-            console.log('start');
             const completed = yield Mission.markCompleted(orderObject.order.reference, preventStepName);
-            console.log('ok');
             orderObject.order.completed = completed;
             return orderObject;
         }
         catch (error) {
-            console.log(error);
             if (error.constructor === Mission.CompletedError) {
                 throw new OrderableError(preventStepName, ErrorType.Completed, error);
             }
@@ -354,7 +351,9 @@ var Functions;
             // TODO: Retry
             // throw new FlowError(error, orderObject.order.neoTask)
             // This error may be a data preparetion error. In that case, it will be solved by retrying.
+            // console.log(error)
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
+            console.log(orderObject.order.retry);
             throw new OrderableError(preventStepName, ErrorType.Retry, error);
         }
     }));
@@ -524,7 +523,8 @@ var Functions;
         }
         catch (error) {
             // Since stripe.charge failed after reducing stock count, restore stock quantity.
-            // await orderObject.updateStock(Operator.plus)
+            yield orderObject.updateStock(Operator.plus);
+            orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
             // // Restored stock count, so clean up `completed` for retry.
             // orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
             if (error.constructor === StripeError) {
@@ -660,16 +660,6 @@ var Functions;
             return Promise.resolve();
         }
         catch (error) {
-            // if (error.constructor === Mission.CompletedError) {
-            //   // If CompletedError was thrown, finish functions without set result.
-            //   return undefined
-            // }
-            // // If not thrown as FlowError, set FlowError.
-            // if (error.constructor !== FlowError) {
-            //   // await NeoTask.setFatalAndPostToSlack(orderObject.order, 'orderPaymentRequested', error.toString())
-            //   orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest('orderPaymentRequested', error.toString())
-            // }
-            console.log(error);
             if (error.constructor !== OrderableError) {
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
                 throw new OrderableError('orderPaymentRequested', ErrorType.Internal, error);
