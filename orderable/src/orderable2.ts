@@ -156,14 +156,6 @@ export class BaseError extends Error {
   }
 }
 
-export class RetryableError extends BaseError {
-  name: 'RetryableError'
-
-  constructor(id: string, message: string) {
-    super(id, message)
-  }
-}
-
 export class BadRequestError extends BaseError {
   name: 'BadRequestError'
 
@@ -172,11 +164,18 @@ export class BadRequestError extends BaseError {
   }
 }
 
+export enum ErrorType {
+  Retry = 'Retry',
+  Completed = 'Completed',
+  BadRequest = 'BadRequest',
+  Internal = 'Internal'
+}
+
 export class OrderableError extends Error {
   step: string
-  type: 'retry' | 'completed' | 'badRequest' | 'internal'
+  type: ErrorType
 
-  constructor(step: string, type: string, error: Error) {
+  constructor(step: string, errorType: ErrorType, error: Error) {
     super(`An error occurred in step: ${step}`)
 
     Object.defineProperty(this, 'step', {
@@ -452,12 +451,12 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         if (error.constructor === Mission.CompletedError) {
-          throw new OrderableError(preventStepName, 'completed', error)
+          throw new OrderableError(preventStepName, ErrorType.Completed, error)
         }
 
         // if not CompletedError, it maybe firebase internal error, because retry.
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
-        throw new OrderableError(preventStepName, 'retry', error)
+        throw new OrderableError(preventStepName, ErrorType.Retry, error)
       }
     })
 
@@ -488,7 +487,7 @@ export namespace Functions {
 
         // This error may be a data preparetion error. In that case, it will be solved by retrying.
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
-        throw new OrderableError(preventStepName, 'retry', error)
+        throw new OrderableError(preventStepName, ErrorType.Retry, error)
       }
     })
 
@@ -521,11 +520,11 @@ export namespace Functions {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
-          throw new OrderableError('validateShopIsActive', 'badRequest', error)
+          throw new OrderableError('validateShopIsActive', ErrorType.BadRequest, error)
         }
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('validateShopIsActive', 'internal', error)
+        throw new OrderableError('validateShopIsActive', ErrorType.Internal, error)
       }
     })
 
@@ -560,11 +559,11 @@ export namespace Functions {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
-          throw new OrderableError('validateSKUIsActive', 'badRequest', error)
+          throw new OrderableError('validateSKUIsActive', ErrorType.BadRequest, error)
         }
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('validateSKUIsActive', 'internal', error)
+        throw new OrderableError('validateSKUIsActive', ErrorType.Internal, error)
       }
     })
 
@@ -608,11 +607,11 @@ export namespace Functions {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
-          throw new OrderableError('validatePaymentMethod', 'badRequest', error)
+          throw new OrderableError('validatePaymentMethod', ErrorType.BadRequest, error)
         }
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('validatePaymentMethod', 'internal', error)
+        throw new OrderableError('validatePaymentMethod', ErrorType.Internal, error)
       }
     })
 
@@ -642,11 +641,11 @@ export namespace Functions {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
-          throw new OrderableError('validateAndDecreaseStock', 'badRequest', error)
+          throw new OrderableError('validateAndDecreaseStock', ErrorType.BadRequest, error)
         }
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('validateAndDecreaseStock', 'internal', error)
+        throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error)
 
         // throw (error)
       }
@@ -705,7 +704,7 @@ export namespace Functions {
         }
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('payment', 'internal', error)
+        throw new OrderableError('payment', ErrorType.Internal, error)
       }
     })
 
@@ -752,7 +751,7 @@ export namespace Functions {
         // throw new FlowError(error, orderObject.order.neoTask)
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('updateOrder', 'internal', error)
+        throw new OrderableError('updateOrder', ErrorType.Internal, error)
       }
     })
 
@@ -789,7 +788,7 @@ export namespace Functions {
 
         // This step fails only when a batch error occurs. Because set retry.
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
-        throw new OrderableError('updateOrderShops', 'retry', error)
+        throw new OrderableError('updateOrderShops', ErrorType.Retry, error)
       }
     })
 
@@ -806,7 +805,7 @@ export namespace Functions {
         // TODO: Retry
         // throw new FlowError(error, orderObject.order)
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
-        throw new OrderableError('setOrderTask', 'retry', error)
+        throw new OrderableError('setOrderTask', ErrorType.Retry, error)
       }
     })
 
@@ -860,7 +859,7 @@ export namespace Functions {
 
       if (error.constructor !== OrderableError) {
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('orderPaymentRequested', 'internal', error)
+        throw new OrderableError('orderPaymentRequested', ErrorType.Internal, error)
       }
 
       return Promise.reject(error)
