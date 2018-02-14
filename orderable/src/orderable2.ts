@@ -250,43 +250,43 @@ export class StripeError extends Error {
     }
   }
 
-  // async setNeoTask<T extends OrderProtocol>(model: T, step: string): Promise<T> {
-  //   switch (this.type) {
-  //     // validate
-  //     case StripeErrorType.StripeCardError: {
-  //       const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeCardError, this.message)
-  //       // model = await NeoTask.setInvalid(model, validationError)
-  //       model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, this.message)
-  //       break
-  //     }
-  //     case StripeErrorType.StripeInvalidRequestError: {
-  //       const validationError = new Retrycf.ValidationError(ValidationErrorType.StripeInvalidRequestError, this.message)
-  //       // model = await NeoTask.setInvalid(model, validationError)
-  //       model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, this.message)
-  //       break
-  //     }
+  async setError<T extends OrderProtocol>(model: T, step: string) {
+    let errorType: ErrorType = ErrorType.Internal
+    switch (this.type) {
+      // validate
+      case StripeErrorType.StripeCardError: {
+        errorType = ErrorType.BadRequest
+        model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`)
+        break
+      }
+      case StripeErrorType.StripeInvalidRequestError: {
+        errorType = ErrorType.BadRequest
+        model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`)
+        break
+      }
 
-  //     // retry
-  //     case StripeErrorType.StripeAPIError:
-  //     case StripeErrorType.StripeConnectionError:
-  //       // model = await NeoTask.setRetry(model, step, this.message)
-  //       // TODO: Retry
-  //       break
+      // retry
+      case StripeErrorType.StripeAPIError:
+      case StripeErrorType.StripeConnectionError:
+        errorType = ErrorType.Retry
+        model.retry = await Retrycf.setRetry(model.reference, model.rawValue(), `${this.type}: ${this.message}`)
+        break
 
-  //     // fatal
-  //     case StripeErrorType.RateLimitError:
-  //     case StripeErrorType.StripeAuthenticationError:
-  //     case StripeErrorType.UnexpectedError:
-  //       // model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
-  //       model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
-  //       break
+      // fatal
+      case StripeErrorType.RateLimitError:
+      case StripeErrorType.StripeAuthenticationError:
+      case StripeErrorType.UnexpectedError:
+        errorType = ErrorType.Internal
+        model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
+        break
 
-  //     default:
-  //       // model = await NeoTask.setFatalAndPostToSlack(model, step, this.type)
-  //       model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
-  //   }
-  //   return model
-  // }
+      default:
+        errorType = ErrorType.Internal
+        model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
+        break
+    }
+    return errorType
+  }
 }
 
 export namespace Functions {
@@ -700,7 +700,8 @@ export namespace Functions {
           const stripeError = error as StripeError
           // orderObject.order = await stripeError.setNeoTask(orderObject.order, 'payment')
           // TODO: striperror handling
-          throw new OrderableError('payment', '処理タイプ', error)
+          const errorType = await stripeError.setError(orderObject.order, 'payment')
+          throw new OrderableError('payment', errorType, error)
         }
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
