@@ -166,8 +166,8 @@ describe('orderPaymentRequested', () => {
     return { model: model, orderObject: orderObject }
   }
 
-  describe('when one shop (Normal Scenario)', () => {
-    test('neoTask === 1', async () => {
+  describe('one shop, two items (Normal Scenario)', () => {
+    test('success', async () => {
       const data = await makeTestData()
 
       // run functions
@@ -183,25 +183,25 @@ describe('orderPaymentRequested', () => {
     })
   })
 
-//   describe('when multiple shops (Normal Scenario)', () => {
-//     test('neoTask === 1', async () => {
-//       const shops = Helper.Firebase.shared.defaultShops.concat(Helper.Firebase.shared.defaultShops)
-//       const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
+  describe('when multiple shops, multiple items (Normal Scenario)', () => {
+    test('success', async () => {
+      const shops = Helper.Firebase.shared.defaultShops.concat(Helper.Firebase.shared.defaultShops)
+      const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
 
-//       const data = await makeTestData(customModel)
+      const data = await makeTestData(customModel)
 
-//       // run functions
-//       await Orderable.Functions.orderPaymentRequested(data.orderObject)
+      // run functions
+      await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
-//       // expect
-//       await Promise.all([
-//         Helper.Firebase.shared.expectOrder(data.model),
-//         Helper.Firebase.shared.expectStock(data.model),
-//         Helper.Firebase.shared.expectOrderShop(data.model),
-//         Helper.Firebase.shared.expectStripe(data.model)
-//       ])
-//     })
-//   })
+      // expect
+      await Promise.all([
+        Helper.Firebase.shared.expectOrder(data.model),
+        Helper.Firebase.shared.expectStock(data.model),
+        Helper.Firebase.shared.expectOrderShop(data.model),
+        Helper.Firebase.shared.expectStripe(data.model)
+      ])
+    })
+  })
 
 //   describe('shop is not active', () => {
 //     test('Retrycf.ValidationError ShopIsNotActive', async () => {
