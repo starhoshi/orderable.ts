@@ -305,6 +305,12 @@ export class Firebase {
     var observer = Function()
 
     return new Promise((resolve, reject) => {
+      documentRef.get().then(s => {
+        callback(s.data(), resolve, reject)
+      }, error => {
+        reject(error)
+      })
+
       observer = documentRef.onSnapshot(s => {
         callback(s.data(), resolve, reject)
       }, error => {
