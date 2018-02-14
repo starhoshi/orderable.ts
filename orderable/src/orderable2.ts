@@ -422,9 +422,7 @@ export namespace Functions {
             if (newStock >= 0) {
               transaction.update(skuRef, { stock: newStock })
             } else {
-              // throw new Retrycf.ValidationError(ValidationErrorType.OutOfStock,
-              //   `${orderSKUObject.orderSKU.snapshotProduct!.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
-              throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct!.name} が在庫不足です。\n注文数: ${orderSKUObject.orderSKU.quantity}, 在庫数${orderSKUObject.sku.stock}`)
+              throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct!.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`)
             }
           })
           promises.push(t)
@@ -484,12 +482,6 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // This error may be a data preparetion error. In that case, it will be solved by retrying.
-        // orderObject.order = await NeoTask.setRetry(orderObject.order, 'prepareRequiredData', error)
-        // TODO: Retry
-        // throw new FlowError(error, orderObject.order.neoTask)
-
-        // This error may be a data preparetion error. In that case, it will be solved by retrying.
-        // console.log(error)
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
         throw new OrderableError(preventStepName, ErrorType.Retry, error)
       }
@@ -507,20 +499,12 @@ export namespace Functions {
 
         shops.forEach((shop, index) => {
           if (!shop.isActive) {
-            // throw new Retrycf.ValidationError(ValidationErrorType.ShopIsNotActive,
-            // `Shop: ${shop.name} is not active.`)
             throw new BadRequestError(ValidationErrorType.ShopIsNotActive, `Shop: ${shop.name} is not active.`)
           }
         })
 
         return orderObject
       } catch (error) {
-        // if (error.constructor === Retrycf.ValidationError) {
-        //   const validationError = error as Retrycf.ValidationError
-        //   // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
-        //   orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(ValidationErrorType.ShopIsNotActive, validationError.reason)
-        //   throw new FlowError(error, orderObject.order.neoTask)
-        // }
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
@@ -545,21 +529,12 @@ export namespace Functions {
         orderSKUObjects.forEach((orderSKUObject, index) => {
           if (!orderSKUObject.sku.isActive) {
             throw new BadRequestError(ValidationErrorType.SKUIsNotActive,
-            // throw new Retrycf.ValidationError(ValidationErrorType.SKUIsNotActive,
               `Product: ${orderSKUObject.orderSKU.snapshotProduct!.name}」 is not active.`)
           }
         })
 
         return orderObject
       } catch (error) {
-        // if (error.constructor === Retrycf.ValidationError) {
-        //   const validationError = error as Retrycf.ValidationError
-        //   // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
-        //   orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason)
-        //   throw new FlowError(error, orderObject.order.neoTask)
-        // }
-
-        // throw (error)
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
@@ -589,25 +564,15 @@ export namespace Functions {
             if (expiredDate < now) {
               throw new BadRequestError(ValidationErrorType.StripeCardExpired,
                 'This card is expired.')
-              // throw new Retrycf.ValidationError(ValidationErrorType.StripeCardExpired,
             }
             break
           default:
-            // throw new Retrycf.ValidationError(ValidationErrorType.PaymentInfoNotFound,
             throw new BadRequestError(ValidationErrorType.PaymentInfoNotFound,
               'Payment information is not registered.')
         }
 
         return orderObject
       } catch (error) {
-        // if (error.constructor === Retrycf.ValidationError) {
-        //   const validationError = error as Retrycf.ValidationError
-        //   // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
-        //   orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason)
-        //   throw new FlowError(error, orderObject.order.neoTask)
-        // }
-
-        // throw (error)
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
@@ -628,20 +593,11 @@ export namespace Functions {
 
         await orderObject.updateStock(Operator.minus, 'validateAndDecreaseStock')
 
-        // TODO: Delete the extra processing
-        // orderObject.order = await PringUtil.get(orderObject.initializableClass.order, orderObject.orderID)
-
         return orderObject
       } catch (error) {
         // clear completed mark for retry.
         orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
 
-        // if (error.constructor === Retrycf.ValidationError) {
-        //   const validationError = error as Retrycf.ValidationError
-        //   // orderObject.order = await NeoTask.setInvalid(orderObject.order, validationError)
-        //   orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(validationError.validationErrorType, validationError.reason)
-        //   throw new FlowError(error, orderObject.order.neoTask)
-        // }
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
           orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
@@ -650,8 +606,6 @@ export namespace Functions {
 
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
         throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error)
-
-        // throw (error)
       }
     })
 
@@ -698,13 +652,9 @@ export namespace Functions {
         // Since stripe.charge failed after reducing stock count, restore stock quantity.
         await orderObject.updateStock(Operator.plus)
         orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
-        // // Restored stock count, so clean up `completed` for retry.
-        // orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
 
         if (error.constructor === StripeError) {
           const stripeError = error as StripeError
-          // orderObject.order = await stripeError.setNeoTask(orderObject.order, 'payment')
-          // TODO: striperror handling
           const errorType = await stripeError.setError(orderObject.order, 'payment')
           throw new OrderableError('payment', errorType, error)
         }
@@ -752,10 +702,6 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // If this step failed, we can not remember chargeID. Because set fatal error.
-        // orderObject.order = await NeoTask.setFatalAndPostToSlack(orderObject.order, 'updateOrder', error)
-        // orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest('updateOrder', error)
-        // throw new FlowError(error, orderObject.order.neoTask)
-
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
         throw new OrderableError('updateOrder', ErrorType.Internal, error)
       }
@@ -788,10 +734,6 @@ export namespace Functions {
 
         return orderObject
       } catch (error) {
-        // orderObject.order = await NeoTask.setRetry(orderObject.order, 'updateOrderShops', error)
-        // TODO: set retry
-        // throw new FlowError(error, orderObject.order)
-
         // This step fails only when a batch error occurs. Because set retry.
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
         throw new OrderableError('updateOrderShops', ErrorType.Retry, error)
@@ -807,9 +749,6 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // This step fails only when update error occurs. Because set retry.
-        // orderObject.order = await NeoTask.setRetry(orderObject.order, 'setOrderTask', error)
-        // TODO: Retry
-        // throw new FlowError(error, orderObject.order)
         orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
         throw new OrderableError('setOrderTask', ErrorType.Retry, error)
       }
