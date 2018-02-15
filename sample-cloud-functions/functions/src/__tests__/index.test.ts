@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import 'jest'
-import * as Orderable from '@star__hoshi/orderable'
-// import * as Orderable from '../orderable.develop'
+// import * as Orderable from '@star__hoshi/orderable'
+import * as Orderable from '../orderable.develop'
 import { Pring } from 'pring'
 import { FirebaseHelper } from './helper/firebase'
 import * as Model from '../sampleModel'
@@ -31,12 +31,12 @@ it('order pay', async () => {
 
   const sku1 = new Model.SampleSKU()
   sku1.price = 100
-  sku1.stockType = Orderable.Model.StockType.Finite
+  sku1.stockType = Orderable.StockType.Finite
   sku1.stock = 1000
   await sku1.save()
   const sku2 = new Model.SampleSKU()
   sku2.price = 400
-  sku2.stockType = Orderable.Model.StockType.Finite
+  sku2.stockType = Orderable.StockType.Finite
   sku2.stock = 5000
   await sku2.save()
 
@@ -48,7 +48,7 @@ it('order pay', async () => {
   order.user = user.reference
   order.amount = 1000
   order.currency = 'jpy'
-  order.paymentStatus = Orderable.Model.OrderPaymentStatus.Created
+  order.paymentStatus = Orderable.OrderPaymentStatus.Created
   order.stripe = stripeCharge.rawValue()
 
   const orderSKU1 = new Model.SampleOrderSKU()
@@ -68,7 +68,7 @@ it('order pay', async () => {
   const orderShop = new Model.SampleOrderShop()
   orderShop.orderSKUs.insert(orderSKU1)
   orderShop.orderSKUs.insert(orderSKU2)
-  orderShop.paymentStatus = Orderable.Model.OrderShopPaymentStatus.Created
+  orderShop.paymentStatus = Orderable.OrderShopPaymentStatus.Created
   orderShop.user = user.reference
   orderShop.order = order.reference
 
@@ -82,7 +82,7 @@ it('order pay', async () => {
   console.log('order created', order.id)
   console.log('ordershop', orderShop.id)
 
-  order.paymentStatus = Orderable.Model.OrderPaymentStatus.PaymentRequested
+  order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
   await order.update()
 
   await FirebaseHelper.observe(order.reference, (data, resolve, reject) => {

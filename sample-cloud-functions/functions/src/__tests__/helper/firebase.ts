@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import { Pring } from 'pring'
-import * as Orderable from '@star__hoshi/orderable'
-// import * as Orderable from '../../orderable.develop'
+// import * as Orderable from '@star__hoshi/orderable'
+import * as Orderable from '../../orderable.develop'
 
 export class FirebaseHelper {
   private static _shared?: FirebaseHelper
@@ -25,8 +25,7 @@ export class FirebaseHelper {
           projectId: 'sandbox-329fc',
           keyFilename: '../../sandbox-329fc-firebase-adminsdk.json'
         },
-        stripeToken: '',
-        slack: undefined
+        stripeToken: ''
       })
     }
 

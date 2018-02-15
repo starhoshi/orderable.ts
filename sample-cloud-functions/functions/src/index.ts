@@ -4,15 +4,14 @@ import * as Retrycf from 'retrycf'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import { Pring, property } from 'pring'
 import * as Model from './sampleModel'
-// import * as Orderable from './orderable.develop'
-import * as Orderable from '@star__hoshi/orderable'
+import * as Orderable from './orderable.develop'
+// import * as Orderable from '@star__hoshi/orderable'
 
 admin.initializeApp(<admin.AppOptions>functions.config().firebase)
 Pring.initialize(functions.config().firebase)
 Orderable.initialize({
   adminOptions: functions.config().firebase,
-  stripeToken: functions.config().stripe.token,
-  slack: undefined
+  stripeToken: functions.config().stripe.token
 })
 
 export const paySampleOrder = functions.firestore
