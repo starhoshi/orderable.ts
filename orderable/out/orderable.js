@@ -19,7 +19,9 @@ const Flow = require("@1amageek/flow");
 const Mission = require("mission-completed");
 const EventResponse = require("event-response");
 const util_1 = require("./util");
+const error_1 = require("./error");
 __export(require("./util"));
+__export(require("./error"));
 let stripe;
 let adminOptions;
 exports.initialize = (options) => {
@@ -32,16 +34,6 @@ exports.initialize = (options) => {
     stripe = new Stripe(options.stripeToken);
     adminOptions = options.adminOptions;
 };
-var ValidationErrorType;
-(function (ValidationErrorType) {
-    ValidationErrorType["ShopIsNotActive"] = "ShopIsNotActive";
-    ValidationErrorType["SKUIsNotActive"] = "SKUIsNotActive";
-    ValidationErrorType["OutOfStock"] = "OutOfStock";
-    ValidationErrorType["StripeCardError"] = "StripeCardError";
-    ValidationErrorType["StripeInvalidRequestError"] = "StripeInvalidRequestError";
-    ValidationErrorType["StripeCardExpired"] = "StripeCardExpired";
-    ValidationErrorType["PaymentInfoNotFound"] = "PaymentInfoNotFound";
-})(ValidationErrorType = exports.ValidationErrorType || (exports.ValidationErrorType = {}));
 var StockType;
 (function (StockType) {
     StockType["Unknown"] = "unknown";
@@ -62,146 +54,6 @@ var OrderShopPaymentStatus;
     OrderShopPaymentStatus[OrderShopPaymentStatus["Created"] = 1] = "Created";
     OrderShopPaymentStatus[OrderShopPaymentStatus["Paid"] = 2] = "Paid";
 })(OrderShopPaymentStatus = exports.OrderShopPaymentStatus || (exports.OrderShopPaymentStatus = {}));
-class BaseError extends Error {
-    constructor(id, message) {
-        super(message);
-        Object.defineProperty(this, 'id', {
-            get: () => id
-        });
-        if (typeof Error.captureStackTrace === 'function') {
-            Error.captureStackTrace(this, this.constructor);
-        }
-        else {
-            this.stack = (new Error()).stack;
-        }
-    }
-    toString() {
-        return this.name + ': ' + this.id + ': ' + this.message;
-    }
-}
-exports.BaseError = BaseError;
-class BadRequestError extends BaseError {
-    constructor(id, message) {
-        super(id, message);
-    }
-}
-exports.BadRequestError = BadRequestError;
-class RetryFailedError extends BaseError {
-    constructor(id, message) {
-        super(id, message);
-    }
-}
-exports.RetryFailedError = RetryFailedError;
-var ErrorType;
-(function (ErrorType) {
-    ErrorType["Retry"] = "Retry";
-    ErrorType["Completed"] = "Completed";
-    ErrorType["BadRequest"] = "BadRequest";
-    ErrorType["Internal"] = "Internal";
-})(ErrorType = exports.ErrorType || (exports.ErrorType = {}));
-class OrderableError extends Error {
-    constructor(step, errorType, error) {
-        super(`An error occurred in step: ${step}`);
-        this.error = error;
-        Object.defineProperty(this, 'step', {
-            get: () => step
-        });
-        Object.defineProperty(this, 'type', {
-            get: () => errorType
-        });
-        if (typeof Error.captureStackTrace === 'function') {
-            Error.captureStackTrace(this, this.constructor);
-        }
-        else {
-            this.stack = (new Error()).stack;
-        }
-    }
-}
-exports.OrderableError = OrderableError;
-var StripeErrorType;
-(function (StripeErrorType) {
-    StripeErrorType["StripeCardError"] = "StripeCardError";
-    StripeErrorType["RateLimitError"] = "RateLimitError";
-    StripeErrorType["StripeInvalidRequestError"] = "StripeInvalidRequestError";
-    // An error occurred internally with Stripe's API
-    StripeErrorType["StripeAPIError"] = "StripeAPIError";
-    StripeErrorType["StripeConnectionError"] = "StripeConnectionError";
-    StripeErrorType["StripeAuthenticationError"] = "StripeAuthenticationError";
-    StripeErrorType["UnexpectedError"] = "UnexpectedError";
-})(StripeErrorType = exports.StripeErrorType || (exports.StripeErrorType = {}));
-class StripeError extends Error {
-    constructor(error) {
-        super();
-        if (!error.type) {
-            console.error(error);
-            throw 'unexpected stripe error';
-        }
-        this.error = error;
-        this.message = error.message;
-        this.statusCode = error.statusCode;
-        this.requestId = error.requestId;
-        switch (error.type) {
-            case 'StripeCardError':
-                this.type = StripeErrorType.StripeCardError;
-                break;
-            case 'RateLimitError':
-                this.type = StripeErrorType.RateLimitError;
-                break;
-            case 'StripeInvalidRequestError':
-                this.type = StripeErrorType.StripeInvalidRequestError;
-                break;
-            case 'StripeAPIError':
-                this.type = StripeErrorType.StripeAPIError;
-                break;
-            case 'StripeConnectionError':
-                this.type = StripeErrorType.StripeConnectionError;
-                break;
-            case 'StripeAuthenticationError':
-                this.type = StripeErrorType.StripeAuthenticationError;
-                break;
-            default:
-                this.type = StripeErrorType.UnexpectedError;
-                break;
-        }
-    }
-    setError(model, step) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let errorType = ErrorType.Internal;
-            switch (this.type) {
-                // validate
-                case StripeErrorType.StripeCardError: {
-                    errorType = ErrorType.BadRequest;
-                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`);
-                    break;
-                }
-                case StripeErrorType.StripeInvalidRequestError: {
-                    errorType = ErrorType.BadRequest;
-                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`);
-                    break;
-                }
-                // retry
-                case StripeErrorType.StripeAPIError:
-                case StripeErrorType.StripeConnectionError:
-                    errorType = ErrorType.Retry;
-                    model.retry = yield Retrycf.setRetry(model.reference, model.rawValue(), Error(`${this.type}: ${this.message}`));
-                    break;
-                // fatal
-                case StripeErrorType.RateLimitError:
-                case StripeErrorType.StripeAuthenticationError:
-                case StripeErrorType.UnexpectedError:
-                    errorType = ErrorType.Internal;
-                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
-                    break;
-                default:
-                    errorType = ErrorType.Internal;
-                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
-                    break;
-            }
-            return errorType;
-        });
-    }
-}
-exports.StripeError = StripeError;
 var Functions;
 (function (Functions) {
     class OrderSKUObject {
@@ -289,7 +141,7 @@ var Functions;
                             transaction.update(skuRef, { stock: newStock });
                         }
                         else {
-                            throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`);
+                            throw new error_1.BadRequestError(error_1.ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`);
                         }
                     });
                     promises.push(t);
@@ -316,11 +168,11 @@ var Functions;
         }
         catch (error) {
             if (error.constructor === Mission.CompletedError) {
-                throw new OrderableError(preventStepName, ErrorType.Completed, error);
+                throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Completed, error);
             }
             // if not CompletedError, it maybe firebase internal error, because retry.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError(preventStepName, ErrorType.Retry, error);
+            throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Retry, error);
         }
     }));
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -340,7 +192,7 @@ var Functions;
         catch (error) {
             // This error may be a data preparetion error. In that case, it will be solved by retrying.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError(preventStepName, ErrorType.Retry, error);
+            throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Retry, error);
         }
     }));
     const validateShopIsActive = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -352,19 +204,19 @@ var Functions;
             }
             shops.forEach((shop, index) => {
                 if (!shop.isActive) {
-                    throw new BadRequestError(ValidationErrorType.ShopIsNotActive, `Shop: ${shop.name} is not active.`);
+                    throw new error_1.BadRequestError(error_1.ValidationErrorType.ShopIsNotActive, `Shop: ${shop.name} is not active.`);
                 }
             });
             return orderObject;
         }
         catch (error) {
-            if (error.constructor === BadRequestError) {
+            if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validateShopIsActive', ErrorType.BadRequest, error);
+                throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validateShopIsActive', ErrorType.Internal, error);
+            throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.Internal, error);
         }
     }));
     const validateSKUIsActive = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -376,19 +228,19 @@ var Functions;
             }
             orderSKUObjects.forEach((orderSKUObject, index) => {
                 if (!orderSKUObject.sku.isActive) {
-                    throw new BadRequestError(ValidationErrorType.SKUIsNotActive, `Product: ${orderSKUObject.orderSKU.snapshotProduct.name}」 is not active.`);
+                    throw new error_1.BadRequestError(error_1.ValidationErrorType.SKUIsNotActive, `Product: ${orderSKUObject.orderSKU.snapshotProduct.name}」 is not active.`);
                 }
             });
             return orderObject;
         }
         catch (error) {
-            if (error.constructor === BadRequestError) {
+            if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validateSKUIsActive', ErrorType.BadRequest, error);
+                throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validateSKUIsActive', ErrorType.Internal, error);
+            throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.Internal, error);
         }
     }));
     const validatePaymentMethod = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -403,22 +255,22 @@ var Functions;
                     const now = new Date(new Date().getFullYear(), new Date().getMonth());
                     const expiredDate = new Date(stripeCard.exp_year, stripeCard.exp_month - 1);
                     if (expiredDate < now) {
-                        throw new BadRequestError(ValidationErrorType.StripeCardExpired, 'This card is expired.');
+                        throw new error_1.BadRequestError(error_1.ValidationErrorType.StripeCardExpired, 'This card is expired.');
                     }
                     break;
                 default:
-                    throw new BadRequestError(ValidationErrorType.PaymentInfoNotFound, 'Payment information is not registered.');
+                    throw new error_1.BadRequestError(error_1.ValidationErrorType.PaymentInfoNotFound, 'Payment information is not registered.');
             }
             return orderObject;
         }
         catch (error) {
-            if (error.constructor === BadRequestError) {
+            if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validatePaymentMethod', ErrorType.BadRequest, error);
+                throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validatePaymentMethod', ErrorType.Internal, error);
+            throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.Internal, error);
         }
     }));
     const validateAndDecreaseStock = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -432,13 +284,13 @@ var Functions;
         catch (error) {
             // clear completed mark for retry.
             orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
-            if (error.constructor === BadRequestError) {
+            if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
-                throw new OrderableError('validateAndDecreaseStock', ErrorType.BadRequest, error);
+                throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.BadRequest, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error);
+            throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.Internal, error);
         }
     }));
     const stripeCharge = (order) => __awaiter(this, void 0, void 0, function* () {
@@ -454,7 +306,7 @@ var Functions;
         }, {
             idempotency_key: order.id
         }).catch(e => {
-            throw new StripeError(e);
+            throw new error_1.StripeError(e);
         });
     });
     const payment = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -476,13 +328,13 @@ var Functions;
             // Since stripe.charge failed after reducing stock count, restore stock quantity.
             yield orderObject.updateStock(Operator.plus);
             orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
-            if (error.constructor === StripeError) {
+            if (error.constructor === error_1.StripeError) {
                 const stripeError = error;
                 const errorType = yield stripeError.setError(orderObject.order, 'payment');
-                throw new OrderableError('payment', errorType, error);
+                throw new error_1.OrderableError('payment', errorType, error);
             }
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('payment', ErrorType.Internal, error);
+            throw new error_1.OrderableError('payment', error_1.ErrorType.Internal, error);
         }
     }));
     /**
@@ -518,7 +370,7 @@ var Functions;
         catch (error) {
             // If this step failed, we can not remember chargeID. Because set fatal error.
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new OrderableError('updateOrder', ErrorType.Internal, error);
+            throw new error_1.OrderableError('updateOrder', error_1.ErrorType.Internal, error);
         }
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -548,7 +400,7 @@ var Functions;
         catch (error) {
             // This step fails only when a batch error occurs. Because set retry.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError('updateOrderShops', ErrorType.Retry, error);
+            throw new error_1.OrderableError('updateOrderShops', error_1.ErrorType.Retry, error);
         }
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -560,7 +412,7 @@ var Functions;
         catch (error) {
             // This step fails only when update error occurs. Because set retry.
             orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new OrderableError('setOrderTask', ErrorType.Retry, error);
+            throw new error_1.OrderableError('setOrderTask', error_1.ErrorType.Retry, error);
         }
     }));
     /**
@@ -572,7 +424,7 @@ var Functions;
             const retryStatus = Retrycf.retryStatus(orderObject.order.rawValue(), orderObject.previousOrder.rawValue());
             if (retryStatus === Retrycf.Status.RetryFailed) {
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('orderPaymentRequested', 'Retry Failed');
-                throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.retry.errors.toString()));
+                throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, new error_1.RetryFailedError('orderPaymentRequested', orderObject.order.retry.errors.toString()));
             }
             // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
             if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
@@ -599,9 +451,9 @@ var Functions;
             return Promise.resolve();
         }
         catch (error) {
-            if (error.constructor !== OrderableError) {
+            if (error.constructor !== error_1.OrderableError) {
                 orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-                throw new OrderableError('orderPaymentRequested', ErrorType.Internal, error);
+                throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, error);
             }
             return Promise.reject(error);
         }
