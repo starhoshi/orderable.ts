@@ -97,5 +97,5 @@ firebase-debug.log
 sample-cloud-functions/functions/out
 
 # Test
-orderable/out/test
+out/test
 .envrc
