@@ -7,6 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
 Object.defineProperty(exports, "__esModule", { value: true });
 const FirebaseFirestore = require("@google-cloud/firestore");
 const Stripe = require("stripe");
@@ -15,8 +18,9 @@ const Retrycf = require("retrycf");
 const Flow = require("@1amageek/flow");
 const Mission = require("mission-completed");
 const EventResponse = require("event-response");
+const util_1 = require("./util");
+__export(require("./util"));
 let stripe;
-let firestore;
 let adminOptions;
 exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
@@ -24,7 +28,7 @@ exports.initialize = (options) => {
     Mission.initialize(options.adminOptions);
     EventResponse.initialize(options.adminOptions);
     EventResponse.configure({ collectionPath: 'version/1/failure' });
-    firestore = new FirebaseFirestore.Firestore(options.adminOptions);
+    exports.firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     stripe = new Stripe(options.stripeToken);
     adminOptions = options.adminOptions;
 };
@@ -38,21 +42,6 @@ var ValidationErrorType;
     ValidationErrorType["StripeCardExpired"] = "StripeCardExpired";
     ValidationErrorType["PaymentInfoNotFound"] = "PaymentInfoNotFound";
 })(ValidationErrorType = exports.ValidationErrorType || (exports.ValidationErrorType = {}));
-class PringUtil {
-    static collectionPath(model) {
-        return `version/${model.getVersion()}/${model.getModelName()}`;
-    }
-    static get(klass, id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const model = new klass();
-            return firestore.collection(PringUtil.collectionPath(model)).doc(id).get().then(s => {
-                model.init(s);
-                return model;
-            });
-        });
-    }
-}
-exports.PringUtil = PringUtil;
 var StockType;
 (function (StockType) {
     StockType["Unknown"] = "unknown";
@@ -220,7 +209,7 @@ var Functions;
             return __awaiter(this, void 0, void 0, function* () {
                 const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
                 const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
-                    return PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
+                    return util_1.PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
                         const orderSKU = s;
                         const orderSKUObject = new OrderSKUObject();
                         orderSKUObject.orderSKU = orderSKU;
@@ -289,10 +278,10 @@ var Functions;
             if (!orderSKUObjects) {
                 throw Error('orderSKUObjects must be non-null');
             }
-            return firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
+            return exports.firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = firestore.collection(PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id);
+                    const skuRef = exports.firestore.collection(util_1.PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
                         const newStock = tsku.data().stock + quantity;
@@ -337,7 +326,7 @@ var Functions;
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            const user = yield PringUtil.get(orderObject.initializableClass.user, order.user.id);
+            const user = yield util_1.PringUtil.get(orderObject.initializableClass.user, order.user.id);
             orderObject.user = user;
             const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
             orderObject.orderSKUObjects = orderSKUObjects;
@@ -534,13 +523,13 @@ var Functions;
     }));
     const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop());
-            const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order());
-            yield firestore.collection(orderShopColRef)
-                .where('order', '==', firestore.collection(orderColRef).doc(orderObject.orderID))
+            const orderShopColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.orderShop());
+            const orderColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.order());
+            yield exports.firestore.collection(orderShopColRef)
+                .where('order', '==', exports.firestore.collection(orderColRef).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
-                const batch = firestore.batch();
+                const batch = exports.firestore.batch();
                 // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();

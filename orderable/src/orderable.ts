@@ -11,9 +11,12 @@ import * as request from 'request'
 import * as Slack from 'slack-node'
 import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
+import { PringUtil } from './util'
+
+export * from './util'
 
 let stripe: Stripe
-let firestore: FirebaseFirestore.Firestore
+export let firestore: FirebaseFirestore.Firestore
 let adminOptions: any
 
 export const initialize = (options: { adminOptions: any, stripeToken: string}) => {
@@ -35,20 +38,6 @@ export enum ValidationErrorType {
   StripeInvalidRequestError = 'StripeInvalidRequestError',
   StripeCardExpired = 'StripeCardExpired',
   PaymentInfoNotFound = 'PaymentInfoNotFound'
-}
-
-export class PringUtil {
-  static collectionPath<T extends Pring.Base>(model: T): string {
-    return `version/${model.getVersion()}/${model.getModelName()}`
-  }
-
-  static async get<T extends Pring.Base>(klass: { new(): T }, id: string) {
-    const model = new klass()
-    return firestore.collection(PringUtil.collectionPath(model)).doc(id).get().then(s => {
-      model.init(s)
-      return model
-    })
-  }
 }
 
 export interface UserProtocol extends Pring.Base {

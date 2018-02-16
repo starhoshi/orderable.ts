@@ -7,6 +7,8 @@ import * as Retrycf from 'retrycf';
 import * as Flow from '@1amageek/flow';
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
 import * as EventResponse from 'event-response';
+export * from './util';
+export declare let firestore: FirebaseFirestore.Firestore;
 export declare const initialize: (options: {
     adminOptions: any;
     stripeToken: string;
@@ -19,12 +21,6 @@ export declare enum ValidationErrorType {
     StripeInvalidRequestError = "StripeInvalidRequestError",
     StripeCardExpired = "StripeCardExpired",
     PaymentInfoNotFound = "PaymentInfoNotFound",
-}
-export declare class PringUtil {
-    static collectionPath<T extends Pring.Base>(model: T): string;
-    static get<T extends Pring.Base>(klass: {
-        new (): T;
-    }, id: string): Promise<T>;
 }
 export interface UserProtocol extends Pring.Base {
     stripeCustomerID?: string;
