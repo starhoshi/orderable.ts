@@ -13,7 +13,6 @@ __export(require("./util"));
 __export(require("./error"));
 __export(require("./protocol"));
 __export(require("./function"));
-let adminOptions;
 exports.initialize = (options) => {
     pring_1.Pring.initialize(options.adminOptions);
     Retrycf.initialize(options.adminOptions);
@@ -22,5 +21,4 @@ exports.initialize = (options) => {
     EventResponse.configure({ collectionPath: 'version/1/failure' });
     exports.firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     exports.stripe = new Stripe(options.stripeToken);
-    adminOptions = options.adminOptions;
 };
