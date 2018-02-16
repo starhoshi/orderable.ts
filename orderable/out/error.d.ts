@@ -1,4 +1,4 @@
-import { OrderProtocol } from './orderable';
+import { OrderProtocol } from './protocol';
 export declare enum ValidationErrorType {
     ShopIsNotActive = "ShopIsNotActive",
     SKUIsNotActive = "SKUIsNotActive",

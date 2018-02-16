@@ -20,8 +20,10 @@ const Mission = require("mission-completed");
 const EventResponse = require("event-response");
 const util_1 = require("./util");
 const error_1 = require("./error");
+const protocol_1 = require("./protocol");
 __export(require("./util"));
 __export(require("./error"));
+__export(require("./protocol"));
 let stripe;
 let adminOptions;
 exports.initialize = (options) => {
@@ -34,26 +36,6 @@ exports.initialize = (options) => {
     stripe = new Stripe(options.stripeToken);
     adminOptions = options.adminOptions;
 };
-var StockType;
-(function (StockType) {
-    StockType["Unknown"] = "unknown";
-    StockType["Finite"] = "finite";
-    StockType["Infinite"] = "infinite";
-})(StockType = exports.StockType || (exports.StockType = {}));
-var OrderPaymentStatus;
-(function (OrderPaymentStatus) {
-    OrderPaymentStatus[OrderPaymentStatus["Unknown"] = 0] = "Unknown";
-    OrderPaymentStatus[OrderPaymentStatus["Created"] = 1] = "Created";
-    OrderPaymentStatus[OrderPaymentStatus["PaymentRequested"] = 2] = "PaymentRequested";
-    OrderPaymentStatus[OrderPaymentStatus["WaitingForPayment"] = 3] = "WaitingForPayment";
-    OrderPaymentStatus[OrderPaymentStatus["Paid"] = 4] = "Paid";
-})(OrderPaymentStatus = exports.OrderPaymentStatus || (exports.OrderPaymentStatus = {}));
-var OrderShopPaymentStatus;
-(function (OrderShopPaymentStatus) {
-    OrderShopPaymentStatus[OrderShopPaymentStatus["Unknown"] = 0] = "Unknown";
-    OrderShopPaymentStatus[OrderShopPaymentStatus["Created"] = 1] = "Created";
-    OrderShopPaymentStatus[OrderShopPaymentStatus["Paid"] = 2] = "Paid";
-})(OrderShopPaymentStatus = exports.OrderShopPaymentStatus || (exports.OrderShopPaymentStatus = {}));
 var Functions;
 (function (Functions) {
     class OrderSKUObject {
@@ -350,13 +332,13 @@ var Functions;
             switch (orderObject.paymentAgencyType) {
                 case PaymentAgencyType.Stripe:
                     const charge = orderObject.stripeCharge;
-                    order.paymentStatus = OrderPaymentStatus.Paid;
+                    order.paymentStatus = protocol_1.OrderPaymentStatus.Paid;
                     order.stripe.chargeID = charge.id;
                     order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
                     // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
                     // await order.update()
                     yield order.reference.update({
-                        paymentStatus: OrderPaymentStatus.Paid,
+                        paymentStatus: protocol_1.OrderPaymentStatus.Paid,
                         stripe: orderObject.order.rawValue().stripe,
                         paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
                         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
@@ -386,10 +368,10 @@ var Functions;
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();
                     orderShop.init(doc);
-                    return orderShop.paymentStatus === OrderShopPaymentStatus.Created;
+                    return orderShop.paymentStatus === protocol_1.OrderShopPaymentStatus.Created;
                 }).forEach(doc => {
                     batch.update(doc.ref, {
-                        paymentStatus: OrderShopPaymentStatus.Paid,
+                        paymentStatus: protocol_1.OrderShopPaymentStatus.Paid,
                         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
                     });
                 });
@@ -427,7 +409,7 @@ var Functions;
                 throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, new error_1.RetryFailedError('orderPaymentRequested', orderObject.order.retry.errors.toString()));
             }
             // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
-            if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
+            if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === protocol_1.OrderPaymentStatus.PaymentRequested) {
                 // continue
             }
             else {

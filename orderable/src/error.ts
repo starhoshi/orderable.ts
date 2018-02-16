@@ -1,6 +1,6 @@
 import * as EventResponse from 'event-response'
 import * as Retrycf from 'retrycf'
-import { OrderProtocol } from './orderable'
+import { OrderProtocol } from './protocol'
 
 export enum ValidationErrorType {
   ShopIsNotActive = 'ShopIsNotActive',
