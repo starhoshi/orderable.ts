@@ -3,7 +3,7 @@
     <img src="https://raw.githubusercontent.com/starhoshi/orderable.ts/master/docs/logo.png" width='180px' />
 </p>
 
-# orderable.ts
+# orderable.ts [![npm version](https://badge.fury.io/js/%40star__hoshi%2Forderable.svg)](https://badge.fury.io/js/%40star__hoshi%2Forderable) [![Build Status](https://travis-ci.org/starhoshi/orderable.ts.svg?branch=master)](https://travis-ci.org/starhoshi/orderable.ts) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/9981ad0ae02f4a64aacd0428d056424c)](https://www.codacy.com/app/kensuke1751/orderable.ts?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=starhoshi/orderable.ts&amp;utm_campaign=Badge_Grade) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 <b>⚠️ Orderable is currently under development. ⚠️</b>
 
