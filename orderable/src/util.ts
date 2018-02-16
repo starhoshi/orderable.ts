@@ -1,5 +1,5 @@
 import { Pring } from 'pring'
-import { firestore } from './orderable'
+import { firestore } from './index'
 
 export class PringUtil {
   static collectionPath<T extends Pring.Base>(model: T): string {

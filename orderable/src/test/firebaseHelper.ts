@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
 import { Pring, property } from 'pring'
-import * as Orderable from '../orderable'
+import * as Orderable from '../index'
 import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Retrycf from 'retrycf'

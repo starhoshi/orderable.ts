@@ -1,5 +1,5 @@
 import { Pring, property } from 'pring'
-import * as Orderable from '../orderable'
+import * as Orderable from '../index'
 import * as Retrycf from 'retrycf'
 import * as EventResponse from 'event-response'
 // import * as Orderable from '@star__hoshi/orderable'

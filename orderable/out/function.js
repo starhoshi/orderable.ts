@@ -20,7 +20,7 @@ const EventResponse = require("event-response");
 const util_1 = require("./util");
 const error_1 = require("./error");
 const protocol_1 = require("./protocol");
-const orderable_1 = require("./orderable");
+const index_1 = require("./index");
 var Functions;
 (function (Functions) {
     class OrderSKUObject {
@@ -97,10 +97,10 @@ var Functions;
             if (!orderSKUObjects) {
                 throw Error('orderSKUObjects must be non-null');
             }
-            return orderable_1.firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
+            return index_1.firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = orderable_1.firestore.collection(util_1.PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id);
+                    const skuRef = index_1.firestore.collection(util_1.PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id);
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
                         const newStock = tsku.data().stock + quantity;
@@ -151,7 +151,7 @@ var Functions;
             orderObject.orderSKUObjects = orderSKUObjects;
             yield orderObject.getShops();
             if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
-                const stripeCard = yield orderable_1.stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
+                const stripeCard = yield index_1.stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
                 orderObject.stripeCard = stripeCard;
             }
             return orderObject;
@@ -261,7 +261,7 @@ var Functions;
         }
     }));
     const stripeCharge = (order) => __awaiter(this, void 0, void 0, function* () {
-        return yield orderable_1.stripe.charges.create({
+        return yield index_1.stripe.charges.create({
             amount: order.amount,
             currency: order.currency,
             customer: order.stripe.customerID,
@@ -344,11 +344,11 @@ var Functions;
         try {
             const orderShopColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.orderShop());
             const orderColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.order());
-            yield orderable_1.firestore.collection(orderShopColRef)
-                .where('order', '==', orderable_1.firestore.collection(orderColRef).doc(orderObject.orderID))
+            yield index_1.firestore.collection(orderShopColRef)
+                .where('order', '==', index_1.firestore.collection(orderColRef).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
-                const batch = orderable_1.firestore.batch();
+                const batch = index_1.firestore.batch();
                 // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();

@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const orderable_1 = require("./orderable");
+const index_1 = require("./index");
 class PringUtil {
     static collectionPath(model) {
         return `version/${model.getVersion()}/${model.getModelName()}`;
@@ -16,7 +16,7 @@ class PringUtil {
     static get(klass, id) {
         return __awaiter(this, void 0, void 0, function* () {
             const model = new klass();
-            return orderable_1.firestore.collection(PringUtil.collectionPath(model)).doc(id).get().then(s => {
+            return index_1.firestore.collection(PringUtil.collectionPath(model)).doc(id).get().then(s => {
                 model.init(s);
                 return model;
             });

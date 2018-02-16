@@ -2,8 +2,8 @@
   "name": "@star__hoshi/orderable",
   "version": "0.5.2",
   "description": "",
-  "main": "out/orderable.js",
-  "types": "out/orderable.d.ts",
+  "main": "out/index.js",
+  "types": "out/index.d.ts",
   "scripts": {
     "test": "jest",
     "build": "tslint -p tslint.json && tsc -d",
