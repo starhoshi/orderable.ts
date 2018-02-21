@@ -162,6 +162,31 @@ export namespace Functions {
     minus = -1
   }
 
+  const validateOrderExpired: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
+    = new Flow.Step(async (orderObject) => {
+      try {
+        const order = orderObject.order!
+
+        if (orderObject.isCharged) { // skip if payment completed
+          return orderObject
+        }
+
+        if (new Date(order.expirationDate as string) > new Date()) {
+          throw new BadRequestError(ValidationErrorType.OrderExpired, 'The order has expired.')
+        }
+
+        return orderObject
+      } catch (error) {
+        if (error.constructor === BadRequestError) {
+          const brError = error as BadRequestError
+          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
+          throw new OrderableError('validateOrderExpired', ErrorType.BadRequest, error)
+        }
+
+        throw new OrderableError('validateOrderExpired', ErrorType.Internal, error)
+      }
+    })
+
   const preventStepName = 'preventMultipleProcessing'
   const preventMultipleProcessing: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {

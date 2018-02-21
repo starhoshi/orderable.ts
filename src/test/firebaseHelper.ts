@@ -74,6 +74,7 @@ export class Firebase {
           projectId: 'sandbox-329fc',
           keyFilename: './sandbox-329fc-firebase-adminsdk.json'
         },
+        availableMinutes: 30,
         stripeToken: process.env.STRIPE as string
       })
     }

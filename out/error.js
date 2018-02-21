@@ -19,6 +19,7 @@ var ValidationErrorType;
     ValidationErrorType["StripeInvalidRequestError"] = "StripeInvalidRequestError";
     ValidationErrorType["StripeCardExpired"] = "StripeCardExpired";
     ValidationErrorType["PaymentInfoNotFound"] = "PaymentInfoNotFound";
+    ValidationErrorType["OrderExpired"] = "OrderExpired";
 })(ValidationErrorType = exports.ValidationErrorType || (exports.ValidationErrorType = {}));
 class BaseError extends Error {
     constructor(id, message) {

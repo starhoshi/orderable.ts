@@ -123,6 +123,26 @@ var Functions;
         Operator[Operator["plus"] = 1] = "plus";
         Operator[Operator["minus"] = -1] = "minus";
     })(Operator = Functions.Operator || (Functions.Operator = {}));
+    const validateOrderExpired = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            const order = orderObject.order;
+            if (orderObject.isCharged) {
+                return orderObject;
+            }
+            if (new Date(order.expirationDate) > new Date()) {
+                throw new error_1.BadRequestError(error_1.ValidationErrorType.OrderExpired, 'The order has expired.');
+            }
+            return orderObject;
+        }
+        catch (error) {
+            if (error.constructor === error_1.BadRequestError) {
+                const brError = error;
+                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
+                throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.BadRequest, error);
+            }
+            throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.Internal, error);
+        }
+    }));
     const preventStepName = 'preventMultipleProcessing';
     const preventMultipleProcessing = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {

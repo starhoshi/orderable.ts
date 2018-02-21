@@ -7,6 +7,7 @@ export declare enum ValidationErrorType {
     StripeInvalidRequestError = "StripeInvalidRequestError",
     StripeCardExpired = "StripeCardExpired",
     PaymentInfoNotFound = "PaymentInfoNotFound",
+    OrderExpired = "OrderExpired",
 }
 export declare class BaseError extends Error {
     id: string;
