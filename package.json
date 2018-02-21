@@ -1,6 +1,6 @@
 {
   "name": "@star__hoshi/orderable",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "",
   "main": "out/index.js",
   "types": "out/index.d.ts",
