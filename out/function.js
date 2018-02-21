@@ -129,7 +129,10 @@ var Functions;
             if (orderObject.isCharged) {
                 return orderObject;
             }
-            if (new Date(order.expirationDate) > new Date()) {
+            if (!order.expirationDate) {
+                return orderObject;
+            }
+            if (order.expirationDate.getTime() < new Date().getTime()) {
                 throw new error_1.BadRequestError(error_1.ValidationErrorType.OrderExpired, 'The order has expired.');
             }
             return orderObject;
@@ -423,6 +426,7 @@ var Functions;
                 }
             }
             const flow = new Flow.Line([
+                validateOrderExpired,
                 prepareRequiredData,
                 validateShopIsActive,
                 validateSKUIsActive,

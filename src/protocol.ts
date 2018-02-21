@@ -48,7 +48,7 @@ export interface OrderProtocol extends Pring.Base {
   user: FirebaseFirestore.DocumentReference
   amount: number
   paidDate: FirebaseFirestore.FieldValue
-  expirationDate: FirebaseFirestore.FieldValue
+  expirationDate?: Date
   currency?: string
   orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
   paymentStatus: OrderPaymentStatus

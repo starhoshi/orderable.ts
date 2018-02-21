@@ -485,6 +485,7 @@ describe('orderPaymentRequested', () => {
       await data.model.order.update()
       data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
+      expect.hasAssertions()
       try {
         await Orderable.Functions.orderPaymentRequested(data.orderObject)
       } catch (e) {
@@ -504,6 +505,51 @@ describe('orderPaymentRequested', () => {
           Helper.Firebase.shared.expectFatal(data.model, 'orderPaymentRequested')
         ])
       }
+    })
+  })
+
+  describe('validateOrderExpired', () => {
+    describe('when order expired', () => {
+      test('bad request error', async () => {
+        const order = Helper.Firebase.shared.defaultOrder
+        order.expirationDate = new Date()
+        const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+        const data = await makeTestData(customModel)
+
+        expect.hasAssertions()
+        try {
+          await Orderable.Functions.orderPaymentRequested(data.orderObject)
+        } catch (e) {
+          expect(e).toBeInstanceOf(Orderable.OrderableError)
+          const orderableError = e as Orderable.OrderableError
+          expect(orderableError.type).toBe(Orderable.ErrorType.BadRequest)
+          expect(orderableError.step).toBe('validateOrderExpired')
+          const badRequestError = orderableError.error as Orderable.BadRequestError
+          expect(badRequestError).toBeInstanceOf(Orderable.BadRequestError)
+          expect(badRequestError.id).toEqual(Orderable.ValidationErrorType.OrderExpired)
+          await Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
+        }
+      })
+    })
+
+    describe('when order not expired', () => {
+      test('success', async () => {
+        const order = Helper.Firebase.shared.defaultOrder
+        order.expirationDate = new Date(new Date().setMinutes(new Date().getMinutes() + 1))
+        const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
+        const data = await makeTestData(customModel)
+
+        // run functions
+        await Orderable.Functions.orderPaymentRequested(data.orderObject)
+
+        // expect
+        await Promise.all([
+          Helper.Firebase.shared.expectOrder(data.model),
+          Helper.Firebase.shared.expectStock(data.model),
+          Helper.Firebase.shared.expectOrderShop(data.model),
+          Helper.Firebase.shared.expectStripe(data.model)
+        ])
+      })
     })
   })
 

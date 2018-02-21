@@ -14,7 +14,7 @@ import * as EventResponse from 'event-response'
 import { PringUtil } from './util'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
 import { OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
-import { firestore, stripe } from './index'
+import { firestore, stripe, availableMinutes } from './index'
 
 export namespace Functions {
   export class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
@@ -170,8 +170,11 @@ export namespace Functions {
         if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
+        if (!order.expirationDate) {
+          return orderObject
+        }
 
-        if (new Date(order.expirationDate as string) > new Date()) {
+        if (order.expirationDate.getTime() < new Date().getTime()) {
           throw new BadRequestError(ValidationErrorType.OrderExpired, 'The order has expired.')
         }
 
@@ -525,6 +528,7 @@ export namespace Functions {
       }
 
       const flow = new Flow.Line([
+        validateOrderExpired,
         prepareRequiredData,
         validateShopIsActive,
         validateSKUIsActive,

@@ -24,6 +24,7 @@ export interface DataSetOrder {
   amount?: number
   currency?: string
   paymentStatus?: Orderable.OrderPaymentStatus
+  expirationDate?: Date
   stripe?: {
     cardID: string,
     customerID: string,
@@ -181,6 +182,9 @@ export class Firebase {
     order.amount = dataSet.order.amount || 10000
     order.currency = dataSet.order.currency || 'jpy'
     order.paymentStatus = dataSet.order.paymentStatus || Orderable.OrderPaymentStatus.PaymentRequested
+    if (dataSet.order.expirationDate) {
+      order.expirationDate = dataSet.order.expirationDate
+    }
     if (dataSet.order.stripe) {
       const stripeCharge = new Model.SampleStripeCharge()
       stripeCharge.cardID = dataSet.order.stripe.cardID
