@@ -104,11 +104,13 @@ var Functions;
                     const t = transaction.get(skuRef).then(tsku => {
                         const quantity = orderSKUObject.orderSKU.quantity * operator;
                         const newStock = tsku.data().stock + quantity;
-                        if (newStock >= 0) {
-                            transaction.update(skuRef, { stock: newStock });
-                        }
-                        else {
-                            throw new error_1.BadRequestError(error_1.ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`);
+                        if (tsku.data().stockType === protocol_1.StockType.Finite) {
+                            if (newStock >= 0) {
+                                transaction.update(skuRef, { stock: newStock });
+                            }
+                            else {
+                                throw new error_1.BadRequestError(error_1.ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`);
+                            }
                         }
                     });
                     promises.push(t);

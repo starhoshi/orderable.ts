@@ -73,12 +73,36 @@ describe('OrderObject', () => {
   describe('updateStock', () => {
     let model: Helper.SampleModel
 
-    beforeEach(async () => {
-      model = await Helper.Firebase.shared.makeValidateModel()
-      orderObject.order = model.order
+    describe('infinite', async () => {
+      beforeEach(async () => {
+        const shops = Helper.Firebase.shared.defaultShops
+        shops[0].skus[0].stockType = Orderable.StockType.Infinite
+        shops[0].skus[1].stockType = Orderable.StockType.Infinite
+        shops[0].skus[0].stock = 0
+        shops[0].skus[1].stock = 0
+        const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
+        model = await Helper.Firebase.shared.makeValidateModel(customModel)
+        orderObject.order = model.order
+        orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+      })
+
+      describe('when update succeeded', () => {
+        test('stock not decremented', async () => {
+          await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
+
+          for (const orderSKU of model.orderSKUs) {
+            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
+            expect(sku.stock).toEqual(0)
+          }
+        })
+      })
     })
 
     describe('finite', async () => {
+      beforeEach(async () => {
+        model = await Helper.Firebase.shared.makeValidateModel()
+        orderObject.order = model.order
+      })
       describe('when update succeeded', () => {
         const stock = 100
         beforeEach(async () => {

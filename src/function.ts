@@ -143,10 +143,12 @@ export namespace Functions {
             const quantity = orderSKUObject.orderSKU.quantity * operator
             const newStock = tsku.data()!.stock + quantity
 
-            if (newStock >= 0) {
-              transaction.update(skuRef, { stock: newStock })
-            } else {
-              throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct!.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`)
+            if (tsku.data()!.stockType === StockType.Finite) {
+              if (newStock >= 0) {
+                transaction.update(skuRef, { stock: newStock })
+              } else {
+                throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct!.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`)
+              }
             }
           })
           promises.push(t)

@@ -161,9 +161,9 @@ export class Firebase {
         promises1.push(p.save())
 
         const sk = new Model.SampleSKU()
-        sk.price = sku.price || 1000
+        sk.price = sku.price === 0 ? sku.price : 1000
         sk.stockType = sku.stockType || Orderable.StockType.Infinite
-        sk.stock = sku.stock || 100
+        sk.stock = sku.stock === 0 ? sku.stock : 100
         sk.isActive = !!sku.isActive
         promises1.push(sk.save())
         products.push({ product: p, sku: sk, quantity: sku.quantity || 1 })
