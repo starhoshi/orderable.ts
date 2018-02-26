@@ -422,10 +422,11 @@ export namespace Functions {
    * Save peyment succeeded information.
    * Set fatal error if this step failed.
    */
-  const updateOrder: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
+  const savePaymentCompleted: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
         const order = orderObject.order!
+        const batch = firestore.batch()
 
         if (orderObject.isCharged) { // skip if payment completed
           return orderObject
@@ -438,40 +439,24 @@ export namespace Functions {
             order.paymentStatus = OrderPaymentStatus.Paid
             order.stripe!.chargeID = charge.id
             order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
-            // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
-            // await order.update()
-            await order.reference.update({
+            batch.update(order.reference, {
               paymentStatus: OrderPaymentStatus.Paid,
-              stripe: orderObject.order.rawValue().stripe ,
+              stripe: orderObject.order.rawValue().stripe,
               paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
               updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
             })
+
             break
           default:
           // nothing to do
         }
 
-        console.log('charge completed')
-
-        return orderObject
-      } catch (error) {
-        // If this step failed, we can not remember chargeID. Because set fatal error.
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
-        throw new OrderableError('updateOrder', ErrorType.Internal, error)
-      }
-    })
-
-  const updateOrderShops: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
-    = new Flow.Step(async (orderObject) => {
-      try {
         const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
         const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
         await firestore.collection(orderShopColRef)
           .where('order', '==', firestore.collection(orderColRef).doc(orderObject.orderID))
           .get()
           .then(snapshot => {
-            const batch = firestore.batch()
-
             // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
             snapshot.docs.filter(doc => {
               const orderShop = new orderObject.initializableClass.orderShop()
@@ -483,14 +468,17 @@ export namespace Functions {
                 updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
               })
             })
-            return batch.commit()
           })
+
+        await batch.commit()
+
+        console.log('charge completed')
 
         return orderObject
       } catch (error) {
-        // This step fails only when a batch error occurs. Because set retry.
-        orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
-        throw new OrderableError('updateOrderShops', ErrorType.Retry, error)
+        // If this step failed, we can not remember chargeID. Because set fatal error.
+        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        throw new OrderableError('updateOrder', ErrorType.Internal, error)
       }
     })
 
@@ -538,8 +526,7 @@ export namespace Functions {
         preventMultipleProcessing,
         validateAndDecreaseStock,
         payment,
-        updateOrder,
-        updateOrderShops,
+        savePaymentCompleted,
         setOrderTask
       ])
 

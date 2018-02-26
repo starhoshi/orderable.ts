@@ -333,9 +333,10 @@ var Functions;
      * Save peyment succeeded information.
      * Set fatal error if this step failed.
      */
-    const updateOrder = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const savePaymentCompleted = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
+            const batch = index_1.firestore.batch();
             if (orderObject.isCharged) {
                 return orderObject;
             }
@@ -345,9 +346,7 @@ var Functions;
                     order.paymentStatus = protocol_1.OrderPaymentStatus.Paid;
                     order.stripe.chargeID = charge.id;
                     order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
-                    // FIXME: Error: Cannot encode type ([object Object]) to a Firestore Value
-                    // await order.update()
-                    yield order.reference.update({
+                    batch.update(order.reference, {
                         paymentStatus: protocol_1.OrderPaymentStatus.Paid,
                         stripe: orderObject.order.rawValue().stripe,
                         paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
@@ -356,24 +355,12 @@ var Functions;
                     break;
                 default:
             }
-            console.log('charge completed');
-            return orderObject;
-        }
-        catch (error) {
-            // If this step failed, we can not remember chargeID. Because set fatal error.
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
-            throw new error_1.OrderableError('updateOrder', error_1.ErrorType.Internal, error);
-        }
-    }));
-    const updateOrderShops = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
-        try {
             const orderShopColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.orderShop());
             const orderColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.order());
             yield index_1.firestore.collection(orderShopColRef)
                 .where('order', '==', index_1.firestore.collection(orderColRef).doc(orderObject.orderID))
                 .get()
                 .then(snapshot => {
-                const batch = index_1.firestore.batch();
                 // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
                 snapshot.docs.filter(doc => {
                     const orderShop = new orderObject.initializableClass.orderShop();
@@ -385,14 +372,15 @@ var Functions;
                         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
                     });
                 });
-                return batch.commit();
             });
+            yield batch.commit();
+            console.log('charge completed');
             return orderObject;
         }
         catch (error) {
-            // This step fails only when a batch error occurs. Because set retry.
-            orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
-            throw new error_1.OrderableError('updateOrderShops', error_1.ErrorType.Retry, error);
+            // If this step failed, we can not remember chargeID. Because set fatal error.
+            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            throw new error_1.OrderableError('updateOrder', error_1.ErrorType.Internal, error);
         }
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
@@ -436,8 +424,7 @@ var Functions;
                 preventMultipleProcessing,
                 validateAndDecreaseStock,
                 payment,
-                updateOrder,
-                updateOrderShops,
+                savePaymentCompleted,
                 setOrderTask
             ]);
             yield flow.run(orderObject);

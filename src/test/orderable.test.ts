@@ -474,8 +474,7 @@ describe('orderPaymentRequested', () => {
       await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
       await Promise.all([
-        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model),
-        Helper.Firebase.shared.expectOrderShop(data.model)
+        Helper.Firebase.shared.expectStockNotDecrementAndNotCompleted(data.model)
       ])
     })
   })
