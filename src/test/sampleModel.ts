@@ -59,7 +59,7 @@ export class SampleOrder extends Pring.Base implements Orderable.OrderProtocol {
 
   @property user: FirebaseFirestore.DocumentReference
   @property amount: number = 0
-  @property paidDate: FirebaseFirestore.FieldValue
+  @property paidDate?: Date
   @property expirationDate?: Date
   @property currency?: string
   @property orderSKUs: Pring.ReferenceCollection<SampleOrderSKU> = new Pring.ReferenceCollection(this)

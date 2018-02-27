@@ -439,12 +439,12 @@ export namespace Functions {
 
             order.paymentStatus = OrderPaymentStatus.Paid
             order.stripe!.chargeID = charge.id
-            order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
+            order.paidDate = new Date()
             batch.update(orderReference, {
               paymentStatus: OrderPaymentStatus.Paid,
               stripe: orderObject.order.rawValue().stripe,
-              paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
-              updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+              paidDate: new Date(),
+              updatedAt: new Date()
             })
 
             break
@@ -466,7 +466,7 @@ export namespace Functions {
             }).forEach(doc => {
               batch.update(doc.ref, {
                 paymentStatus: OrderShopPaymentStatus.Paid,
-                updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+                updatedAt: new Date()
               })
             })
           })

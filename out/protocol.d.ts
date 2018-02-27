@@ -39,7 +39,7 @@ export interface StripeProtocol extends Pring.Base {
 export interface OrderProtocol extends Pring.Base {
     user: FirebaseFirestore.DocumentReference;
     amount: number;
-    paidDate: FirebaseFirestore.FieldValue;
+    paidDate?: Date;
     expirationDate?: Date;
     currency?: string;
     orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>;

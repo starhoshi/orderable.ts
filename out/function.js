@@ -8,8 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// import { Event, TriggerAnnotated } from 'firebase-functions'
-const FirebaseFirestore = require("@google-cloud/firestore");
 // import { Pring, property } from 'pring'
 const Retrycf = require("retrycf");
 const Flow = require("@1amageek/flow");
@@ -346,12 +344,12 @@ var Functions;
                     const charge = orderObject.stripeCharge;
                     order.paymentStatus = protocol_1.OrderPaymentStatus.Paid;
                     order.stripe.chargeID = charge.id;
-                    order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
+                    order.paidDate = new Date();
                     batch.update(orderReference, {
                         paymentStatus: protocol_1.OrderPaymentStatus.Paid,
                         stripe: orderObject.order.rawValue().stripe,
-                        paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
-                        updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+                        paidDate: new Date(),
+                        updatedAt: new Date()
                     });
                     break;
                 default:
@@ -370,7 +368,7 @@ var Functions;
                 }).forEach(doc => {
                     batch.update(doc.ref, {
                         paymentStatus: protocol_1.OrderShopPaymentStatus.Paid,
-                        updatedAt: FirebaseFirestore.FieldValue.serverTimestamp()
+                        updatedAt: new Date()
                     });
                 });
             });
