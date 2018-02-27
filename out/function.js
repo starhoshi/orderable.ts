@@ -337,6 +337,7 @@ var Functions;
         try {
             const order = orderObject.order;
             const batch = index_1.firestore.batch();
+            const orderReference = index_1.firestore.doc(order.path);
             if (orderObject.isCharged) {
                 return orderObject;
             }
@@ -346,7 +347,7 @@ var Functions;
                     order.paymentStatus = protocol_1.OrderPaymentStatus.Paid;
                     order.stripe.chargeID = charge.id;
                     order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp();
-                    batch.update(order.reference, {
+                    batch.update(orderReference, {
                         paymentStatus: protocol_1.OrderPaymentStatus.Paid,
                         stripe: orderObject.order.rawValue().stripe,
                         paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),

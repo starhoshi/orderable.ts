@@ -427,6 +427,7 @@ export namespace Functions {
       try {
         const order = orderObject.order!
         const batch = firestore.batch()
+        const orderReference = firestore.doc(order.path)
 
         if (orderObject.isCharged) { // skip if payment completed
           return orderObject
@@ -439,7 +440,7 @@ export namespace Functions {
             order.paymentStatus = OrderPaymentStatus.Paid
             order.stripe!.chargeID = charge.id
             order.paidDate = FirebaseFirestore.FieldValue.serverTimestamp()
-            batch.update(order.reference, {
+            batch.update(orderReference, {
               paymentStatus: OrderPaymentStatus.Paid,
               stripe: orderObject.order.rawValue().stripe,
               paidDate: FirebaseFirestore.FieldValue.serverTimestamp(),
