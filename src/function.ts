@@ -485,7 +485,6 @@ export namespace Functions {
   const setOrderTask: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        // orderObject.order = await NeoTask.setSuccess(orderObject.order)
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setOK()
 
         return orderObject
