@@ -7,9 +7,7 @@ export * from './protocol';
 export * from './function';
 export declare let stripe: Stripe;
 export declare let firestore: FirebaseFirestore.Firestore;
-export declare let availableMinutes: number;
 export declare const initialize: (options: {
     adminOptions: any;
-    availableMinutes: number;
     stripeToken: string;
 }) => void;

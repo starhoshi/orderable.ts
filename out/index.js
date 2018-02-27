@@ -21,5 +21,4 @@ exports.initialize = (options) => {
     EventResponse.configure({ collectionPath: 'version/1/failure' });
     exports.firestore = new FirebaseFirestore.Firestore(options.adminOptions);
     exports.stripe = new Stripe(options.stripeToken);
-    exports.availableMinutes = options.availableMinutes;
 };

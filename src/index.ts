@@ -12,9 +12,8 @@ export * from './function'
 
 export let stripe: Stripe
 export let firestore: FirebaseFirestore.Firestore
-export let availableMinutes: number
 
-export const initialize = (options: { adminOptions: any, availableMinutes: number, stripeToken: string }) => {
+export const initialize = (options: { adminOptions: any, stripeToken: string }) => {
   Pring.initialize(options.adminOptions)
   Retrycf.initialize(options.adminOptions)
   Mission.initialize(options.adminOptions)
@@ -22,5 +21,4 @@ export const initialize = (options: { adminOptions: any, availableMinutes: numbe
   EventResponse.configure({ collectionPath: 'version/1/failure' })
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
   stripe = new Stripe(options.stripeToken)
-  availableMinutes = options.availableMinutes
 }
