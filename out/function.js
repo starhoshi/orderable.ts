@@ -385,7 +385,6 @@ var Functions;
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            // orderObject.order = await NeoTask.setSuccess(orderObject.order)
             orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setOK();
             return orderObject;
         }
