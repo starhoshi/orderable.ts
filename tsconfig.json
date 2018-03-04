@@ -5,7 +5,8 @@
     "outDir": "./out",
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*.ts"

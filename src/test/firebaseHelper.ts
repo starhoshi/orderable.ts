@@ -153,7 +153,7 @@ export class Firebase {
       sh.isActive = !!shop.isActive
       promises1.push(sh.save())
 
-      let products: {product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number}[] = []
+      let products: { product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number }[] = []
       for (const sku of shop.skus) {
         const p = new Model.SampleProduct()
         p.name = sku.name || 'product'
@@ -169,7 +169,7 @@ export class Firebase {
         productsForReturn.push(p)
         skusForReturn.push(sk)
       }
-      shops.push({shop: sh, products: products})
+      shops.push({ shop: sh, products: products })
     }
 
     await Promise.all(promises1)
@@ -240,14 +240,14 @@ export class Firebase {
   step = 'preventMultipleProcessing'
 
   async expectOrder(model: SampleModel) {
-      const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.completed).toEqual({[this.step]: true})
-      expect(order.result).toEqual({status: EventResponse.Status.OK})
-      expect(order.stripe!.cardID).toBeDefined()
-      expect(order.stripe!.customerID).toBeDefined()
-      expect(order.stripe!.chargeID).toBeDefined()
-      expect(order.paidDate).toBeInstanceOf(Date)
-      expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)
+    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+    expect(order.completed).toEqual({ [this.step]: true })
+    expect(order.result).toEqual({ status: EventResponse.Status.OK })
+    expect(order.stripe!.cardID).toBeDefined()
+    expect(order.stripe!.customerID).toBeDefined()
+    expect(order.stripe!.chargeID).toBeDefined()
+    expect(order.paidDate).toBeInstanceOf(Date)
+    expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)
   }
 
   async expectStock(model: SampleModel) {
@@ -273,17 +273,17 @@ export class Firebase {
   }
 
   async expectRetry(model: SampleModel, retryCount: number = 1) {
-      const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.retry!.count).toBe(retryCount)
-      expect(order.retry!.errors.length).toEqual(retryCount)
-      expect(order.retry!.errors.length).toEqual(retryCount)
+    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+    expect(order.retry!.count).toBe(retryCount)
+    expect(order.retry!.errors.length).toEqual(retryCount)
+    expect(order.retry!.errors.length).toEqual(retryCount)
   }
 
   async expectFatal(model: SampleModel, step: string) {
-      const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-      expect(order.result!.status).toEqual(EventResponse.Status.InternalError)
-      expect(order.result!.id!).toBe(step)
-      expect(order.result!.error).toBeDefined()
+    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
+    expect(order.result!.status).toEqual(EventResponse.Status.InternalError)
+    expect(order.result!.id!).toBe(step)
+    expect(order.result!.error).toBeDefined()
   }
 
   async expectOrderShop(model: SampleModel) {

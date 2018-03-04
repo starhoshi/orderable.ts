@@ -26,16 +26,16 @@
   },
   "homepage": "https://github.com/starhoshi/orderable.ts#readme",
   "devDependencies": {
-    "@types/jest": "^22.1.2",
+    "@types/jest": "^22.1.4",
     "@types/request": "^2.47.0",
     "@types/slack-node": "^0.1.2",
-    "@types/stripe": "^5.0.5",
+    "@types/stripe": "^5.0.7",
     "firebase-tools": "^3.17.4",
-    "jest": "^22.3.0",
-    "rescue-fire": "^0.2.0",
-    "ts-jest": "^22.0.4",
+    "jest": "^22.4.2",
+    "rescue-fire": "^0.2.3",
+    "ts-jest": "^22.4.1",
     "tslint": "^5.9.1",
-    "typescript": "^2.7.1"
+    "typescript": "^2.7.2"
   },
   "jest": {
     "transform": {
@@ -50,12 +50,12 @@
   },
   "dependencies": {
     "@1amageek/flow": "^0.2.1",
-    "event-response": "^0.2.4",
+    "event-response": "^0.2.7",
     "firebase-admin": "^5.9.1",
     "firebase-functions": "^0.8.1",
     "mission-completed": "^0.1.6",
     "pring": "^0.5.2",
-    "retrycf": "^0.2.4",
-    "stripe": "^5.4.0"
+    "retrycf": "^0.2.8",
+    "stripe": "^5.5.0"
   }
 }
