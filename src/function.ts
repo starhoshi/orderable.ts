@@ -64,16 +64,6 @@ export namespace Functions {
     Stripe
   }
 
-  class Hoge<Order extends OrderProtocol> {
-    order: Tart.Snapshot<Order>
-    previousOrder: Tart.Snapshot<Order>
-
-    constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>) {
-      this.order = new Tart.Snapshot<Order>(event.data)
-      this.previousOrder = new Tart.Snapshot<Order>(event.data.previous)
-    }
-  }
-
   export class OrderObject<
     Order extends OrderProtocol,
     Shop extends ShopProtocol,
@@ -98,15 +88,11 @@ export namespace Functions {
 
     async getShops() {
       this.shops = await Promise.all(this.orderSKUObjects!.map(orderSKUObject => {
-        return orderSKUObject.orderSKU.shop
+        return orderSKUObject.orderSKU.data.shop
       }).filter((shopRef, index, self) => { // deduplication
         return self.indexOf(shopRef) === index
       }).map(shopRef => {
-        return shopRef.get().then(shopSnapshot => {
-          const shop = new this.initializableClass.shop()
-          shop.init(shopSnapshot)
-          return shop
-        })
+        return shopRef.get().then(s => { return new Tart.Snapshot<Shop>(s) })
       }))
     }
 
@@ -114,15 +100,12 @@ export namespace Functions {
       this.event = event
       this.orderID = event.params!.orderID!
       this.initializableClass = initializableClass
-      this.order = new initializableClass.order()
-      this.order.init(event.data)
-      const o = new Tart.Snapshot<OrderProtocol>(event.data)
-      this.previousOrder = new initializableClass.order()
-      this.previousOrder.init(event.data.previous)
+      this.order = new Tart.Snapshot<Order>(event.data)
+      this.previousOrder = new Tart.Snapshot<Order>(event.data.previous)
     }
 
     get isCharged(): boolean {
-      if (this.order && this.order.stripe && this.order.stripe.chargeID) {
+      if (this.order && this.order.data.stripe && this.order.data.stripe.chargeID) {
         return true
       }
       return false
@@ -133,7 +116,7 @@ export namespace Functions {
         return PaymentAgencyType.Unknown
       }
 
-      if (this.order.stripe) {
+      if (this.order.data.stripe) {
         return PaymentAgencyType.Stripe
       }
 
@@ -147,16 +130,16 @@ export namespace Functions {
       return firestore.runTransaction(async (transaction) => {
         const promises: Promise<any>[] = []
         for (const orderSKUObject of orderSKUObjects) {
-          const skuRef = firestore.collection(PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id)
-          const t = transaction.get(skuRef).then(tsku => {
-            const quantity = orderSKUObject.orderSKU.quantity * operator
-            const newStock = tsku.data()!.stock + quantity
+          const t = transaction.get(orderSKUObject.sku.ref).then(tsku => {
+            const sku = new Tart.Snapshot<SKUProtocol>(tsku)
+            const quantity = orderSKUObject.orderSKU.data.quantity * operator
+            const newStock = sku.data.stock + quantity
 
-            if (tsku.data()!.stockType === StockType.Finite) {
+            if (sku.data.stockType === StockType.Finite) {
               if (newStock >= 0) {
-                transaction.update(skuRef, { stock: newStock })
+                transaction.update(orderSKUObject.sku.ref, { stock: newStock })
               } else {
-                throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct!.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`)
+                throw new BadRequestError(ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.data.snapshotProduct!.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.data.quantity}, stock: ${orderSKUObject.sku.data.stock}`)
               }
             }
           })
@@ -181,11 +164,11 @@ export namespace Functions {
         if (orderObject.isCharged) { // skip if payment completed
           return orderObject
         }
-        if (!order.expirationDate) {
+        if (!order.data.expirationDate) {
           return orderObject
         }
 
-        if (order.expirationDate.getTime() < new Date().getTime()) {
+        if (order.data.expirationDate.getTime() < new Date().getTime()) {
           throw new BadRequestError(ValidationErrorType.OrderExpired, 'The order has expired.')
         }
 
@@ -193,7 +176,7 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
-          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
+          orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
           throw new OrderableError('validateOrderExpired', ErrorType.BadRequest, error)
         }
 
@@ -209,8 +192,8 @@ export namespace Functions {
           return orderObject
         }
 
-        const completed = await Mission.markCompleted(orderObject.order.reference, preventStepName)
-        orderObject.order.completed = completed
+        const completed = await Mission.markCompleted(orderObject.order.ref, preventStepName)
+        orderObject.order.data.completed = completed
 
         return orderObject
       } catch (error) {
@@ -219,7 +202,7 @@ export namespace Functions {
         }
 
         // if not CompletedError, it maybe firebase internal error, because retry.
-        orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
+        orderObject.order.data.retry = await Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error)
         throw new OrderableError(preventStepName, ErrorType.Retry, error)
       }
     })
@@ -229,9 +212,7 @@ export namespace Functions {
       try {
         const order = orderObject.order!
 
-        const a = await order.data.user.get().then(s => { new Tart.Snapshot<UserProtocol>(s) })
-        const user = await PringUtil.get(orderObject.initializableClass.user, order.user.id)
-        orderObject.user = user
+        orderObject.user = await order.data.user.get().then(s => { return new Tart.Snapshot<UserProtocol>(s) })
 
         const orderSKUObjects = await OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
         orderObject.orderSKUObjects = orderSKUObjects
@@ -239,14 +220,14 @@ export namespace Functions {
         await orderObject.getShops()
 
         if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
-          const stripeCard = await stripe.customers.retrieveCard(order.stripe!.customerID!, order.stripe!.cardID!)
+          const stripeCard = await stripe.customers.retrieveCard(order.data.stripe!.customerID!, order.data.stripe!.cardID!)
           orderObject.stripeCard = stripeCard
         }
 
         return orderObject
       } catch (error) {
         // This error may be a data preparetion error. In that case, it will be solved by retrying.
-        orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
+        orderObject.order.data.retry = await Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error)
         throw new OrderableError(preventStepName, ErrorType.Retry, error)
       }
     })
@@ -262,8 +243,8 @@ export namespace Functions {
         }
 
         shops.forEach((shop, index) => {
-          if (!shop.isActive) {
-            throw new BadRequestError(ValidationErrorType.ShopIsNotActive, `Shop: ${shop.name} is not active.`)
+          if (!shop.data.isActive) {
+            throw new BadRequestError(ValidationErrorType.ShopIsNotActive, `Shop: ${shop.data.name} is not active.`)
           }
         })
 
@@ -271,11 +252,11 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
-          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
+          orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
           throw new OrderableError('validateShopIsActive', ErrorType.BadRequest, error)
         }
 
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('validateShopIsActive', ErrorType.Internal, error)
       }
     })
@@ -291,9 +272,9 @@ export namespace Functions {
         }
 
         orderSKUObjects.forEach((orderSKUObject, index) => {
-          if (!orderSKUObject.sku.isActive) {
+          if (!orderSKUObject.sku.data.isActive) {
             throw new BadRequestError(ValidationErrorType.SKUIsNotActive,
-              `Product: ${orderSKUObject.orderSKU.snapshotProduct!.name}」 is not active.`)
+              `Product: ${orderSKUObject.orderSKU.data.snapshotProduct!.name}」 is not active.`)
           }
         })
 
@@ -301,11 +282,11 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
-          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
+          orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
           throw new OrderableError('validateSKUIsActive', ErrorType.BadRequest, error)
         }
 
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('validateSKUIsActive', ErrorType.Internal, error)
       }
     })
@@ -339,11 +320,11 @@ export namespace Functions {
       } catch (error) {
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
-          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
+          orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
           throw new OrderableError('validatePaymentMethod', ErrorType.BadRequest, error)
         }
 
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('validatePaymentMethod', ErrorType.Internal, error)
       }
     })
@@ -360,33 +341,33 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // clear completed mark for retry.
-        orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
+        orderObject.order.data.completed = await Mission.remove(orderObject.order.ref, preventStepName)
 
         if (error.constructor === BadRequestError) {
           const brError = error as BadRequestError
-          orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message)
+          orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
           throw new OrderableError('validateAndDecreaseStock', ErrorType.BadRequest, error)
         }
 
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error)
       }
     })
 
-  const stripeCharge = async (order: OrderProtocol) => {
+  const stripeCharge = async (order: Tart.Snapshot<OrderProtocol>) => {
     return await stripe.charges.create(
       {
-        amount: order.amount,
-        currency: order.currency!,
-        customer: order.stripe!.customerID,
-        source: order.stripe!.cardID,
-        transfer_group: order.id,
+        amount: order.data.amount,
+        currency: order.data.currency!,
+        customer: order.data.stripe!.customerID,
+        source: order.data.stripe!.cardID,
+        transfer_group: order.ref.id,
         metadata: {
-          orderID: order.id
+          orderID: order.ref.id
         }
       },
       {
-        idempotency_key: order.id
+        idempotency_key: order.ref.id
       }
     ).catch(e => {
       throw new StripeError(e)
@@ -415,7 +396,7 @@ export namespace Functions {
       } catch (error) {
         // Since stripe.charge failed after reducing stock count, restore stock quantity.
         await orderObject.updateStock(Operator.plus)
-        orderObject.order.completed = await Mission.remove(orderObject.order.reference, preventStepName)
+        orderObject.order.data.completed = await Mission.remove(orderObject.order.ref, preventStepName)
 
         if (error.constructor === StripeError) {
           const stripeError = error as StripeError
@@ -423,7 +404,7 @@ export namespace Functions {
           throw new OrderableError('payment', errorType, error)
         }
 
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('payment', ErrorType.Internal, error)
       }
     })
@@ -437,7 +418,6 @@ export namespace Functions {
       try {
         const order = orderObject.order!
         const batch = firestore.batch()
-        const orderReference = firestore.doc(order.path)
 
         if (orderObject.isCharged) { // skip if payment completed
           return orderObject
@@ -447,12 +427,12 @@ export namespace Functions {
           case PaymentAgencyType.Stripe:
             const charge = orderObject.stripeCharge!
 
-            order.paymentStatus = OrderPaymentStatus.Paid
-            order.stripe!.chargeID = charge.id
-            order.paidDate = new Date()
-            batch.update(orderReference, {
+            order.data.paymentStatus = OrderPaymentStatus.Paid
+            order.data.stripe!.chargeID = charge.id
+            order.data.paidDate = new Date()
+            batch.update(order.ref, {
               paymentStatus: OrderPaymentStatus.Paid,
-              stripe: orderObject.order.rawValue().stripe,
+              stripe: orderObject.order.data.stripe,
               paidDate: new Date(),
               updatedAt: new Date()
             })
@@ -462,17 +442,16 @@ export namespace Functions {
           // nothing to do
         }
 
-        const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
-        const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
-        await firestore.collection(orderShopColRef)
-          .where('order', '==', firestore.collection(orderColRef).doc(orderObject.orderID))
+        // const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
+        // const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
+        await firestore.collection('version/1/ordershop')
+          .where('order', '==', order.ref)
           .get()
           .then(snapshot => {
             // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
-            snapshot.docs.filter(doc => {
-              const orderShop = new orderObject.initializableClass.orderShop()
-              orderShop.init(doc)
-              return orderShop.paymentStatus === OrderShopPaymentStatus.Created
+            snapshot.docs.filter(s => {
+              const orderShop = new Tart.Snapshot<OrderShopProtocol>(s)
+              return orderShop.data.paymentStatus === OrderShopPaymentStatus.Created
             }).forEach(doc => {
               batch.update(doc.ref, {
                 paymentStatus: OrderShopPaymentStatus.Paid,

@@ -1,5 +1,5 @@
 import * as FirebaseFirestore from '@google-cloud/firestore'
-import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
+import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import { firestore } from './index'
 
 export class Snapshot<T extends Pring> {

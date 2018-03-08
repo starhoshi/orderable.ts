@@ -1,6 +1,7 @@
 import * as EventResponse from 'event-response'
 import * as Retrycf from 'retrycf'
 import { OrderProtocol } from './protocol'
+import * as Tart from './tart'
 
 export enum ValidationErrorType {
   ShopIsNotActive = 'ShopIsNotActive',
@@ -143,18 +144,18 @@ export class StripeError extends Error {
     }
   }
 
-  async setError<T extends OrderProtocol>(model: T, step: string) {
+  async setError<T extends OrderProtocol>(model: Tart.Snapshot<T>, step: string) {
     let errorType: ErrorType = ErrorType.Internal
     switch (this.type) {
       // validate
       case StripeErrorType.StripeCardError: {
         errorType = ErrorType.BadRequest
-        model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`)
+        model.data.result = await new EventResponse.Result(model.ref).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`)
         break
       }
       case StripeErrorType.StripeInvalidRequestError: {
         errorType = ErrorType.BadRequest
-        model.result = await new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`)
+        model.data.result = await new EventResponse.Result(model.ref).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`)
         break
       }
 
@@ -162,7 +163,7 @@ export class StripeError extends Error {
       case StripeErrorType.StripeAPIError:
       case StripeErrorType.StripeConnectionError:
         errorType = ErrorType.Retry
-        model.retry = await Retrycf.setRetry(model.reference, model.rawValue(), Error(`${this.type}: ${this.message}`))
+        model.data.retry = await Retrycf.setRetry(model.ref, model.data, Error(`${this.type}: ${this.message}`))
         break
 
       // fatal
@@ -170,12 +171,12 @@ export class StripeError extends Error {
       case StripeErrorType.StripeAuthenticationError:
       case StripeErrorType.UnexpectedError:
         errorType = ErrorType.Internal
-        model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
+        model.data.result = await new EventResponse.Result(model.ref).setInternalError(step, `${this.type}: ${this.message}`)
         break
 
       default:
         errorType = ErrorType.Internal
-        model.result = await new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`)
+        model.data.result = await new EventResponse.Result(model.ref).setInternalError(step, `${this.type}: ${this.message}`)
         break
     }
     return errorType
