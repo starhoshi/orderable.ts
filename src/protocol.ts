@@ -1,18 +1,17 @@
-import { Pring, property } from 'pring'
 import * as EventResponse from 'event-response'
 import * as Retrycf from 'retrycf'
 
-export interface UserProtocol extends Pring.Base {
+export interface UserProtocol {
   stripeCustomerID?: string
 }
 
-export interface ShopProtocol extends Pring.Base {
+export interface ShopProtocol {
   name?: string
   isActive: boolean
   freePostageMinimumPrice: number
 }
 
-export interface ProductProtocol extends Pring.Base {
+export interface ProductProtocol {
   name?: string
 }
 
@@ -22,7 +21,7 @@ export enum StockType {
   Infinite = 'infinite'
 }
 
-export interface SKUProtocol extends Pring.Base {
+export interface SKUProtocol {
   price: number
   stockType: StockType
   stock: number
@@ -38,19 +37,18 @@ export enum OrderPaymentStatus {
   Paid = 4
 }
 
-export interface StripeProtocol extends Pring.Base {
+export interface StripeProtocol {
   cardID?: string
   customerID?: string
   chargeID?: string
 }
 
-export interface OrderProtocol extends Pring.Base {
+export interface OrderProtocol {
   user: FirebaseFirestore.DocumentReference
   amount: number
   paidDate?: Date
   expirationDate?: Date
   currency?: string
-  orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
   paymentStatus: OrderPaymentStatus
   stripe?: StripeProtocol
 
@@ -60,6 +58,9 @@ export interface OrderProtocol extends Pring.Base {
   result?: EventResponse.IResult
   // Retrycf
   retry?: Retrycf.IRetry
+
+  // ReferenceCollection
+  // orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
 }
 
 export enum OrderShopPaymentStatus {
@@ -67,13 +68,15 @@ export enum OrderShopPaymentStatus {
   Created = 1,
   Paid = 2
 }
-export interface OrderShopProtocol extends Pring.Base {
-  orderSKUs: Pring.ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
+export interface OrderShopProtocol {
   paymentStatus: OrderShopPaymentStatus
   user: FirebaseFirestore.DocumentReference
+
+  // ReferenceCollection
+  // orderSKUs: ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
 }
 
-export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> extends Pring.Base {
+export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> {
   snapshotSKU?: T
   snapshotProduct?: P
   quantity: number

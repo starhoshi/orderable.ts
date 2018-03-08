@@ -502,7 +502,7 @@ export namespace Functions {
    */
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     try {
-      const retryStatus = Retrycf.retryStatus(orderObject.order.rawValue(), orderObject.previousOrder.rawValue())
+      const retryStatus = Retrycf.retryStatus(orderObject.order, orderObject.previousOrder)
       if (retryStatus === Retrycf.Status.RetryFailed) {
         orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('orderPaymentRequested', 'Retry Failed')
         throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.retry!.errors.toString()))
