@@ -15,28 +15,26 @@ import { PringUtil } from './util'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
 import { OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
 import { firestore, stripe } from './index'
+import * as Tart from './tart'
 
 export namespace Functions {
   export class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
-    orderSKU: OrderSKU
-    sku: SKU
+    orderSKU: Tart.Snapshot<OrderSKU>
+    sku: Tart.Snapshot<SKU>
 
-    static async fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: OrderProtocol, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
-      const orderSKURefs = await order.orderSKUs.get(orderSKUType)
-      const orderSKUObjects = await Promise.all(orderSKURefs.map(orderSKURef => {
-        return PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
-          const orderSKU = s as OrderSKU
+    static async fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: Tart.Snapshot<OrderProtocol>, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
+      const orderSKUQuerySnapshot = await order.ref.collection('orderSKUs').get()
+      const orderSKUObjects = await Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
+        return Tart.data<OrderSKU>('version/1/ordersku', qds.ref.id).then(snapshot => {
           const orderSKUObject = new OrderSKUObject()
-          orderSKUObject.orderSKU = orderSKU
+          orderSKUObject.orderSKU = snapshot
           return orderSKUObject
         })
       }))
 
       await Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
-        return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
-          const s = new skuType()
-          s.init(skuSnapshop)
-          orderSKUObjects[index].sku = s
+        return orderSKUObject.orderSKU.data.sku.get().then(snapshot => {
+          orderSKUObjects[index].sku = new Tart.Snapshot<SKU>(snapshot)
         })
       }))
       return orderSKUObjects
@@ -66,6 +64,16 @@ export namespace Functions {
     Stripe
   }
 
+  class Hoge<Order extends OrderProtocol> {
+    order: Tart.Snapshot<Order>
+    previousOrder: Tart.Snapshot<Order>
+
+    constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>) {
+      this.order = new Tart.Snapshot<Order>(event.data)
+      this.previousOrder = new Tart.Snapshot<Order>(event.data.previous)
+    }
+  }
+
   export class OrderObject<
     Order extends OrderProtocol,
     Shop extends ShopProtocol,
@@ -80,10 +88,10 @@ export namespace Functions {
 
     event: functions.Event<DeltaDocumentSnapshot>
     orderID: string
-    order: Order
-    previousOrder: Order
-    shops?: Shop[]
-    user?: User
+    order: Tart.Snapshot<Order>
+    previousOrder: Tart.Snapshot<Order>
+    shops?: Tart.Snapshot<Shop>[]
+    user?: Tart.Snapshot<User>
     orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[]
     stripeCharge?: Stripe.charges.ICharge
     stripeCard?: Stripe.cards.ICard
@@ -108,6 +116,7 @@ export namespace Functions {
       this.initializableClass = initializableClass
       this.order = new initializableClass.order()
       this.order.init(event.data)
+      const o = new Tart.Snapshot<OrderProtocol>(event.data)
       this.previousOrder = new initializableClass.order()
       this.previousOrder.init(event.data.previous)
     }
@@ -220,6 +229,7 @@ export namespace Functions {
       try {
         const order = orderObject.order!
 
+        const a = await order.data.user.get().then(s => { new Tart.Snapshot<UserProtocol>(s) })
         const user = await PringUtil.get(orderObject.initializableClass.user, order.user.id)
         orderObject.user = user
 
@@ -478,7 +488,7 @@ export namespace Functions {
         return orderObject
       } catch (error) {
         // If this step failed, we can not remember chargeID. Because set fatal error.
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('updateOrder', ErrorType.Internal, error)
       }
     })
@@ -486,12 +496,12 @@ export namespace Functions {
   const setOrderTask: Flow.Step<OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>>
     = new Flow.Step(async (orderObject) => {
       try {
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setOK()
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setOK()
 
         return orderObject
       } catch (error) {
         // This step fails only when update error occurs. Because set retry.
-        orderObject.order.retry = await Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error)
+        orderObject.order.data.retry = await Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error)
         throw new OrderableError('setOrderTask', ErrorType.Retry, error)
       }
     })
@@ -500,16 +510,17 @@ export namespace Functions {
    * Start order processing.
    * @param orderObject
    */
+  // export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
   export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     try {
-      const retryStatus = Retrycf.retryStatus(orderObject.order, orderObject.previousOrder)
+      const retryStatus = Retrycf.retryStatus(orderObject.order.data, orderObject.previousOrder.data)
       if (retryStatus === Retrycf.Status.RetryFailed) {
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('orderPaymentRequested', 'Retry Failed')
-        throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.retry!.errors.toString()))
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('orderPaymentRequested', 'Retry Failed')
+        throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.data.retry!.errors.toString()))
       }
 
       // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
-      if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === OrderPaymentStatus.PaymentRequested) {
+      if (orderObject.previousOrder.data.paymentStatus !== orderObject.order.data.paymentStatus && orderObject.order.data.paymentStatus === OrderPaymentStatus.PaymentRequested) {
         // continue
       } else {
         if (retryStatus !== Retrycf.Status.ShouldRetry) {
@@ -535,7 +546,7 @@ export namespace Functions {
       return Promise.resolve()
     } catch (error) {
       if (error.constructor !== OrderableError) {
-        orderObject.order.result = await new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
         throw new OrderableError('orderPaymentRequested', ErrorType.Internal, error)
       }
 

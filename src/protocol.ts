@@ -1,17 +1,18 @@
 import * as EventResponse from 'event-response'
 import * as Retrycf from 'retrycf'
+import * as Tart from './tart'
 
-export interface UserProtocol {
+export interface UserProtocol extends Tart.Pring {
   stripeCustomerID?: string
 }
 
-export interface ShopProtocol {
+export interface ShopProtocol extends Tart.Pring {
   name?: string
   isActive: boolean
   freePostageMinimumPrice: number
 }
 
-export interface ProductProtocol {
+export interface ProductProtocol extends Tart.Pring {
   name?: string
 }
 
@@ -21,7 +22,7 @@ export enum StockType {
   Infinite = 'infinite'
 }
 
-export interface SKUProtocol {
+export interface SKUProtocol extends Tart.Pring {
   price: number
   stockType: StockType
   stock: number
@@ -43,7 +44,7 @@ export interface StripeProtocol {
   chargeID?: string
 }
 
-export interface OrderProtocol {
+export interface OrderProtocol extends Tart.Pring {
   user: FirebaseFirestore.DocumentReference
   amount: number
   paidDate?: Date
@@ -68,7 +69,7 @@ export enum OrderShopPaymentStatus {
   Created = 1,
   Paid = 2
 }
-export interface OrderShopProtocol {
+export interface OrderShopProtocol extends Tart.Pring {
   paymentStatus: OrderShopPaymentStatus
   user: FirebaseFirestore.DocumentReference
 
@@ -76,7 +77,7 @@ export interface OrderShopProtocol {
   // orderSKUs: ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
 }
 
-export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> {
+export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> extends Tart.Pring {
   snapshotSKU?: T
   snapshotProduct?: P
   quantity: number
