@@ -4,15 +4,12 @@ import * as Stripe from 'stripe';
 import * as Flow from '@1amageek/flow';
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
 import { OrderProtocol, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, UserProtocol } from './protocol';
+import * as Tart from './tart';
 export declare namespace Functions {
     class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
-        orderSKU: OrderSKU;
-        sku: SKU;
-        static fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: OrderProtocol, orderSKUType: {
-            new (): OrderSKU;
-        }, skuType: {
-            new (): SKU;
-        }): Promise<OrderSKUObject<OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKUProtocol>[]>;
+        orderSKU: Tart.Snapshot<OrderSKU>;
+        sku: Tart.Snapshot<SKU>;
+        static fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: Tart.Snapshot<OrderProtocol>): Promise<OrderSKUObject<OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKUProtocol>[]>;
     }
     interface InitializableClass<Order extends OrderProtocol, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> {
         order: {
@@ -45,10 +42,10 @@ export declare namespace Functions {
         initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
         event: functions.Event<DeltaDocumentSnapshot>;
         orderID: string;
-        order: Order;
-        previousOrder: Order;
-        shops?: Shop[];
-        user?: User;
+        order: Tart.Snapshot<Order>;
+        previousOrder: Tart.Snapshot<Order>;
+        shops?: Tart.Snapshot<Shop>[];
+        user?: Tart.Snapshot<User>;
         orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[];
         stripeCharge?: Stripe.charges.ICharge;
         stripeCard?: Stripe.cards.ICard;

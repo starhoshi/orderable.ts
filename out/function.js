@@ -15,29 +15,26 @@ const Flow = require("@1amageek/flow");
 // import * as Slack from 'slack-node'
 const Mission = require("mission-completed");
 const EventResponse = require("event-response");
-const util_1 = require("./util");
 const error_1 = require("./error");
 const protocol_1 = require("./protocol");
 const index_1 = require("./index");
+const Tart = require("./tart");
 var Functions;
 (function (Functions) {
     class OrderSKUObject {
-        static fetchFrom(order, orderSKUType, skuType) {
+        static fetchFrom(order) {
             return __awaiter(this, void 0, void 0, function* () {
-                const orderSKURefs = yield order.orderSKUs.get(orderSKUType);
-                const orderSKUObjects = yield Promise.all(orderSKURefs.map(orderSKURef => {
-                    return util_1.PringUtil.get(orderSKUType, orderSKURef.id).then(s => {
-                        const orderSKU = s;
+                const orderSKUQuerySnapshot = yield order.ref.collection('orderSKUs').get();
+                const orderSKUObjects = yield Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
+                    return Tart.data('version/1/ordersku', qds.ref.id).then(snapshot => {
                         const orderSKUObject = new OrderSKUObject();
-                        orderSKUObject.orderSKU = orderSKU;
+                        orderSKUObject.orderSKU = snapshot;
                         return orderSKUObject;
                     });
                 }));
                 yield Promise.all(orderSKUObjects.map((orderSKUObject, index) => {
-                    return orderSKUObject.orderSKU.sku.get().then(skuSnapshop => {
-                        const s = new skuType();
-                        s.init(skuSnapshop);
-                        orderSKUObjects[index].sku = s;
+                    return orderSKUObject.orderSKU.data.sku.get().then(snapshot => {
+                        orderSKUObjects[index].sku = new Tart.Snapshot(snapshot);
                     });
                 }));
                 return orderSKUObjects;
@@ -55,28 +52,22 @@ var Functions;
             this.event = event;
             this.orderID = event.params.orderID;
             this.initializableClass = initializableClass;
-            this.order = new initializableClass.order();
-            this.order.init(event.data);
-            this.previousOrder = new initializableClass.order();
-            this.previousOrder.init(event.data.previous);
+            this.order = new Tart.Snapshot(event.data);
+            this.previousOrder = new Tart.Snapshot(event.data.previous);
         }
         getShops() {
             return __awaiter(this, void 0, void 0, function* () {
                 this.shops = yield Promise.all(this.orderSKUObjects.map(orderSKUObject => {
-                    return orderSKUObject.orderSKU.shop;
+                    return orderSKUObject.orderSKU.data.shop;
                 }).filter((shopRef, index, self) => {
                     return self.indexOf(shopRef) === index;
                 }).map(shopRef => {
-                    return shopRef.get().then(shopSnapshot => {
-                        const shop = new this.initializableClass.shop();
-                        shop.init(shopSnapshot);
-                        return shop;
-                    });
+                    return shopRef.get().then(s => { return new Tart.Snapshot(s); });
                 }));
             });
         }
         get isCharged() {
-            if (this.order && this.order.stripe && this.order.stripe.chargeID) {
+            if (this.order && this.order.data.stripe && this.order.data.stripe.chargeID) {
                 return true;
             }
             return false;
@@ -85,7 +76,7 @@ var Functions;
             if (!this.order) {
                 return PaymentAgencyType.Unknown;
             }
-            if (this.order.stripe) {
+            if (this.order.data.stripe) {
                 return PaymentAgencyType.Stripe;
             }
             return PaymentAgencyType.Unknown;
@@ -98,16 +89,16 @@ var Functions;
             return index_1.firestore.runTransaction((transaction) => __awaiter(this, void 0, void 0, function* () {
                 const promises = [];
                 for (const orderSKUObject of orderSKUObjects) {
-                    const skuRef = index_1.firestore.collection(util_1.PringUtil.collectionPath(new this.initializableClass.sku())).doc(orderSKUObject.sku.id);
-                    const t = transaction.get(skuRef).then(tsku => {
-                        const quantity = orderSKUObject.orderSKU.quantity * operator;
-                        const newStock = tsku.data().stock + quantity;
-                        if (tsku.data().stockType === protocol_1.StockType.Finite) {
+                    const t = transaction.get(orderSKUObject.sku.ref).then(tsku => {
+                        const sku = new Tart.Snapshot(tsku);
+                        const quantity = orderSKUObject.orderSKU.data.quantity * operator;
+                        const newStock = sku.data.stock + quantity;
+                        if (sku.data.stockType === protocol_1.StockType.Finite) {
                             if (newStock >= 0) {
-                                transaction.update(skuRef, { stock: newStock });
+                                transaction.update(orderSKUObject.sku.ref, { stock: newStock });
                             }
                             else {
-                                throw new error_1.BadRequestError(error_1.ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.snapshotProduct.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.quantity}, stock: ${orderSKUObject.sku.stock}`);
+                                throw new error_1.BadRequestError(error_1.ValidationErrorType.OutOfStock, `${orderSKUObject.orderSKU.data.snapshotProduct.name} is out of stock. \nquantity: ${orderSKUObject.orderSKU.data.quantity}, stock: ${orderSKUObject.sku.data.stock}`);
                             }
                         }
                     });
@@ -129,10 +120,10 @@ var Functions;
             if (orderObject.isCharged) {
                 return orderObject;
             }
-            if (!order.expirationDate) {
+            if (!order.data.expirationDate) {
                 return orderObject;
             }
-            if (order.expirationDate.getTime() < new Date().getTime()) {
+            if (order.data.expirationDate.getTime() < new Date().getTime()) {
                 throw new error_1.BadRequestError(error_1.ValidationErrorType.OrderExpired, 'The order has expired.');
             }
             return orderObject;
@@ -140,7 +131,7 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.BadRequest, error);
             }
             throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.Internal, error);
@@ -152,8 +143,8 @@ var Functions;
             if (orderObject.isCharged) {
                 return orderObject;
             }
-            const completed = yield Mission.markCompleted(orderObject.order.reference, preventStepName);
-            orderObject.order.completed = completed;
+            const completed = yield Mission.markCompleted(orderObject.order.ref, preventStepName);
+            orderObject.order.data.completed = completed;
             return orderObject;
         }
         catch (error) {
@@ -161,27 +152,26 @@ var Functions;
                 throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Completed, error);
             }
             // if not CompletedError, it maybe firebase internal error, because retry.
-            orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
+            orderObject.order.data.retry = yield Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error);
             throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Retry, error);
         }
     }));
     const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
-            const user = yield util_1.PringUtil.get(orderObject.initializableClass.user, order.user.id);
-            orderObject.user = user;
-            const orderSKUObjects = yield OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku);
+            orderObject.user = yield order.data.user.get().then(s => { return new Tart.Snapshot(s); });
+            const orderSKUObjects = yield OrderSKUObject.fetchFrom(order);
             orderObject.orderSKUObjects = orderSKUObjects;
             yield orderObject.getShops();
             if (orderObject.paymentAgencyType === PaymentAgencyType.Stripe) {
-                const stripeCard = yield index_1.stripe.customers.retrieveCard(order.stripe.customerID, order.stripe.cardID);
+                const stripeCard = yield index_1.stripe.customers.retrieveCard(order.data.stripe.customerID, order.data.stripe.cardID);
                 orderObject.stripeCard = stripeCard;
             }
             return orderObject;
         }
         catch (error) {
             // This error may be a data preparetion error. In that case, it will be solved by retrying.
-            orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
+            orderObject.order.data.retry = yield Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error);
             throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Retry, error);
         }
     }));
@@ -193,8 +183,8 @@ var Functions;
                 return orderObject;
             }
             shops.forEach((shop, index) => {
-                if (!shop.isActive) {
-                    throw new error_1.BadRequestError(error_1.ValidationErrorType.ShopIsNotActive, `Shop: ${shop.name} is not active.`);
+                if (!shop.data.isActive) {
+                    throw new error_1.BadRequestError(error_1.ValidationErrorType.ShopIsNotActive, `Shop: ${shop.data.name} is not active.`);
                 }
             });
             return orderObject;
@@ -202,10 +192,10 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.Internal, error);
         }
     }));
@@ -217,8 +207,8 @@ var Functions;
                 return orderObject;
             }
             orderSKUObjects.forEach((orderSKUObject, index) => {
-                if (!orderSKUObject.sku.isActive) {
-                    throw new error_1.BadRequestError(error_1.ValidationErrorType.SKUIsNotActive, `Product: ${orderSKUObject.orderSKU.snapshotProduct.name}」 is not active.`);
+                if (!orderSKUObject.sku.data.isActive) {
+                    throw new error_1.BadRequestError(error_1.ValidationErrorType.SKUIsNotActive, `Product: ${orderSKUObject.orderSKU.data.snapshotProduct.name}」 is not active.`);
                 }
             });
             return orderObject;
@@ -226,10 +216,10 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.Internal, error);
         }
     }));
@@ -256,10 +246,10 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.Internal, error);
         }
     }));
@@ -273,28 +263,28 @@ var Functions;
         }
         catch (error) {
             // clear completed mark for retry.
-            orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
+            orderObject.order.data.completed = yield Mission.remove(orderObject.order.ref, preventStepName);
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.Internal, error);
         }
     }));
     const stripeCharge = (order) => __awaiter(this, void 0, void 0, function* () {
         return yield index_1.stripe.charges.create({
-            amount: order.amount,
-            currency: order.currency,
-            customer: order.stripe.customerID,
-            source: order.stripe.cardID,
-            transfer_group: order.id,
+            amount: order.data.amount,
+            currency: order.data.currency,
+            customer: order.data.stripe.customerID,
+            source: order.data.stripe.cardID,
+            transfer_group: order.ref.id,
             metadata: {
-                orderID: order.id
+                orderID: order.ref.id
             }
         }, {
-            idempotency_key: order.id
+            idempotency_key: order.ref.id
         }).catch(e => {
             throw new error_1.StripeError(e);
         });
@@ -317,13 +307,13 @@ var Functions;
         catch (error) {
             // Since stripe.charge failed after reducing stock count, restore stock quantity.
             yield orderObject.updateStock(Operator.plus);
-            orderObject.order.completed = yield Mission.remove(orderObject.order.reference, preventStepName);
+            orderObject.order.data.completed = yield Mission.remove(orderObject.order.ref, preventStepName);
             if (error.constructor === error_1.StripeError) {
                 const stripeError = error;
                 const errorType = yield stripeError.setError(orderObject.order, 'payment');
                 throw new error_1.OrderableError('payment', errorType, error);
             }
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('payment', error_1.ErrorType.Internal, error);
         }
     }));
@@ -335,36 +325,34 @@ var Functions;
         try {
             const order = orderObject.order;
             const batch = index_1.firestore.batch();
-            const orderReference = index_1.firestore.doc(order.path);
             if (orderObject.isCharged) {
                 return orderObject;
             }
             switch (orderObject.paymentAgencyType) {
                 case PaymentAgencyType.Stripe:
                     const charge = orderObject.stripeCharge;
-                    order.paymentStatus = protocol_1.OrderPaymentStatus.Paid;
-                    order.stripe.chargeID = charge.id;
-                    order.paidDate = new Date();
-                    batch.update(orderReference, {
+                    order.data.paymentStatus = protocol_1.OrderPaymentStatus.Paid;
+                    order.data.stripe.chargeID = charge.id;
+                    order.data.paidDate = new Date();
+                    batch.update(order.ref, {
                         paymentStatus: protocol_1.OrderPaymentStatus.Paid,
-                        stripe: orderObject.order.rawValue().stripe,
+                        stripe: orderObject.order.data.stripe,
                         paidDate: new Date(),
                         updatedAt: new Date()
                     });
                     break;
                 default:
             }
-            const orderShopColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.orderShop());
-            const orderColRef = util_1.PringUtil.collectionPath(new orderObject.initializableClass.order());
-            yield index_1.firestore.collection(orderShopColRef)
-                .where('order', '==', index_1.firestore.collection(orderColRef).doc(orderObject.orderID))
+            // const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
+            // const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
+            yield index_1.firestore.collection('version/1/ordershop')
+                .where('order', '==', order.ref)
                 .get()
                 .then(snapshot => {
                 // Only when paymentStatus is OrderShopPaymentStatus.Created, updates to OrderShopPaymentStatus.Paid.
-                snapshot.docs.filter(doc => {
-                    const orderShop = new orderObject.initializableClass.orderShop();
-                    orderShop.init(doc);
-                    return orderShop.paymentStatus === protocol_1.OrderShopPaymentStatus.Created;
+                snapshot.docs.filter(s => {
+                    const orderShop = new Tart.Snapshot(s);
+                    return orderShop.data.paymentStatus === protocol_1.OrderShopPaymentStatus.Created;
                 }).forEach(doc => {
                     batch.update(doc.ref, {
                         paymentStatus: protocol_1.OrderShopPaymentStatus.Paid,
@@ -378,18 +366,18 @@ var Functions;
         }
         catch (error) {
             // If this step failed, we can not remember chargeID. Because set fatal error.
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('updateOrder', error_1.ErrorType.Internal, error);
         }
     }));
     const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setOK();
+            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setOK();
             return orderObject;
         }
         catch (error) {
             // This step fails only when update error occurs. Because set retry.
-            orderObject.order.retry = yield Retrycf.setRetry(orderObject.order.reference, orderObject.order.rawValue(), error);
+            orderObject.order.data.retry = yield Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error);
             throw new error_1.OrderableError('setOrderTask', error_1.ErrorType.Retry, error);
         }
     }));
@@ -397,15 +385,16 @@ var Functions;
      * Start order processing.
      * @param orderObject
      */
+    // export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     Functions.orderPaymentRequested = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            const retryStatus = Retrycf.retryStatus(orderObject.order.rawValue(), orderObject.previousOrder.rawValue());
+            const retryStatus = Retrycf.retryStatus(orderObject.order.data, orderObject.previousOrder.data);
             if (retryStatus === Retrycf.Status.RetryFailed) {
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('orderPaymentRequested', 'Retry Failed');
-                throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, new error_1.RetryFailedError('orderPaymentRequested', orderObject.order.retry.errors.toString()));
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('orderPaymentRequested', 'Retry Failed');
+                throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, new error_1.RetryFailedError('orderPaymentRequested', orderObject.order.data.retry.errors.toString()));
             }
             // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
-            if (orderObject.previousOrder.paymentStatus !== orderObject.order.paymentStatus && orderObject.order.paymentStatus === protocol_1.OrderPaymentStatus.PaymentRequested) {
+            if (orderObject.previousOrder.data.paymentStatus !== orderObject.order.data.paymentStatus && orderObject.order.data.paymentStatus === protocol_1.OrderPaymentStatus.PaymentRequested) {
                 // continue
             }
             else {
@@ -430,7 +419,7 @@ var Functions;
         }
         catch (error) {
             if (error.constructor !== error_1.OrderableError) {
-                orderObject.order.result = yield new EventResponse.Result(orderObject.order.reference).setInternalError('Unknown Error', error.message);
+                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
                 throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, error);
             }
             return Promise.reject(error);

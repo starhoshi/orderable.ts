@@ -22,7 +22,7 @@ export namespace Functions {
     orderSKU: Tart.Snapshot<OrderSKU>
     sku: Tart.Snapshot<SKU>
 
-    static async fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: Tart.Snapshot<OrderProtocol>, orderSKUType: { new(): OrderSKU }, skuType: { new(): SKU }) {
+    static async fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: Tart.Snapshot<OrderProtocol>) {
       const orderSKUQuerySnapshot = await order.ref.collection('orderSKUs').get()
       const orderSKUObjects = await Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
         return Tart.data<OrderSKU>('version/1/ordersku', qds.ref.id).then(snapshot => {
@@ -214,7 +214,7 @@ export namespace Functions {
 
         orderObject.user = await order.data.user.get().then(s => { return new Tart.Snapshot<UserProtocol>(s) })
 
-        const orderSKUObjects = await OrderSKUObject.fetchFrom(order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+        const orderSKUObjects = await OrderSKUObject.fetchFrom(order)
         orderObject.orderSKUObjects = orderSKUObjects
 
         await orderObject.getShops()

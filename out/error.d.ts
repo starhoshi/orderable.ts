@@ -1,4 +1,5 @@
 import { OrderProtocol } from './protocol';
+import * as Tart from './tart';
 export declare enum ValidationErrorType {
     ShopIsNotActive = "ShopIsNotActive",
     SKUIsNotActive = "SKUIsNotActive",
@@ -53,5 +54,5 @@ export declare class StripeError extends Error {
     requestId: string;
     error: any;
     constructor(error: any);
-    setError<T extends OrderProtocol>(model: T, step: string): Promise<ErrorType.Retry | ErrorType.BadRequest | ErrorType.Internal>;
+    setError<T extends OrderProtocol>(model: Tart.Snapshot<T>, step: string): Promise<ErrorType.Retry | ErrorType.BadRequest | ErrorType.Internal>;
 }

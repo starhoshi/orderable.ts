@@ -130,30 +130,30 @@ class StripeError extends Error {
                 // validate
                 case StripeErrorType.StripeCardError: {
                     errorType = ErrorType.BadRequest;
-                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`);
+                    model.data.result = yield new EventResponse.Result(model.ref).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`);
                     break;
                 }
                 case StripeErrorType.StripeInvalidRequestError: {
                     errorType = ErrorType.BadRequest;
-                    model.result = yield new EventResponse.Result(model.reference).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`);
+                    model.data.result = yield new EventResponse.Result(model.ref).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`);
                     break;
                 }
                 // retry
                 case StripeErrorType.StripeAPIError:
                 case StripeErrorType.StripeConnectionError:
                     errorType = ErrorType.Retry;
-                    model.retry = yield Retrycf.setRetry(model.reference, model.rawValue(), Error(`${this.type}: ${this.message}`));
+                    model.data.retry = yield Retrycf.setRetry(model.ref, model.data, Error(`${this.type}: ${this.message}`));
                     break;
                 // fatal
                 case StripeErrorType.RateLimitError:
                 case StripeErrorType.StripeAuthenticationError:
                 case StripeErrorType.UnexpectedError:
                     errorType = ErrorType.Internal;
-                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
+                    model.data.result = yield new EventResponse.Result(model.ref).setInternalError(step, `${this.type}: ${this.message}`);
                     break;
                 default:
                     errorType = ErrorType.Internal;
-                    model.result = yield new EventResponse.Result(model.reference).setInternalError(step, `${this.type}: ${this.message}`);
+                    model.data.result = yield new EventResponse.Result(model.ref).setInternalError(step, `${this.type}: ${this.message}`);
                     break;
             }
             return errorType;
