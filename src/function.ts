@@ -12,7 +12,7 @@ import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
 // import { PringUtil } from './util'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
-import { OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
+import { Path, OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
 import { firestore, stripe } from './index'
 import * as Tart from './tart'
 
@@ -24,7 +24,7 @@ export namespace Functions {
     static async fetchFrom(order: Tart.Snapshot<OrderProtocol>) {
       const orderSKUQuerySnapshot = await order.ref.collection('orderSKUs').get()
       const orderSKUObjects = await Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
-        return Tart.fetch<OrderSKUProtocol>('version/1/ordersku', qds.ref.id).then(snapshot => {
+        return Tart.fetch<OrderSKUProtocol>(Path.OrderSKU, qds.ref.id).then(snapshot => {
           const orderSKUObject = new OrderSKUObject()
           orderSKUObject.orderSKU = snapshot
           return orderSKUObject

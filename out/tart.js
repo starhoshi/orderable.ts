@@ -11,12 +11,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const index_1 = require("./index");
 class Snapshot {
     constructor(a, b) {
-        if (b === null) {
+        if (b === null || b === undefined) {
             this.ref = a.ref;
-            this.data = a.data().data;
+            this.data = a.data();
         }
-        this.ref = a;
-        this.data = b;
+        else {
+            this.ref = a;
+            this.data = b;
+        }
     }
     static makeNotSavedSnapshot(path, data) {
         const ref = index_1.firestore.collection(path).doc();
@@ -37,7 +39,7 @@ class Snapshot {
     }
     setReferenceCollectionWithBatch(collecion, ref, batch) {
         const rc = this.ref.collection(collecion).doc(ref.id);
-        batch.create(rc, { createdAt: Date(), updatedAt: Date() });
+        batch.create(rc, { createdAt: new Date(), updatedAt: new Date() });
         return batch;
     }
     update(data) {
@@ -50,6 +52,6 @@ class Snapshot {
 }
 exports.Snapshot = Snapshot;
 exports.fetch = (path, id) => __awaiter(this, void 0, void 0, function* () {
-    const ds = yield index_1.firestore.doc(`${path}/${id}`).get();
+    const ds = yield index_1.firestore.collection(path).doc(id).get();
     return new Snapshot(ds);
 });

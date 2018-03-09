@@ -9,13 +9,13 @@ export class Snapshot<T extends Pring> {
   constructor(ref: FirebaseFirestore.DocumentReference, data: T)
   constructor(snapshot: FirebaseFirestore.DocumentSnapshot | DeltaDocumentSnapshot)
   constructor(a: any, b?: any) {
-    if (b === null) {
+    if (b === null || b === undefined) {
       this.ref = a.ref
-      this.data = a.data()!.data as T
+      this.data = a.data() as T
+    } else {
+      this.ref = a
+      this.data = b
     }
-
-    this.ref = a
-    this.data = b
   }
 
   static makeNotSavedSnapshot<T extends Pring>(path: string, data: T) {
@@ -41,7 +41,7 @@ export class Snapshot<T extends Pring> {
 
   setReferenceCollectionWithBatch(collecion: string, ref: FirebaseFirestore.DocumentReference, batch: FirebaseFirestore.WriteBatch) {
     const rc = this.ref.collection(collecion).doc(ref.id)
-    batch.create(rc, { createdAt: Date(), updatedAt: Date() })
+    batch.create(rc, { createdAt: new Date(), updatedAt: new Date() })
     return batch
   }
 
@@ -65,6 +65,6 @@ export interface ReferenceCollection {
 }
 
 export const fetch = async <T extends Pring>(path: string, id: string) => {
-  const ds = await firestore.doc(`${path}/${id}`).get()
+  const ds = await firestore.collection(path).doc(id).get()
   return new Snapshot<T>(ds)
 }

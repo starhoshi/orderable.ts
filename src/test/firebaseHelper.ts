@@ -13,17 +13,12 @@ const stripe = new Stripe(process.env.STRIPE as string)
 
 export const createOrder = () => {
   const ref = admin.firestore().collection('version/1/order').doc()
-  const snapshot = {
-    ref: ref,
-    data: () => {
-      return <Orderable.OrderProtocol>{
-        user: '' as any,
-        amount: 1000,
-        paymentStatus: 1
-      }
-    }
+  const data = <Orderable.OrderProtocol>{
+    user: '' as any,
+    amount: 1000,
+    paymentStatus: 1
   }
-  return new Tart.Snapshot<Orderable.OrderProtocol>(snapshot as any)
+  return new Tart.Snapshot<Orderable.OrderProtocol>(ref, data)
 }
 
 export interface SampleModel {
@@ -142,7 +137,7 @@ export class Firebase {
     dataSet.shops = dataSet.shops || Firebase.shared.defaultShops
     dataSet.order = dataSet.order || Firebase.shared.defaultOrder
 
-    const batch = admin.firestore().batch()
+    const batch = Orderable.firestore.batch()
     // const promises1: Promise<any>[] = []
 
     // const user = new Model.SampleUser()

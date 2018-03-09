@@ -32,6 +32,7 @@ describe('OrderObject', () => {
 
   describe('isCharged', () => {
     test('return true when charge completed', () => {
+      console.log(orderObject.order.data)
       orderObject.order!.data.stripe = {}
       orderObject.order!.data.stripe!.chargeID = 'test'
 

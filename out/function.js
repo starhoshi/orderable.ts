@@ -26,7 +26,7 @@ var Functions;
             return __awaiter(this, void 0, void 0, function* () {
                 const orderSKUQuerySnapshot = yield order.ref.collection('orderSKUs').get();
                 const orderSKUObjects = yield Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
-                    return Tart.fetch('version/1/ordersku', qds.ref.id).then(snapshot => {
+                    return Tart.fetch(protocol_1.Path.OrderSKU, qds.ref.id).then(snapshot => {
                         const orderSKUObject = new OrderSKUObject();
                         orderSKUObject.orderSKU = snapshot;
                         return orderSKUObject;
