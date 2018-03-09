@@ -5,16 +5,17 @@ function __export(m) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const FirebaseFirestore = require("@google-cloud/firestore");
 const Stripe = require("stripe");
-const pring_1 = require("pring");
+// import { Pring } from 'pring'
 const Retrycf = require("retrycf");
 const Mission = require("mission-completed");
 const EventResponse = require("event-response");
-__export(require("./util"));
+// export * from './util'
 __export(require("./error"));
 __export(require("./protocol"));
 __export(require("./function"));
+__export(require("./tart"));
 exports.initialize = (options) => {
-    pring_1.Pring.initialize(options.adminOptions);
+    // Pring.initialize(options.adminOptions)
     Retrycf.initialize(options.adminOptions);
     Mission.initialize(options.adminOptions);
     EventResponse.initialize(options.adminOptions);

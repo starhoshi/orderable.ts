@@ -10,11 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 // import { Pring, property } from 'pring'
 const Retrycf = require("retrycf");
-const Flow = require("@1amageek/flow");
 // import * as request from 'request'
 // import * as Slack from 'slack-node'
 const Mission = require("mission-completed");
 const EventResponse = require("event-response");
+// import { PringUtil } from './util'
 const error_1 = require("./error");
 const protocol_1 = require("./protocol");
 const index_1 = require("./index");
@@ -26,7 +26,7 @@ var Functions;
             return __awaiter(this, void 0, void 0, function* () {
                 const orderSKUQuerySnapshot = yield order.ref.collection('orderSKUs').get();
                 const orderSKUObjects = yield Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
-                    return Tart.data('version/1/ordersku', qds.ref.id).then(snapshot => {
+                    return Tart.fetch('version/1/ordersku', qds.ref.id).then(snapshot => {
                         const orderSKUObject = new OrderSKUObject();
                         orderSKUObject.orderSKU = snapshot;
                         return orderSKUObject;
@@ -48,10 +48,9 @@ var Functions;
         PaymentAgencyType[PaymentAgencyType["Stripe"] = 1] = "Stripe";
     })(PaymentAgencyType = Functions.PaymentAgencyType || (Functions.PaymentAgencyType = {}));
     class OrderObject {
-        constructor(event, initializableClass) {
+        constructor(event) {
             this.event = event;
             this.orderID = event.params.orderID;
-            this.initializableClass = initializableClass;
             this.order = new Tart.Snapshot(event.data);
             this.previousOrder = new Tart.Snapshot(event.data.previous);
         }
@@ -114,7 +113,7 @@ var Functions;
         Operator[Operator["plus"] = 1] = "plus";
         Operator[Operator["minus"] = -1] = "minus";
     })(Operator = Functions.Operator || (Functions.Operator = {}));
-    const validateOrderExpired = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const validateOrderExpired = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             if (orderObject.isCharged) {
@@ -136,9 +135,9 @@ var Functions;
             }
             throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.Internal, error);
         }
-    }));
+    });
     const preventStepName = 'preventMultipleProcessing';
-    const preventMultipleProcessing = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const preventMultipleProcessing = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             if (orderObject.isCharged) {
                 return orderObject;
@@ -155,8 +154,8 @@ var Functions;
             orderObject.order.data.retry = yield Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error);
             throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Retry, error);
         }
-    }));
-    const prepareRequiredData = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    });
+    const prepareRequiredData = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             orderObject.user = yield order.data.user.get().then(s => { return new Tart.Snapshot(s); });
@@ -174,8 +173,8 @@ var Functions;
             orderObject.order.data.retry = yield Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error);
             throw new error_1.OrderableError(preventStepName, error_1.ErrorType.Retry, error);
         }
-    }));
-    const validateShopIsActive = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    });
+    const validateShopIsActive = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             const shops = orderObject.shops;
@@ -198,8 +197,8 @@ var Functions;
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.Internal, error);
         }
-    }));
-    const validateSKUIsActive = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    });
+    const validateSKUIsActive = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             const orderSKUObjects = orderObject.orderSKUObjects;
@@ -222,8 +221,8 @@ var Functions;
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.Internal, error);
         }
-    }));
-    const validatePaymentMethod = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    });
+    const validatePaymentMethod = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             if (orderObject.isCharged) {
@@ -252,8 +251,8 @@ var Functions;
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.Internal, error);
         }
-    }));
-    const validateAndDecreaseStock = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    });
+    const validateAndDecreaseStock = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             if (orderObject.isCharged) {
                 return orderObject;
@@ -272,7 +271,7 @@ var Functions;
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.Internal, error);
         }
-    }));
+    });
     const stripeCharge = (order) => __awaiter(this, void 0, void 0, function* () {
         return yield index_1.stripe.charges.create({
             amount: order.data.amount,
@@ -289,7 +288,7 @@ var Functions;
             throw new error_1.StripeError(e);
         });
     });
-    const payment = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const payment = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             const user = orderObject.user;
@@ -316,12 +315,12 @@ var Functions;
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('payment', error_1.ErrorType.Internal, error);
         }
-    }));
+    });
     /**
      * Save peyment succeeded information.
      * Set fatal error if this step failed.
      */
-    const savePaymentCompleted = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    const savePaymentCompleted = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const order = orderObject.order;
             const batch = index_1.firestore.batch();
@@ -369,8 +368,8 @@ var Functions;
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('updateOrder', error_1.ErrorType.Internal, error);
         }
-    }));
-    const setOrderTask = new Flow.Step((orderObject) => __awaiter(this, void 0, void 0, function* () {
+    });
+    const setOrderTask = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setOK();
             return orderObject;
@@ -380,12 +379,11 @@ var Functions;
             orderObject.order.data.retry = yield Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error);
             throw new error_1.OrderableError('setOrderTask', error_1.ErrorType.Retry, error);
         }
-    }));
+    });
     /**
      * Start order processing.
      * @param orderObject
      */
-    // export const orderPaymentRequested = async (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => {
     Functions.orderPaymentRequested = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
             const retryStatus = Retrycf.retryStatus(orderObject.order.data, orderObject.previousOrder.data);
@@ -402,19 +400,16 @@ var Functions;
                     return undefined; // not continue
                 }
             }
-            const flow = new Flow.Line([
-                validateOrderExpired,
-                prepareRequiredData,
-                validateShopIsActive,
-                validateSKUIsActive,
-                validatePaymentMethod,
-                preventMultipleProcessing,
-                validateAndDecreaseStock,
-                payment,
-                savePaymentCompleted,
-                setOrderTask
-            ]);
-            yield flow.run(orderObject);
+            yield validateOrderExpired(orderObject);
+            yield prepareRequiredData(orderObject);
+            yield validateShopIsActive(orderObject);
+            yield validateSKUIsActive(orderObject);
+            yield validatePaymentMethod(orderObject);
+            yield preventMultipleProcessing(orderObject);
+            yield validateAndDecreaseStock(orderObject);
+            yield payment(orderObject);
+            yield savePaymentCompleted(orderObject);
+            yield setOrderTask(orderObject);
             return Promise.resolve();
         }
         catch (error) {

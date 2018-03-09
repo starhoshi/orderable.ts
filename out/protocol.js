@@ -1,5 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var Path;
+(function (Path) {
+    Path["User"] = "version/1/user";
+    Path["Shop"] = "version/1/shop";
+    Path["Product"] = "version/1/product";
+    Path["SKU"] = "version/1/sku";
+    Path["Order"] = "version/1/order";
+    Path["OrderShop"] = "version/1/ordershop";
+    Path["OrderSKU"] = "version/1/ordersku";
+})(Path = exports.Path || (exports.Path = {}));
 var StockType;
 (function (StockType) {
     StockType["Unknown"] = "unknown";

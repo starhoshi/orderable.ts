@@ -1,56 +1,31 @@
 /// <reference types="stripe" />
 import * as functions from 'firebase-functions';
 import * as Stripe from 'stripe';
-import * as Flow from '@1amageek/flow';
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
-import { OrderProtocol, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, UserProtocol } from './protocol';
+import { OrderProtocol, OrderSKUProtocol, ShopProtocol, SKUProtocol, UserProtocol } from './protocol';
 import * as Tart from './tart';
 export declare namespace Functions {
-    class OrderSKUObject<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol> {
-        orderSKU: Tart.Snapshot<OrderSKU>;
-        sku: Tart.Snapshot<SKU>;
-        static fetchFrom<OrderSKU extends OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKU extends SKUProtocol>(order: Tart.Snapshot<OrderProtocol>): Promise<OrderSKUObject<OrderSKUProtocol<SKUProtocol, ProductProtocol>, SKUProtocol>[]>;
-    }
-    interface InitializableClass<Order extends OrderProtocol, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> {
-        order: {
-            new (): Order;
-        };
-        shop: {
-            new (): Shop;
-        };
-        user: {
-            new (): User;
-        };
-        sku: {
-            new (): SKU;
-        };
-        product: {
-            new (): Product;
-        };
-        orderShop: {
-            new (): OrderShop;
-        };
-        orderSKU: {
-            new (): OrderSKU;
-        };
+    class OrderSKUObject {
+        orderSKU: Tart.Snapshot<OrderSKUProtocol>;
+        sku: Tart.Snapshot<SKUProtocol>;
+        static fetchFrom(order: Tart.Snapshot<OrderProtocol>): Promise<OrderSKUObject[]>;
     }
     enum PaymentAgencyType {
         Unknown = 0,
         Stripe = 1,
     }
-    class OrderObject<Order extends OrderProtocol, Shop extends ShopProtocol, User extends UserProtocol, SKU extends SKUProtocol, Product extends ProductProtocol, OrderShop extends OrderShopProtocol, OrderSKU extends OrderSKUProtocol<SKU, Product>> implements Flow.Dependency {
-        initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>;
+    class OrderObject {
         event: functions.Event<DeltaDocumentSnapshot>;
         orderID: string;
-        order: Tart.Snapshot<Order>;
-        previousOrder: Tart.Snapshot<Order>;
-        shops?: Tart.Snapshot<Shop>[];
-        user?: Tart.Snapshot<User>;
-        orderSKUObjects?: OrderSKUObject<OrderSKU, SKU>[];
+        order: Tart.Snapshot<OrderProtocol>;
+        previousOrder: Tart.Snapshot<OrderProtocol>;
+        shops?: Tart.Snapshot<ShopProtocol>[];
+        user?: Tart.Snapshot<UserProtocol>;
+        orderSKUObjects?: OrderSKUObject[];
         stripeCharge?: Stripe.charges.ICharge;
         stripeCard?: Stripe.cards.ICard;
         getShops(): Promise<void>;
-        constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>);
+        constructor(event: functions.Event<DeltaDocumentSnapshot>);
         readonly isCharged: boolean;
         readonly paymentAgencyType: PaymentAgencyType;
         updateStock(operator: Operator, step?: string): Promise<any[]>;
@@ -63,5 +38,5 @@ export declare namespace Functions {
      * Start order processing.
      * @param orderObject
      */
-    const orderPaymentRequested: (orderObject: OrderObject<OrderProtocol, ShopProtocol, UserProtocol, SKUProtocol, ProductProtocol, OrderShopProtocol, OrderSKUProtocol<SKUProtocol, ProductProtocol>>) => Promise<void>;
+    const orderPaymentRequested: (orderObject: OrderObject) => Promise<void>;
 }

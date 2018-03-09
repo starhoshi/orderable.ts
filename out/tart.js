@@ -10,13 +10,46 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const index_1 = require("./index");
 class Snapshot {
-    constructor(snapshot) {
-        this.ref = snapshot.ref;
-        this.data = snapshot.data().data;
+    constructor(a, b) {
+        if (b === null) {
+            this.ref = a.ref;
+            this.data = a.data().data;
+        }
+        this.ref = a;
+        this.data = b;
+    }
+    static makeNotSavedSnapshot(path, data) {
+        const ref = index_1.firestore.collection(path).doc();
+        return new Snapshot(ref, data);
+    }
+    setCreatedDate() {
+        this.data.createdAt = new Date();
+        this.data.updatedAt = new Date();
+    }
+    save() {
+        this.setCreatedDate();
+        return this.ref.create(this.data);
+    }
+    saveWithBatch(batch) {
+        this.setCreatedDate();
+        batch.create(this.ref, this.data);
+        return batch;
+    }
+    setReferenceCollectionWithBatch(collecion, ref, batch) {
+        const rc = this.ref.collection(collecion).doc(ref.id);
+        batch.create(rc, { createdAt: Date(), updatedAt: Date() });
+        return batch;
+    }
+    update(data) {
+        data.updatedAt = Date();
+        Object.keys(data).forEach(key => {
+            this.data[key] = data[key];
+        });
+        return this.ref.update(data);
     }
 }
 exports.Snapshot = Snapshot;
-exports.data = (path, id) => __awaiter(this, void 0, void 0, function* () {
+exports.fetch = (path, id) => __awaiter(this, void 0, void 0, function* () {
     const ds = yield index_1.firestore.doc(`${path}/${id}`).get();
     return new Snapshot(ds);
 });

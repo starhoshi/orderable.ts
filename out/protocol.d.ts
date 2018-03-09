@@ -1,6 +1,15 @@
 import * as EventResponse from 'event-response';
 import * as Retrycf from 'retrycf';
 import * as Tart from './tart';
+export declare enum Path {
+    User = "version/1/user",
+    Shop = "version/1/shop",
+    Product = "version/1/product",
+    SKU = "version/1/sku",
+    Order = "version/1/order",
+    OrderShop = "version/1/ordershop",
+    OrderSKU = "version/1/ordersku",
+}
 export interface UserProtocol extends Tart.Pring {
     stripeCustomerID?: string;
 }
@@ -59,9 +68,9 @@ export interface OrderShopProtocol extends Tart.Pring {
     paymentStatus: OrderShopPaymentStatus;
     user: FirebaseFirestore.DocumentReference;
 }
-export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> extends Tart.Pring {
-    snapshotSKU?: T;
-    snapshotProduct?: P;
+export interface OrderSKUProtocol extends Tart.Pring {
+    snapshotSKU?: SKUProtocol;
+    snapshotProduct?: ProductProtocol;
     quantity: number;
     sku: FirebaseFirestore.DocumentReference;
     shop: FirebaseFirestore.DocumentReference;

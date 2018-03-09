@@ -91,7 +91,7 @@ describe('OrderObject', () => {
           await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
 
           for (const orderSKU of model.orderSKUs) {
-            const sku = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', orderSKU.sku.id)
+            const sku = await Orderable.fetch<Orderable.SKUProtocol>('version/1/sku', orderSKU.data.sku.id)
             expect(sku.data.stock).toEqual(0)
           }
         })
@@ -107,15 +107,12 @@ describe('OrderObject', () => {
         const stock = 100
         beforeEach(async () => {
           for (const sku of model.skus) {
-            sku.stock = stock
-            sku.stockType = Orderable.StockType.Finite
-            await sku.update()
+            await sku.update({ stock: stock, stockType: Orderable.StockType.Finite })
           }
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            orderSKU.quantity = quantity
-            await orderSKU.update()
+            await orderSKU.update({ quantity: quantity })
           }
           orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order)
         })
@@ -126,8 +123,8 @@ describe('OrderObject', () => {
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            const sku = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', orderSKU.sku.id)
-            const newOrderSKU = await Orderable.data<Orderable.OrderSKUProtocol>('version/1/ordersku', orderSKU.id)
+            const sku = await Orderable.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, orderSKU.data.sku.id)
+            const newOrderSKU = await Orderable.fetch<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKU.ref.id)
             expect(sku.data.stock).toEqual(stock - quantity)
           }
         })
@@ -138,8 +135,8 @@ describe('OrderObject', () => {
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            const sku = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', orderSKU.sku.id)
-            const newOrderSKU = await Orderable.data<Orderable.OrderSKUProtocol>('version/1/ordersku', orderSKU.id)
+            const sku = await Orderable.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, orderSKU.data.sku.id)
+            const newOrderSKU = await Orderable.fetch<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKU.ref.id)
             expect(sku.data.stock).toEqual(stock + quantity)
           }
         })
@@ -149,8 +146,7 @@ describe('OrderObject', () => {
         test('ValidationError.OutOfStock', async () => {
           let quantity = 10000000000000
           for (const orderSKU of model.orderSKUs) {
-            orderSKU.quantity = quantity
-            await orderSKU.update()
+            await orderSKU.update({ quantity: quantity })
           }
           const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order)
           orderObject.orderSKUObjects = orderSKUObjects
@@ -165,8 +161,8 @@ describe('OrderObject', () => {
 
             // check stock did not decrement
             for (const sku of model.skus) {
-              const updatedSKU = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', sku.id)
-              expect(updatedSKU.data.stock).toEqual(sku.stock)
+              const updatedSKU = await Orderable.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, sku.ref.id)
+              expect(updatedSKU.data.stock).toEqual(sku.data.stock)
             }
           }
         })
@@ -178,11 +174,10 @@ describe('OrderObject', () => {
 describe('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
     const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
-    preOrder = preOrder || model.order.rawValue()
-    model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
-    await model.order.update()
+    preOrder = preOrder || model.order.data
+    await model.order.update({ paymentStatus: Orderable.OrderPaymentStatus.PaymentRequested })
 
-    const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
+    const event = Rescue.event(model.order.ref, model.order.data, { params: { orderID: model.order.ref.id }, previousData: preOrder })
     const orderObject = new Orderable.Functions.OrderObject(event)
 
     return { model: model, orderObject: orderObject }
@@ -418,20 +413,18 @@ describe('orderPaymentRequested', () => {
       await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
       // prepare for restart
-      data.model.order.paymentStatus = Orderable.OrderPaymentStatus.Created
-      data.model.order.stripe = {}
-      const stripeCharge: Orderable.StripeProtocol = {}
-      stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
-      stripeCharge.customerID = Helper.Firebase.shared.defaultOrder.stripe!.customerID
-      data.model.order.stripe = stripeCharge
-      // data.model.order.neoTask = {} as any
-      await data.model.order.update()
+      await data.model.order.update({
+        paymentStatus: Orderable.OrderPaymentStatus.Created,
+        stripe: {
+          cardID: Helper.Firebase.shared.defaultOrder.stripe!.cardID,
+          customerID: Helper.Firebase.shared.defaultOrder.stripe!.customerID
+        }
+      })
 
-      const preOrder = data.model.order.rawValue()
-      data.model.order.paymentStatus = Orderable.OrderPaymentStatus.PaymentRequested
-      await data.model.order.update()
+      const preOrder = data.model.order.data
+      await data.model.order.update({ paymentStatus: Orderable.OrderPaymentStatus.PaymentRequested })
 
-      const event = Rescue.event(data.model.order.reference, data.model.order.rawValue(), { params: { orderID: data.model.order.id }, previousData: preOrder })
+      const event = Rescue.event(data.model.order.ref, data.model.order.data, { params: { orderID: data.model.order.ref.id }, previousData: preOrder })
       const orderObject = new Orderable.Functions.OrderObject(event)
 
       // restart
@@ -481,7 +474,6 @@ describe('orderPaymentRequested', () => {
       order.retry = { count: 2, errors: ['', ''] }
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
       const data = await makeTestData(customModel, { retry: { count: 1 } })
-      await data.model.order.update()
       data.orderObject.order.data.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
       await Orderable.Functions.orderPaymentRequested(data.orderObject)
@@ -501,7 +493,6 @@ describe('orderPaymentRequested', () => {
       order.retry = { count: 3, errors: ['', '', ''] }
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
       const data = await makeTestData(customModel, { retry: { count: 2 } })
-      await data.model.order.update()
       data.orderObject.order.data.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
       expect.hasAssertions()

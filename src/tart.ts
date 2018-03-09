@@ -44,6 +44,14 @@ export class Snapshot<T extends Pring> {
     batch.create(rc, { createdAt: Date(), updatedAt: Date() })
     return batch
   }
+
+  update(data: { [id: string]: any }) {
+    data.updatedAt = Date()
+    Object.keys(data).forEach(key => {
+      this.data[key] = data[key]
+    })
+    return this.ref.update(data)
+  }
 }
 
 export interface Pring {
