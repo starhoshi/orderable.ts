@@ -77,9 +77,9 @@ export interface OrderShopProtocol extends Tart.Pring {
   // orderSKUs: ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
 }
 
-export interface OrderSKUProtocol<T extends SKUProtocol, P extends ProductProtocol> extends Tart.Pring {
-  snapshotSKU?: T
-  snapshotProduct?: P
+export interface OrderSKUProtocol extends Tart.Pring {
+  snapshotSKU?: SKUProtocol
+  snapshotProduct?: ProductProtocol
   quantity: number
   sku: FirebaseFirestore.DocumentReference
   shop: FirebaseFirestore.DocumentReference
