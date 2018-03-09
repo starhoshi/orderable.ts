@@ -404,7 +404,7 @@ export namespace Functions {
 
       // const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
       // const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
-      await firestore.collection('version/1/ordershop')
+      await firestore.collection(Path.OrderShop)
         .where('order', '==', order.ref)
         .get()
         .then(snapshot => {

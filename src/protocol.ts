@@ -83,6 +83,7 @@ export enum OrderShopPaymentStatus {
 export interface OrderShopProtocol extends Tart.Pring {
   paymentStatus: OrderShopPaymentStatus
   user: FirebaseFirestore.DocumentReference
+  order: FirebaseFirestore.DocumentReference
 
   // ReferenceCollection
   // orderSKUs: ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>

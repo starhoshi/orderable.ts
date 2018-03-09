@@ -344,7 +344,7 @@ var Functions;
             }
             // const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
             // const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
-            yield index_1.firestore.collection('version/1/ordershop')
+            yield index_1.firestore.collection(protocol_1.Path.OrderShop)
                 .where('order', '==', order.ref)
                 .get()
                 .then(snapshot => {

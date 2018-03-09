@@ -207,7 +207,8 @@ export class Firebase {
     for (const shop of shops) {
       const orderShopData: Orderable.OrderShopProtocol = {
         paymentStatus: Orderable.OrderShopPaymentStatus.Created,
-        user: user.ref
+        user: user.ref,
+        order: order.ref
       }
       const orderShop = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderShopProtocol>(Orderable.Path.OrderShop, orderShopData)
 
@@ -223,9 +224,7 @@ export class Firebase {
         orderSKU.saveWithBatch(batch)
 
         orderShop.setReferenceCollectionWithBatch('orderSKUs', orderSKU.ref, batch)
-        // orderShop.orderSKUs.insert(orderSKU)
         order.setReferenceCollectionWithBatch('orderSKUs', orderSKU.ref, batch)
-        // order.orderSKUs.insert(orderSKU)
         orderSKUsForReturn.push(orderSKU)
       }
 

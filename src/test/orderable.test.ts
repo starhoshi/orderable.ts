@@ -32,7 +32,6 @@ describe('OrderObject', () => {
 
   describe('isCharged', () => {
     test('return true when charge completed', () => {
-      console.log(orderObject.order.data)
       orderObject.order!.data.stripe = {}
       orderObject.order!.data.stripe!.chargeID = 'test'
 
@@ -175,7 +174,7 @@ describe('OrderObject', () => {
 describe('orderPaymentRequested', () => {
   const makeTestData = async (dataSet: Helper.DataSet = {}, preOrder: any = undefined) => {
     const model = await Helper.Firebase.shared.makeValidateModel(dataSet)
-    preOrder = preOrder || model.order.data
+    preOrder = preOrder || Object.assign({}, model.order.data)
     await model.order.update({ paymentStatus: Orderable.OrderPaymentStatus.PaymentRequested })
 
     const event = Rescue.event(model.order.ref, model.order.data, { params: { orderID: model.order.ref.id }, previousData: preOrder })
