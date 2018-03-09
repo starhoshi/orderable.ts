@@ -41,24 +41,6 @@ export namespace Functions {
     }
   }
 
-  export interface InitializableClass<
-    Order extends OrderProtocol,
-    Shop extends ShopProtocol,
-    User extends UserProtocol,
-    SKU extends SKUProtocol,
-    Product extends ProductProtocol,
-    OrderShop extends OrderShopProtocol,
-    OrderSKU extends OrderSKUProtocol<SKU, Product>
-    > {
-    order: { new(): Order }
-    shop: { new(): Shop }
-    user: { new(): User }
-    sku: { new(): SKU }
-    product: { new(): Product }
-    orderShop: { new(): OrderShop }
-    orderSKU: { new(): OrderSKU }
-  }
-
   export enum PaymentAgencyType {
     Unknown,
     Stripe
@@ -73,8 +55,6 @@ export namespace Functions {
     OrderShop extends OrderShopProtocol,
     OrderSKU extends OrderSKUProtocol<SKU, Product>
     > implements Flow.Dependency {
-
-    initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>
 
     event: functions.Event<DeltaDocumentSnapshot>
     orderID: string
@@ -96,10 +76,9 @@ export namespace Functions {
       }))
     }
 
-    constructor(event: functions.Event<DeltaDocumentSnapshot>, initializableClass: InitializableClass<Order, Shop, User, SKU, Product, OrderShop, OrderSKU>) {
+    constructor(event: functions.Event<DeltaDocumentSnapshot>) {
       this.event = event
       this.orderID = event.params!.orderID!
-      this.initializableClass = initializableClass
       this.order = new Tart.Snapshot<Order>(event.data)
       this.previousOrder = new Tart.Snapshot<Order>(event.data.previous)
     }
