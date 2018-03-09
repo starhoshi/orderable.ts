@@ -9,6 +9,7 @@ import * as EventResponse from 'event-response'
 export * from './error'
 export * from './protocol'
 export * from './function'
+export * from './tart'
 
 export let stripe: Stripe
 export let firestore: FirebaseFirestore.Firestore

@@ -47,7 +47,6 @@ export namespace Functions {
   }
 
   export class OrderObject implements Flow.Dependency {
-
     event: functions.Event<DeltaDocumentSnapshot>
     orderID: string
     order: Tart.Snapshot<OrderProtocol>

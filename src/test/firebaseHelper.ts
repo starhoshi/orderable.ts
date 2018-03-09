@@ -7,8 +7,24 @@ import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestor
 import * as Retrycf from 'retrycf'
 import * as Stripe from 'stripe'
 import * as EventResponse from 'event-response'
+import * as Tart from '../tart'
 
 const stripe = new Stripe(process.env.STRIPE as string)
+
+export const createOrder = () => {
+  const ref = admin.firestore().collection('version/1/order').doc()
+  const snapshot = {
+    ref: ref,
+    data: () => {
+      return <Orderable.OrderProtocol>{
+        user: '' as any,
+        amount: 1000,
+        paymentStatus: 1
+      }
+    }
+  }
+  return new Tart.Snapshot<Orderable.OrderProtocol>(snapshot as any)
+}
 
 export interface SampleModel {
   user: Model.SampleUser,
@@ -65,11 +81,6 @@ export class Firebase {
         credential: admin.credential.cert(serviceAccount)
       })
 
-      Pring.initialize({
-        projectId: 'sandbox-329fc',
-        keyFilename: './sandbox-329fc-firebase-adminsdk.json'
-      })
-
       Orderable.initialize({
         adminOptions: {
           projectId: 'sandbox-329fc',
@@ -83,15 +94,7 @@ export class Firebase {
   }
 
   orderObject(event: functions.Event<DeltaDocumentSnapshot>) {
-    return new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-      order: Model.SampleOrder,
-      shop: Model.SampleShop,
-      user: Model.SampleUser,
-      sku: Model.SampleSKU,
-      product: Model.SampleProduct,
-      orderShop: Model.SampleOrderShop,
-      orderSKU: Model.SampleOrderSKU
-    })
+    return new Orderable.Functions.OrderObject(event)
   }
 
   get defaultShops() {

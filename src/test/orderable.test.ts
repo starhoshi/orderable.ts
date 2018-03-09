@@ -18,10 +18,10 @@ beforeAll(() => {
 jest.setTimeout(20000)
 
 describe('OrderObject', () => {
-  let orderObject: Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>
+  let orderObject: Orderable.Functions.OrderObject
   beforeEach(() => {
-    const order = new Model.SampleOrder()
-    const event = Rescue.event(order.reference, order.rawValue(), { params: { orderID: order.id } })
+    const order = Helper.createOrder()
+    const event = Rescue.event(order.ref, order.data, { params: { orderID: order.ref.id } })
     orderObject = Helper.Firebase.shared.orderObject(event)
     orderObject.order = order
   })
@@ -32,21 +32,21 @@ describe('OrderObject', () => {
 
   describe('isCharged', () => {
     test('return true when charge completed', () => {
-      orderObject.order!.stripe = new Model.SampleStripeCharge()
-      orderObject.order!.stripe!.chargeID = 'test'
+      orderObject.order!.data.stripe = {}
+      orderObject.order!.data.stripe!.chargeID = 'test'
 
       expect(orderObject.isCharged).toBeTruthy()
     })
 
     test('return false when stripe is undefined', () => {
-      orderObject.order!.stripe = undefined
+      orderObject.order!.data.stripe = undefined
 
       expect(orderObject.isCharged).toBeFalsy()
     })
 
     test('return false when stripe.chargeID is undefined', () => {
-      orderObject.order!.stripe = new Model.SampleStripeCharge()
-      orderObject.order!.stripe!.chargeID = undefined
+      orderObject.order!.data.stripe = {}
+      orderObject.order!.data.stripe!.chargeID = undefined
 
       expect(orderObject.isCharged).toBeFalsy()
     })
@@ -54,13 +54,13 @@ describe('OrderObject', () => {
 
   describe('paymentAgencyType', () => {
     test('return Stripe when exist stripe', () => {
-      orderObject.order!.stripe = new Model.SampleStripeCharge()
+      orderObject.order!.data.stripe = {}
 
       expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Stripe)
     })
 
     test('return Unknown when stripe is undefined', () => {
-      orderObject.order!.stripe = undefined
+      orderObject.order!.data.stripe = undefined
 
       expect(orderObject.paymentAgencyType).toEqual(Orderable.Functions.PaymentAgencyType.Unknown)
     })
@@ -83,7 +83,7 @@ describe('OrderObject', () => {
         const customModel = { shops: shops, order: Helper.Firebase.shared.defaultOrder }
         model = await Helper.Firebase.shared.makeValidateModel(customModel)
         orderObject.order = model.order
-        orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+        orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order)
       })
 
       describe('when update succeeded', () => {
@@ -91,8 +91,8 @@ describe('OrderObject', () => {
           await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
 
           for (const orderSKU of model.orderSKUs) {
-            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-            expect(sku.stock).toEqual(0)
+            const sku = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', orderSKU.sku.id)
+            expect(sku.data.stock).toEqual(0)
           }
         })
       })
@@ -117,7 +117,7 @@ describe('OrderObject', () => {
             orderSKU.quantity = quantity
             await orderSKU.update()
           }
-          orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          orderObject.orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order)
         })
 
         test('stock decremented', async () => {
@@ -126,9 +126,9 @@ describe('OrderObject', () => {
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-            const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-            expect(sku.stock).toEqual(stock - quantity)
+            const sku = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', orderSKU.sku.id)
+            const newOrderSKU = await Orderable.data<Orderable.OrderSKUProtocol>('version/1/ordersku', orderSKU.id)
+            expect(sku.data.stock).toEqual(stock - quantity)
           }
         })
 
@@ -138,9 +138,9 @@ describe('OrderObject', () => {
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            const sku = await Model.SampleSKU.get(orderSKU.sku.id) as Model.SampleSKU
-            const newOrderSKU = await Model.SampleOrderSKU.get(orderSKU.id) as Model.SampleOrderSKU
-            expect(sku.stock).toEqual(stock + quantity)
+            const sku = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', orderSKU.sku.id)
+            const newOrderSKU = await Orderable.data<Orderable.OrderSKUProtocol>('version/1/ordersku', orderSKU.id)
+            expect(sku.data.stock).toEqual(stock + quantity)
           }
         })
       })
@@ -152,7 +152,7 @@ describe('OrderObject', () => {
             orderSKU.quantity = quantity
             await orderSKU.update()
           }
-          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order, orderObject.initializableClass.orderSKU, orderObject.initializableClass.sku)
+          const orderSKUObjects = await Orderable.Functions.OrderSKUObject.fetchFrom(model.order)
           orderObject.orderSKUObjects = orderSKUObjects
 
           expect.hasAssertions()
@@ -165,8 +165,8 @@ describe('OrderObject', () => {
 
             // check stock did not decrement
             for (const sku of model.skus) {
-              const updatedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
-              expect(updatedSKU.stock).toEqual(sku.stock)
+              const updatedSKU = await Orderable.data<Orderable.SKUProtocol>('version/1/sku', sku.id)
+              expect(updatedSKU.data.stock).toEqual(sku.stock)
             }
           }
         })
@@ -183,9 +183,7 @@ describe('orderPaymentRequested', () => {
     await model.order.update()
 
     const event = Rescue.event(model.order.reference, model.order.rawValue(), { params: { orderID: model.order.id }, previousData: preOrder })
-    const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-      order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-    })
+    const orderObject = new Orderable.Functions.OrderObject(event)
 
     return { model: model, orderObject: orderObject }
   }
@@ -369,7 +367,7 @@ describe('orderPaymentRequested', () => {
       }
 
       // Wait until the process is completed
-      await Helper.Firebase.shared.observe(data.orderObject.order.reference, (d, r) => {
+      await Helper.Firebase.shared.observe(data.orderObject.order.ref, (d, r) => {
         if (d.result && d.result.status === EventResponse.Status.OK) { return r() }
       })
 
@@ -421,11 +419,11 @@ describe('orderPaymentRequested', () => {
 
       // prepare for restart
       data.model.order.paymentStatus = Orderable.OrderPaymentStatus.Created
-      data.model.order.stripe = new Model.SampleStripeCharge()
-      const stripeCharge = new Model.SampleStripeCharge()
+      data.model.order.stripe = {}
+      const stripeCharge: Orderable.StripeProtocol = {}
       stripeCharge.cardID = Helper.Firebase.shared.defaultOrder.stripe!.cardID
       stripeCharge.customerID = Helper.Firebase.shared.defaultOrder.stripe!.customerID
-      data.model.order.stripe = stripeCharge.rawValue()
+      data.model.order.stripe = stripeCharge
       // data.model.order.neoTask = {} as any
       await data.model.order.update()
 
@@ -434,9 +432,7 @@ describe('orderPaymentRequested', () => {
       await data.model.order.update()
 
       const event = Rescue.event(data.model.order.reference, data.model.order.rawValue(), { params: { orderID: data.model.order.id }, previousData: preOrder })
-      const orderObject = new Orderable.Functions.OrderObject<Model.SampleOrder, Model.SampleShop, Model.SampleUser, Model.SampleSKU, Model.SampleProduct, Model.SampleOrderShop, Model.SampleOrderSKU>(event, {
-        order: Model.SampleOrder, shop: Model.SampleShop, user: Model.SampleUser, sku: Model.SampleSKU, product: Model.SampleProduct, orderShop: Model.SampleOrderShop, orderSKU: Model.SampleOrderSKU
-      })
+      const orderObject = new Orderable.Functions.OrderObject(event)
 
       // restart
       await Orderable.Functions.orderPaymentRequested(orderObject)
@@ -449,8 +445,8 @@ describe('orderPaymentRequested', () => {
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
 
       const data = await makeTestData(customModel)
-      data.orderObject.order.user = 'username' as any
-      await data.orderObject.order.update()
+      data.orderObject.order.data.user = 'username' as any
+      await data.orderObject.order.ref.update({ user: 'username' })
 
       expect.hasAssertions()
       try {
@@ -486,7 +482,7 @@ describe('orderPaymentRequested', () => {
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
       const data = await makeTestData(customModel, { retry: { count: 1 } })
       await data.model.order.update()
-      data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
+      data.orderObject.order.data.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
       await Orderable.Functions.orderPaymentRequested(data.orderObject)
 
@@ -506,7 +502,7 @@ describe('orderPaymentRequested', () => {
       const customModel = { shops: Helper.Firebase.shared.defaultShops, order: order }
       const data = await makeTestData(customModel, { retry: { count: 2 } })
       await data.model.order.update()
-      data.orderObject.order.paymentStatus = Orderable.OrderPaymentStatus.Paid
+      data.orderObject.order.data.paymentStatus = Orderable.OrderPaymentStatus.Paid
 
       expect.hasAssertions()
       try {
