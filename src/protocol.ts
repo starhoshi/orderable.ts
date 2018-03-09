@@ -2,6 +2,16 @@ import * as EventResponse from 'event-response'
 import * as Retrycf from 'retrycf'
 import * as Tart from './tart'
 
+export enum Path {
+  User = 'version/1/user',
+  Shop = 'version/1/shop',
+  Product = 'version/1/product',
+  SKU = 'version/1/sku',
+  Order = 'version/1/order',
+  OrderShop = 'version/1/ordershop',
+  OrderSKU = 'version/1/ordersku'
+}
+
 export interface UserProtocol extends Tart.Pring {
   stripeCustomerID?: string
 }
@@ -69,6 +79,7 @@ export enum OrderShopPaymentStatus {
   Created = 1,
   Paid = 2
 }
+
 export interface OrderShopProtocol extends Tart.Pring {
   paymentStatus: OrderShopPaymentStatus
   user: FirebaseFirestore.DocumentReference

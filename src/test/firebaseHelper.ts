@@ -27,13 +27,13 @@ export const createOrder = () => {
 }
 
 export interface SampleModel {
-  user: Model.SampleUser,
-  shops: Model.SampleShop[],
-  products: Model.SampleProduct[],
-  skus: Model.SampleSKU[],
-  order: Model.SampleOrder,
-  orderShops: Model.SampleOrderShop[],
-  orderSKUs: Model.SampleOrderSKU[]
+  user: Tart.Snapshot<Orderable.UserProtocol>,
+  shops: Tart.Snapshot<Orderable.ShopProtocol>[],
+  products: Tart.Snapshot<Orderable.ProductProtocol>[],
+  skus: Tart.Snapshot<Orderable.SKUProtocol>[],
+  order: Tart.Snapshot<Orderable.OrderProtocol>,
+  orderShops: Tart.Snapshot<Orderable.OrderShopProtocol>[],
+  orderSKUs: Tart.Snapshot<Orderable.OrderSKUProtocol>[]
 }
 
 export interface DataSetOrder {
@@ -142,32 +142,39 @@ export class Firebase {
     dataSet.shops = dataSet.shops || Firebase.shared.defaultShops
     dataSet.order = dataSet.order || Firebase.shared.defaultOrder
 
-    const promises1: Promise<any>[] = []
+    const batch = admin.firestore().batch()
+    // const promises1: Promise<any>[] = []
 
-    const user = new Model.SampleUser()
-    promises1.push(user.save())
+    // const user = new Model.SampleUser()
+    const user = Tart.Snapshot.makeNotSavedSnapshot<Orderable.UserProtocol>(Orderable.Path.User, {})
+    // promises1.push(user.save())
+    user.saveWithBatch(batch)
 
-    let productsForReturn: Model.SampleProduct[] = []
-    let skusForReturn: Model.SampleSKU[] = []
-    let shops: { shop: Model.SampleShop, products: { product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number }[] }[] = []
+    let productsForReturn: Tart.Snapshot<Orderable.ProductProtocol>[] = []
+    let skusForReturn: Tart.Snapshot<Orderable.SKUProtocol>[] = []
+    let shops: { shop: Tart.Snapshot<Orderable.ShopProtocol>, products: { product: Tart.Snapshot<Orderable.ProductProtocol>, sku: Tart.Snapshot<Orderable.SKUProtocol>, quantity: number }[] }[] = []
     for (const shop of dataSet.shops) {
-      const sh = new Model.SampleShop()
-      sh.name = shop.name || 'shop'
-      sh.isActive = !!shop.isActive
-      promises1.push(sh.save())
+      const sh = Tart.Snapshot.makeNotSavedSnapshot<Orderable.ShopProtocol>(Orderable.Path.Shop, { isActive: true, freePostageMinimumPrice: -1 })
+      sh.data.name = shop.name || 'shop'
+      sh.data.isActive = !!shop.isActive
+      sh.saveWithBatch(batch)
 
-      let products: { product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number }[] = []
+      // let products: { product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number }[] = []
+      let products: { product: Tart.Snapshot<Orderable.ProductProtocol>, sku: Tart.Snapshot<Orderable.SKUProtocol>, quantity: number }[] = []
       for (const sku of shop.skus) {
-        const p = new Model.SampleProduct()
-        p.name = sku.name || 'product'
-        promises1.push(p.save())
+        const pData: Orderable.ProductProtocol = { name: sku.name || 'product' }
+        const p = Tart.Snapshot.makeNotSavedSnapshot<Orderable.ProductProtocol>(Orderable.Path.Product, pData)
+        p.saveWithBatch(batch)
 
-        const sk = new Model.SampleSKU()
-        sk.price = sku.price === 0 ? sku.price : 1000
-        sk.stockType = sku.stockType || Orderable.StockType.Infinite
-        sk.stock = sku.stock === 0 ? sku.stock : 100
-        sk.isActive = !!sku.isActive
-        promises1.push(sk.save())
+        const skData: Orderable.SKUProtocol = {
+          price: sku.price === 0 ? sku.price : 1000,
+          stockType: sku.stockType || Orderable.StockType.Infinite,
+          stock: sku.stock === 0 ? sku.stock : 100,
+          isPublished: true,
+          isActive: !!sku.isActive
+        }
+        const sk = Tart.Snapshot.makeNotSavedSnapshot<Orderable.SKUProtocol>(Orderable.Path.SKU, skData)
+        sk.saveWithBatch(batch)
         products.push({ product: p, sku: sk, quantity: sku.quantity || 1 })
         productsForReturn.push(p)
         skusForReturn.push(sk)
@@ -175,7 +182,7 @@ export class Firebase {
       shops.push({ shop: sh, products: products })
     }
 
-    await Promise.all(promises1)
+    await batch.commit()
 
     const promises2: Promise<any>[] = []
 
