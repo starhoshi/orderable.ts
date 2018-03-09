@@ -2,12 +2,6 @@
 # yarn lockfile v1
 
 
-"@1amageek/flow@^0.2.1":
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/@1amageek/flow/-/flow-0.2.1.tgz#68983fbf90ac6ee4a16b2c6fbc3a6a277916bf3b"
-  dependencies:
-    reflect-metadata "^0.1.10"
-
 "@babel/code-frame@^7.0.0-beta.35":
   version "7.0.0-beta.40"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.0.0-beta.40.tgz#37e2b0cf7c56026b4b21d3927cadf81adec32ac6"
@@ -4682,10 +4676,6 @@ realpath-native@^1.0.0:
   resolved "https://registry.yarnpkg.com/realpath-native/-/realpath-native-1.0.0.tgz#7885721a83b43bd5327609f0ddecb2482305fdf0"
   dependencies:
     util.promisify "^1.0.0"
-
-reflect-metadata@^0.1.10:
-  version "0.1.12"
-  resolved "https://registry.yarnpkg.com/reflect-metadata/-/reflect-metadata-0.1.12.tgz#311bf0c6b63cd782f228a81abe146a2bfa9c56f2"
 
 regenerator-runtime@^0.11.0:
   version "0.11.1"
