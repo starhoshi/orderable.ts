@@ -11,7 +11,7 @@ import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestor
 // import * as Slack from 'slack-node'
 import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
-import { PringUtil } from './util'
+// import { PringUtil } from './util'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
 import { OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
 import { firestore, stripe } from './index'
