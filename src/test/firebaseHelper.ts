@@ -182,59 +182,68 @@ export class Firebase {
       shops.push({ shop: sh, products: products })
     }
 
-    await batch.commit()
+    // await batch.commit()
 
-    const promises2: Promise<any>[] = []
-
-    const order = new Model.SampleOrder()
-    order.user = user.reference
-    order.amount = dataSet.order.amount || 10000
-    order.currency = dataSet.order.currency || 'jpy'
-    order.paymentStatus = dataSet.order.paymentStatus || Orderable.OrderPaymentStatus.PaymentRequested
+    const orderData: Orderable.OrderProtocol = {
+      user: user.ref,
+      amount: dataSet.order.amount || 10000,
+      currency: dataSet.order.currency || 'jpy',
+      paymentStatus: dataSet.order.paymentStatus || Orderable.OrderPaymentStatus.PaymentRequested
+    }
     if (dataSet.order.expirationDate) {
-      order.expirationDate = dataSet.order.expirationDate
+      orderData.expirationDate = dataSet.order.expirationDate
     }
     if (dataSet.order.stripe) {
-      const stripeCharge = new Model.SampleStripeCharge()
+      const stripeCharge: Orderable.StripeProtocol = {}
       stripeCharge.cardID = dataSet.order.stripe.cardID
       stripeCharge.customerID = dataSet.order.stripe.customerID
       if (dataSet.order.stripe.chargeID) {
         stripeCharge.chargeID = dataSet.order.stripe.chargeID
       }
-      order.stripe = stripeCharge.rawValue()
+      orderData.stripe = stripeCharge
     }
     if (dataSet.order.retry) {
-      order.retry = dataSet.order.retry
+      orderData.retry = dataSet.order.retry
     }
+    const order = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderProtocol>(Orderable.Path.Order, orderData)
 
-    const orderSKUsForReturn: Model.SampleOrderSKU[] = []
-    const orderShopsForReturn: Model.SampleOrderShop[] = []
+    const orderSKUsForReturn: Tart.Snapshot<Orderable.OrderSKUProtocol>[] = []
+    const orderShopsForReturn: Tart.Snapshot<Orderable.OrderShopProtocol>[] = []
     for (const shop of shops) {
-      const orderShop = new Model.SampleOrderShop()
-      orderShop.paymentStatus = Orderable.OrderShopPaymentStatus.Created
-      orderShop.user = user.reference
-      orderShop.order = order.reference
+      const orderShopData: Orderable.OrderShopProtocol = {
+        paymentStatus: Orderable.OrderShopPaymentStatus.Created,
+        user: user.ref
+      }
+      const orderShop = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderShopProtocol>(Orderable.Path.OrderShop, orderShopData)
 
       for (const product of shop.products) {
-        const orderSKU = new Model.SampleOrderSKU()
-        orderSKU.snapshotSKU = product.sku.rawValue()
-        orderSKU.snapshotProduct = product.product.rawValue()
-        orderSKU.quantity = product.quantity
-        orderSKU.sku = product.sku.reference
-        orderSKU.shop = shop.shop.reference
+        const orderSKUData: Orderable.OrderSKUProtocol = {
+          snapshotSKU: product.sku.data,
+          snapshotProduct: product.product.data,
+          quantity: product.quantity,
+          sku: product.sku.ref,
+          shop: shop.shop.ref
+        }
+        const orderSKU = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKUData)
+        orderSKU.saveWithBatch(batch)
 
-        orderShop.orderSKUs.insert(orderSKU)
-        order.orderSKUs.insert(orderSKU)
+        orderShop.setReferenceCollectionWithBatch('orderSKUs', orderSKU.ref, batch)
+        // orderShop.orderSKUs.insert(orderSKU)
+        order.setReferenceCollectionWithBatch('orderSKUs', orderSKU.ref, batch)
+        // order.orderSKUs.insert(orderSKU)
         orderSKUsForReturn.push(orderSKU)
       }
 
       // await orderShop.save()
-      promises2.push(orderShop.save())
+      // promises2.push(orderShop.save())
+      orderShop.saveWithBatch(batch)
       orderShopsForReturn.push(orderShop)
     }
     // await order.save()
-    promises2.push(order.save())
-    await Promise.all(promises2)
+    // promises2.push(order.save())
+    order.saveWithBatch(batch)
+    await batch.commit()
+    // await Promise.all(promises2)
 
     return <SampleModel>{
       user: user,
@@ -250,21 +259,21 @@ export class Firebase {
   step = 'preventMultipleProcessing'
 
   async expectOrder(model: SampleModel) {
-    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    expect(order.completed).toEqual({ [this.step]: true })
-    expect(order.result).toEqual({ status: EventResponse.Status.OK })
-    expect(order.stripe!.cardID).toBeDefined()
-    expect(order.stripe!.customerID).toBeDefined()
-    expect(order.stripe!.chargeID).toBeDefined()
-    expect(order.paidDate).toBeInstanceOf(Date)
-    expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    expect(order.data.completed).toEqual({ [this.step]: true })
+    expect(order.data.result).toEqual({ status: EventResponse.Status.OK })
+    expect(order.data.stripe!.cardID).toBeDefined()
+    expect(order.data.stripe!.customerID).toBeDefined()
+    expect(order.data.stripe!.chargeID).toBeDefined()
+    expect(order.data.paidDate).toBeInstanceOf(Date)
+    expect(order.data.paymentStatus).toEqual(Orderable.OrderPaymentStatus.Paid)
   }
 
   async expectStock(model: SampleModel) {
     let index = 0
     for (const sku of model.skus) {
-      const fetchedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
-      expect(fetchedSKU.stock).toEqual(sku.stock - model.orderSKUs[index].quantity)
+      const fetchedSKU = await Tart.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, sku.ref.id)
+      expect(fetchedSKU.data.stock).toEqual(sku.data.stock - model.orderSKUs[index].data.quantity)
       index += 1
     }
   }
@@ -272,43 +281,43 @@ export class Firebase {
   async expectStockNotDecrementAndNotCompleted(model: SampleModel) {
     let index = 0
     for (const sku of model.skus) {
-      const fetchedSKU = await Model.SampleSKU.get(sku.id) as Model.SampleSKU
-      expect(fetchedSKU.stock).toEqual(sku.stock)
+      const fetchedSKU = await Tart.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, sku.ref.id)
+      expect(fetchedSKU.data.stock).toEqual(sku.data.stock)
       index += 1
     }
 
-    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    expect((order.completed || {})[this.step]).toBeUndefined()
-    expect(order.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    expect((order.data.completed || {})[this.step]).toBeUndefined()
+    expect(order.data.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
   }
 
   async expectRetry(model: SampleModel, retryCount: number = 1) {
-    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    expect(order.retry!.count).toBe(retryCount)
-    expect(order.retry!.errors.length).toEqual(retryCount)
-    expect(order.retry!.errors.length).toEqual(retryCount)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    expect(order.data.retry!.count).toBe(retryCount)
+    expect(order.data.retry!.errors.length).toEqual(retryCount)
+    expect(order.data.retry!.errors.length).toEqual(retryCount)
   }
 
   async expectFatal(model: SampleModel, step: string) {
-    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    expect(order.result!.status).toEqual(EventResponse.Status.InternalError)
-    expect(order.result!.id!).toBe(step)
-    expect(order.result!.error).toBeDefined()
+    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    expect(order.data.result!.status).toEqual(EventResponse.Status.InternalError)
+    expect(order.data.result!.id!).toBe(step)
+    expect(order.data.result!.error).toBeDefined()
   }
 
   async expectOrderShop(model: SampleModel) {
     for (const orderShop of model.orderShops) {
-      const fetchedOrderShop = await Model.SampleOrderShop.get(orderShop.id) as Model.SampleOrderShop
-      expect(fetchedOrderShop.paymentStatus).toEqual(Orderable.OrderShopPaymentStatus.Paid)
+      const fetchedOrderShop = await Tart.fetch<Orderable.OrderShopProtocol>(Orderable.Path.OrderShop, orderShop.ref.id)
+      expect(fetchedOrderShop.data.paymentStatus).toEqual(Orderable.OrderShopPaymentStatus.Paid)
     }
   }
 
   async expectStripe(model: SampleModel) {
-    const order = await Model.SampleOrder.get(model.order.id) as Model.SampleOrder
-    const charge = await stripe.charges.retrieve(order.stripe!.chargeID!)
-    expect(charge.amount).toEqual(model.order.amount)
-    expect(charge.metadata.orderID).toEqual(model.order.id)
-    expect(charge.customer).toEqual(model.order.stripe!.customerID)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    const charge = await stripe.charges.retrieve(order.data.stripe!.chargeID!)
+    expect(charge.amount).toEqual(model.order.data.amount)
+    expect(charge.metadata.orderID).toEqual(model.order.ref.id)
+    expect(charge.customer).toEqual(model.order.data.stripe!.customerID)
   }
 
   /// 指定した DocumentReference を observe する。 `timeout` を超えたらエラーを返す
