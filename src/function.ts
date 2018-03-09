@@ -5,7 +5,6 @@ import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
 // import { Pring, property } from 'pring'
 import * as Retrycf from 'retrycf'
-import * as Flow from '@1amageek/flow'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 // import * as request from 'request'
 // import * as Slack from 'slack-node'
@@ -46,7 +45,7 @@ export namespace Functions {
     Stripe
   }
 
-  export class OrderObject implements Flow.Dependency {
+  export class OrderObject {
     event: functions.Event<DeltaDocumentSnapshot>
     orderID: string
     order: Tart.Snapshot<OrderProtocol>
@@ -126,7 +125,7 @@ export namespace Functions {
     minus = -1
   }
 
-  const validateOrderExpired: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateOrderExpired = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
 
@@ -151,10 +150,10 @@ export namespace Functions {
 
       throw new OrderableError('validateOrderExpired', ErrorType.Internal, error)
     }
-  })
+  }
 
   const preventStepName = 'preventMultipleProcessing'
-  const preventMultipleProcessing: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const preventMultipleProcessing = async (orderObject: OrderObject) => {
     try {
       if (orderObject.isCharged) { // skip if payment completed
         return orderObject
@@ -173,9 +172,9 @@ export namespace Functions {
       orderObject.order.data.retry = await Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error)
       throw new OrderableError(preventStepName, ErrorType.Retry, error)
     }
-  })
+  }
 
-  const prepareRequiredData: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const prepareRequiredData = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
 
@@ -197,9 +196,9 @@ export namespace Functions {
       orderObject.order.data.retry = await Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error)
       throw new OrderableError(preventStepName, ErrorType.Retry, error)
     }
-  })
+  }
 
-  const validateShopIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateShopIsActive = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
       const shops = orderObject.shops!
@@ -225,9 +224,9 @@ export namespace Functions {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
       throw new OrderableError('validateShopIsActive', ErrorType.Internal, error)
     }
-  })
+  }
 
-  const validateSKUIsActive: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateSKUIsActive = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
       const orderSKUObjects = orderObject.orderSKUObjects!
@@ -254,9 +253,9 @@ export namespace Functions {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
       throw new OrderableError('validateSKUIsActive', ErrorType.Internal, error)
     }
-  })
+  }
 
-  const validatePaymentMethod: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validatePaymentMethod = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
 
@@ -291,9 +290,9 @@ export namespace Functions {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
       throw new OrderableError('validatePaymentMethod', ErrorType.Internal, error)
     }
-  })
+  }
 
-  const validateAndDecreaseStock: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const validateAndDecreaseStock = async (orderObject: OrderObject) => {
     try {
       if (orderObject.isCharged) { // skip if payment completed
         return orderObject
@@ -315,7 +314,7 @@ export namespace Functions {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
       throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error)
     }
-  })
+  }
 
   const stripeCharge = async (order: Tart.Snapshot<OrderProtocol>) => {
     return await stripe.charges.create(
@@ -337,7 +336,7 @@ export namespace Functions {
     })
   }
 
-  const payment: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const payment = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
       const user = orderObject.user!
@@ -369,13 +368,13 @@ export namespace Functions {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
       throw new OrderableError('payment', ErrorType.Internal, error)
     }
-  })
+  }
 
   /**
    * Save peyment succeeded information.
    * Set fatal error if this step failed.
    */
-  const savePaymentCompleted: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const savePaymentCompleted = async (orderObject: OrderObject) => {
     try {
       const order = orderObject.order!
       const batch = firestore.batch()
@@ -431,9 +430,9 @@ export namespace Functions {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
       throw new OrderableError('updateOrder', ErrorType.Internal, error)
     }
-  })
+  }
 
-  const setOrderTask: Flow.Step<OrderObject> = new Flow.Step(async (orderObject) => {
+  const setOrderTask = async (orderObject: OrderObject) => {
     try {
       orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setOK()
 
@@ -443,7 +442,7 @@ export namespace Functions {
       orderObject.order.data.retry = await Retrycf.setRetry(orderObject.order.ref, orderObject.order.data, error)
       throw new OrderableError('setOrderTask', ErrorType.Retry, error)
     }
-  })
+  }
 
   /**
    * Start order processing.
@@ -466,20 +465,16 @@ export namespace Functions {
         }
       }
 
-      const flow = new Flow.Line([
-        validateOrderExpired,
-        prepareRequiredData,
-        validateShopIsActive,
-        validateSKUIsActive,
-        validatePaymentMethod,
-        preventMultipleProcessing,
-        validateAndDecreaseStock,
-        payment,
-        savePaymentCompleted,
-        setOrderTask
-      ])
-
-      await flow.run(orderObject)
+      await validateOrderExpired(orderObject)
+      await prepareRequiredData(orderObject)
+      await validateShopIsActive(orderObject)
+      await validateSKUIsActive(orderObject)
+      await validatePaymentMethod(orderObject)
+      await preventMultipleProcessing(orderObject)
+      await validateAndDecreaseStock(orderObject)
+      await payment(orderObject)
+      await savePaymentCompleted(orderObject)
+      await setOrderTask(orderObject)
 
       return Promise.resolve()
     } catch (error) {
