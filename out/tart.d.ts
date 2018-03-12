@@ -9,7 +9,7 @@ export declare class Snapshot<T extends Pring> {
     setCreatedDate(): void;
     save(): Promise<FirebaseFirestore.WriteResult>;
     saveWithBatch(batch: FirebaseFirestore.WriteBatch): FirebaseFirestore.WriteBatch;
-    setReferenceCollectionWithBatch(collecion: string, ref: FirebaseFirestore.DocumentReference, batch: FirebaseFirestore.WriteBatch): FirebaseFirestore.WriteBatch;
+    setReferenceCollectionWithBatch(collection: string, ref: FirebaseFirestore.DocumentReference, batch: FirebaseFirestore.WriteBatch): FirebaseFirestore.WriteBatch;
     update(data: {
         [id: string]: any;
     }): Promise<FirebaseFirestore.WriteResult>;

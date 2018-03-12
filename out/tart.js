@@ -37,8 +37,8 @@ class Snapshot {
         batch.create(this.ref, this.data);
         return batch;
     }
-    setReferenceCollectionWithBatch(collecion, ref, batch) {
-        const rc = this.ref.collection(collecion).doc(ref.id);
+    setReferenceCollectionWithBatch(collection, ref, batch) {
+        const rc = this.ref.collection(collection).doc(ref.id);
         batch.create(rc, { createdAt: new Date(), updatedAt: new Date() });
         return batch;
     }
