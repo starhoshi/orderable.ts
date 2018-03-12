@@ -39,8 +39,8 @@ export class Snapshot<T extends Pring> {
     return batch
   }
 
-  setReferenceCollectionWithBatch(collecion: string, ref: FirebaseFirestore.DocumentReference, batch: FirebaseFirestore.WriteBatch) {
-    const rc = this.ref.collection(collecion).doc(ref.id)
+  setReferenceCollectionWithBatch(collection: string, ref: FirebaseFirestore.DocumentReference, batch: FirebaseFirestore.WriteBatch) {
+    const rc = this.ref.collection(collection).doc(ref.id)
     batch.create(rc, { createdAt: new Date(), updatedAt: new Date() })
     return batch
   }
