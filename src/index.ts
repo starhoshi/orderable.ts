@@ -14,12 +14,10 @@ export let firestore: FirebaseFirestore.Firestore
 
 export const initialize = (options: { adminOptions: any, stripeToken: string }) => {
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
-  // Tart.initialize(options.adminOptions)
   Tart.initialize(firestore)
   Retrycf.initialize(firestore)
-  // Retrycf.initialize(options.adminOptions)
-  Mission.initialize(options.adminOptions)
-  EventResponse.initialize(options.adminOptions)
+  Mission.initialize(firestore)
+  EventResponse.initialize(firestore)
   EventResponse.configure({ collectionPath: 'version/1/failure' })
   stripe = new Stripe(options.stripeToken)
 }

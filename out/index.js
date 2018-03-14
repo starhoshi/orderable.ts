@@ -14,12 +14,10 @@ __export(require("./protocol"));
 __export(require("./function"));
 exports.initialize = (options) => {
     exports.firestore = new FirebaseFirestore.Firestore(options.adminOptions);
-    // Tart.initialize(options.adminOptions)
     Tart.initialize(exports.firestore);
     Retrycf.initialize(exports.firestore);
-    // Retrycf.initialize(options.adminOptions)
-    Mission.initialize(options.adminOptions);
-    EventResponse.initialize(options.adminOptions);
+    Mission.initialize(exports.firestore);
+    EventResponse.initialize(exports.firestore);
     EventResponse.configure({ collectionPath: 'version/1/failure' });
     exports.stripe = new Stripe(options.stripeToken);
 };

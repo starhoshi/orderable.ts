@@ -18,7 +18,7 @@ export namespace Functions {
     static async fetchFrom(order: Tart.Snapshot<OrderProtocol>) {
       const orderSKUQuerySnapshot = await order.ref.collection('orderSKUs').get()
       const orderSKUObjects = await Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
-        return Tart.fetch<OrderSKUProtocol>(qds.ref).then(snapshot => {
+        return Tart.fetch<OrderSKUProtocol>({ path: Path.OrderSKU, id: qds.ref.id }).then(snapshot => {
           const orderSKUObject = new OrderSKUObject()
           orderSKUObject.orderSKU = snapshot
           return orderSKUObject
