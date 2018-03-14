@@ -8,13 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// import { Pring, property } from 'pring'
 const Retrycf = require("retrycf");
-// import * as request from 'request'
-// import * as Slack from 'slack-node'
 const Mission = require("mission-completed");
 const EventResponse = require("event-response");
-// import { PringUtil } from './util'
 const error_1 = require("./error");
 const protocol_1 = require("./protocol");
 const index_1 = require("./index");
@@ -342,8 +338,6 @@ var Functions;
                     break;
                 default:
             }
-            // const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
-            // const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
             yield index_1.firestore.collection(protocol_1.Path.OrderShop)
                 .where('order', '==', order.ref)
                 .get()

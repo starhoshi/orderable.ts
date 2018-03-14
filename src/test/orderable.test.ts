@@ -1,15 +1,14 @@
 import 'jest'
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
-// import { Pring, property } from 'pring'
 import * as Orderable from '../index'
-// import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Helper from './firebaseHelper'
 import * as Retrycf from 'retrycf'
 import * as Rescue from 'rescue-fire'
 import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
+import * as Shana from 'shana'
 
 beforeAll(() => {
   const _ = Helper.Firebase.shared
@@ -362,7 +361,7 @@ describe('orderPaymentRequested', () => {
       }
 
       // Wait until the process is completed
-      await Helper.Firebase.shared.observe(data.orderObject.order.ref, (d, r) => {
+      await Shana.observe<Orderable.OrderProtocol>(data.orderObject.order.ref, (d, r) => {
         if (d.result && d.result.status === EventResponse.Status.OK) { return r() }
       })
 
@@ -566,7 +565,6 @@ describe('orderPaymentRequested', () => {
   //   // TODO
   //   // stripe charge error type cover
   //   // retry 2 times
-  //   // order timelimit
 })
 
 describe('OrderSKUObject', async () => {

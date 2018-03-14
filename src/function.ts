@@ -1,16 +1,10 @@
-// import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
-// import { Event, TriggerAnnotated } from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
-// import { Pring, property } from 'pring'
 import * as Retrycf from 'retrycf'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
-// import * as request from 'request'
-// import * as Slack from 'slack-node'
 import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
-// import { PringUtil } from './util'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
 import { Path, OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
 import { firestore, stripe } from './index'
@@ -402,8 +396,6 @@ export namespace Functions {
         // nothing to do
       }
 
-      // const orderShopColRef = PringUtil.collectionPath(new orderObject.initializableClass.orderShop())
-      // const orderColRef = PringUtil.collectionPath(new orderObject.initializableClass.order())
       await firestore.collection(Path.OrderShop)
         .where('order', '==', order.ref)
         .get()

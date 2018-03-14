@@ -1,8 +1,6 @@
 import * as admin from 'firebase-admin'
 import * as functions from 'firebase-functions'
-// import { Pring, property } from 'pring'
 import * as Orderable from '../index'
-// import * as Model from './sampleModel'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Retrycf from 'retrycf'
 import * as Stripe from 'stripe'
@@ -138,11 +136,7 @@ export class Firebase {
     dataSet.order = dataSet.order || Firebase.shared.defaultOrder
 
     const batch = Orderable.firestore.batch()
-    // const promises1: Promise<any>[] = []
-
-    // const user = new Model.SampleUser()
     const user = Tart.Snapshot.makeNotSavedSnapshot<Orderable.UserProtocol>(Orderable.Path.User, {})
-    // promises1.push(user.save())
     user.saveWithBatch(batch)
 
     let productsForReturn: Tart.Snapshot<Orderable.ProductProtocol>[] = []
@@ -154,7 +148,6 @@ export class Firebase {
       sh.data.isActive = !!shop.isActive
       sh.saveWithBatch(batch)
 
-      // let products: { product: Model.SampleProduct, sku: Model.SampleSKU, quantity: number }[] = []
       let products: { product: Tart.Snapshot<Orderable.ProductProtocol>, sku: Tart.Snapshot<Orderable.SKUProtocol>, quantity: number }[] = []
       for (const sku of shop.skus) {
         const pData: Orderable.ProductProtocol = { name: sku.name || 'product' }
@@ -176,8 +169,6 @@ export class Firebase {
       }
       shops.push({ shop: sh, products: products })
     }
-
-    // await batch.commit()
 
     const orderData: Orderable.OrderProtocol = {
       user: user.ref,
@@ -228,16 +219,11 @@ export class Firebase {
         orderSKUsForReturn.push(orderSKU)
       }
 
-      // await orderShop.save()
-      // promises2.push(orderShop.save())
       orderShop.saveWithBatch(batch)
       orderShopsForReturn.push(orderShop)
     }
-    // await order.save()
-    // promises2.push(order.save())
     order.saveWithBatch(batch)
     await batch.commit()
-    // await Promise.all(promises2)
 
     return <SampleModel>{
       user: user,
@@ -312,40 +298,5 @@ export class Firebase {
     expect(charge.amount).toEqual(model.order.data.amount)
     expect(charge.metadata.orderID).toEqual(model.order.ref.id)
     expect(charge.customer).toEqual(model.order.data.stripe!.customerID)
-  }
-
-  /// 指定した DocumentReference を observe する。 `timeout` を超えたらエラーを返す
-  observe(documentRef: FirebaseFirestore.DocumentReference, callback: (data: any, resolve: any, reject: any) => void) {
-    const timeout = 30000
-
-    var timer: NodeJS.Timer
-    var index = 0
-    var observer = Function()
-
-    return new Promise((resolve, reject) => {
-      documentRef.get().then(s => {
-        callback(s.data(), resolve, reject)
-      }, error => {
-        reject(error)
-      })
-
-      observer = documentRef.onSnapshot(s => {
-        callback(s.data(), resolve, reject)
-      }, error => {
-        reject(error)
-      })
-
-      timer = setTimeout(() => {
-        reject(`timeout ${timeout}`)
-      }, timeout)
-    }).then(() => {
-      clearTimeout(timer)
-      observer() // dispose
-      return Promise.resolve()
-    }).catch(error => {
-      clearInterval(timer)
-      observer() // dispose
-      return Promise.reject(error)
-    })
   }
 }
