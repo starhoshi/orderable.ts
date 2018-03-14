@@ -2,7 +2,7 @@ import * as FirebaseFirestore from '@google-cloud/firestore'
 import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import { firestore } from './index'
 
-export class Snapshot<T extends Pring> {
+export class Snapshot<T extends Timestamps> {
   ref: FirebaseFirestore.DocumentReference
   data: T
 
@@ -18,7 +18,7 @@ export class Snapshot<T extends Pring> {
     }
   }
 
-  static makeNotSavedSnapshot<T extends Pring>(path: string, data: T) {
+  static makeNotSavedSnapshot<T extends Timestamps>(path: string, data: T) {
     const ref = firestore.collection(path).doc()
     return new Snapshot<T>(ref, data)
   }
@@ -54,17 +54,12 @@ export class Snapshot<T extends Pring> {
   }
 }
 
-export interface Pring {
+export interface Timestamps {
   createdAt?: Date
   updatedAt?: Date
 }
 
-export interface ReferenceCollection {
-  createdAt?: Date
-  updatedAt?: Date
-}
-
-export const fetch = async <T extends Pring>(path: string, id: string) => {
+export const fetch = async <T extends Timestamps>(path: string, id: string) => {
   const ds = await firestore.collection(path).doc(id).get()
   return new Snapshot<T>(ds)
 }

@@ -12,17 +12,17 @@ export enum Path {
   OrderSKU = 'version/1/ordersku'
 }
 
-export interface UserProtocol extends Tart.Pring {
+export interface UserProtocol extends Tart.Timestamps {
   stripeCustomerID?: string
 }
 
-export interface ShopProtocol extends Tart.Pring {
+export interface ShopProtocol extends Tart.Timestamps {
   name?: string
   isActive: boolean
   freePostageMinimumPrice: number
 }
 
-export interface ProductProtocol extends Tart.Pring {
+export interface ProductProtocol extends Tart.Timestamps {
   name?: string
 }
 
@@ -32,7 +32,7 @@ export enum StockType {
   Infinite = 'infinite'
 }
 
-export interface SKUProtocol extends Tart.Pring {
+export interface SKUProtocol extends Tart.Timestamps {
   price: number
   stockType: StockType
   stock: number
@@ -54,7 +54,7 @@ export interface StripeProtocol {
   chargeID?: string
 }
 
-export interface OrderProtocol extends Tart.Pring {
+export interface OrderProtocol extends Tart.Timestamps {
   user: FirebaseFirestore.DocumentReference
   amount: number
   paidDate?: Date
@@ -80,7 +80,7 @@ export enum OrderShopPaymentStatus {
   Paid = 2
 }
 
-export interface OrderShopProtocol extends Tart.Pring {
+export interface OrderShopProtocol extends Tart.Timestamps {
   paymentStatus: OrderShopPaymentStatus
   user: FirebaseFirestore.DocumentReference
   order: FirebaseFirestore.DocumentReference
@@ -89,7 +89,7 @@ export interface OrderShopProtocol extends Tart.Pring {
   // orderSKUs: ReferenceCollection<OrderSKUProtocol<SKUProtocol, ProductProtocol>>
 }
 
-export interface OrderSKUProtocol extends Tart.Pring {
+export interface OrderSKUProtocol extends Tart.Timestamps {
   snapshotSKU?: SKUProtocol
   snapshotProduct?: ProductProtocol
   quantity: number
