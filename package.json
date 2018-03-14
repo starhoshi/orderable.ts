@@ -50,6 +50,7 @@
     ]
   },
   "dependencies": {
+    "@star__hoshi/tart": "^0.1.2",
     "event-response": "^0.2.7",
     "firebase-admin": "^5.9.1",
     "firebase-functions": "^0.8.1",

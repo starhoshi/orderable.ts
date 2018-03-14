@@ -1,5 +1,5 @@
 import { OrderProtocol } from './protocol';
-import * as Tart from './tart';
+import * as Tart from '@star__hoshi/tart';
 export declare enum ValidationErrorType {
     ShopIsNotActive = "ShopIsNotActive",
     SKUIsNotActive = "SKUIsNotActive",

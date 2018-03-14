@@ -14,7 +14,7 @@ const EventResponse = require("event-response");
 const error_1 = require("./error");
 const protocol_1 = require("./protocol");
 const index_1 = require("./index");
-const Tart = require("./tart");
+const Tart = require("@star__hoshi/tart");
 var Functions;
 (function (Functions) {
     class OrderSKUObject {
@@ -22,7 +22,7 @@ var Functions;
             return __awaiter(this, void 0, void 0, function* () {
                 const orderSKUQuerySnapshot = yield order.ref.collection('orderSKUs').get();
                 const orderSKUObjects = yield Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
-                    return Tart.fetch(protocol_1.Path.OrderSKU, qds.ref.id).then(snapshot => {
+                    return Tart.fetch(qds.ref).then(snapshot => {
                         const orderSKUObject = new OrderSKUObject();
                         orderSKUObject.orderSKU = snapshot;
                         return orderSKUObject;

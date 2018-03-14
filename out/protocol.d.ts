@@ -1,6 +1,6 @@
 import * as EventResponse from 'event-response';
 import * as Retrycf from 'retrycf';
-import * as Tart from './tart';
+import * as Tart from '@star__hoshi/tart';
 export declare enum Path {
     User = "version/1/user",
     Shop = "version/1/shop",

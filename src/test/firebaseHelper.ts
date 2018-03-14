@@ -5,7 +5,7 @@ import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestor
 import * as Retrycf from 'retrycf'
 import * as Stripe from 'stripe'
 import * as EventResponse from 'event-response'
-import * as Tart from '../tart'
+import * as Tart from '@star__hoshi/tart'
 
 const stripe = new Stripe(process.env.STRIPE as string)
 
@@ -214,8 +214,8 @@ export class Firebase {
         const orderSKU = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKUData)
         orderSKU.saveWithBatch(batch)
 
-        orderShop.setReferenceCollectionWithBatch('orderSKUs', orderSKU.ref, batch)
-        order.setReferenceCollectionWithBatch('orderSKUs', orderSKU.ref, batch)
+        orderShop.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU.ref)
+        order.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU.ref)
         orderSKUsForReturn.push(orderSKU)
       }
 
@@ -239,7 +239,7 @@ export class Firebase {
   step = 'preventMultipleProcessing'
 
   async expectOrder(model: SampleModel) {
-    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
     expect(order.data.completed).toEqual({ [this.step]: true })
     expect(order.data.result).toEqual({ status: EventResponse.Status.OK })
     expect(order.data.stripe!.cardID).toBeDefined()
@@ -252,7 +252,7 @@ export class Firebase {
   async expectStock(model: SampleModel) {
     let index = 0
     for (const sku of model.skus) {
-      const fetchedSKU = await Tart.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, sku.ref.id)
+      const fetchedSKU = await Tart.fetch<Orderable.SKUProtocol>(sku.ref)
       expect(fetchedSKU.data.stock).toEqual(sku.data.stock - model.orderSKUs[index].data.quantity)
       index += 1
     }
@@ -261,25 +261,25 @@ export class Firebase {
   async expectStockNotDecrementAndNotCompleted(model: SampleModel) {
     let index = 0
     for (const sku of model.skus) {
-      const fetchedSKU = await Tart.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, sku.ref.id)
+      const fetchedSKU = await Tart.fetch<Orderable.SKUProtocol>(sku.ref)
       expect(fetchedSKU.data.stock).toEqual(sku.data.stock)
       index += 1
     }
 
-    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
     expect((order.data.completed || {})[this.step]).toBeUndefined()
     expect(order.data.paymentStatus).toEqual(Orderable.OrderPaymentStatus.PaymentRequested)
   }
 
   async expectRetry(model: SampleModel, retryCount: number = 1) {
-    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
     expect(order.data.retry!.count).toBe(retryCount)
     expect(order.data.retry!.errors.length).toEqual(retryCount)
     expect(order.data.retry!.errors.length).toEqual(retryCount)
   }
 
   async expectFatal(model: SampleModel, step: string) {
-    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
     expect(order.data.result!.status).toEqual(EventResponse.Status.InternalError)
     expect(order.data.result!.id!).toBe(step)
     expect(order.data.result!.error).toBeDefined()
@@ -287,13 +287,13 @@ export class Firebase {
 
   async expectOrderShop(model: SampleModel) {
     for (const orderShop of model.orderShops) {
-      const fetchedOrderShop = await Tart.fetch<Orderable.OrderShopProtocol>(Orderable.Path.OrderShop, orderShop.ref.id)
+      const fetchedOrderShop = await Tart.fetch<Orderable.OrderShopProtocol>(orderShop.ref)
       expect(fetchedOrderShop.data.paymentStatus).toEqual(Orderable.OrderShopPaymentStatus.Paid)
     }
   }
 
   async expectStripe(model: SampleModel) {
-    const order = await Tart.fetch<Orderable.OrderProtocol>(Orderable.Path.Order, model.order.ref.id)
+    const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
     const charge = await stripe.charges.retrieve(order.data.stripe!.chargeID!)
     expect(charge.amount).toEqual(model.order.data.amount)
     expect(charge.metadata.orderID).toEqual(model.order.ref.id)

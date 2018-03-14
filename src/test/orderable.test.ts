@@ -9,6 +9,7 @@ import * as Rescue from 'rescue-fire'
 import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
 import * as Shana from 'shana'
+import * as Tart from '@star__hoshi/tart'
 
 beforeAll(() => {
   const _ = Helper.Firebase.shared
@@ -90,7 +91,7 @@ describe('OrderObject', () => {
           await orderObject.updateStock(Orderable.Functions.Operator.minus, 'step')
 
           for (const orderSKU of model.orderSKUs) {
-            const sku = await Orderable.fetch<Orderable.SKUProtocol>('version/1/sku', orderSKU.data.sku.id)
+            const sku = await Tart.fetch<Orderable.SKUProtocol>(orderSKU.data.sku)
             expect(sku.data.stock).toEqual(0)
           }
         })
@@ -122,8 +123,8 @@ describe('OrderObject', () => {
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            const sku = await Orderable.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, orderSKU.data.sku.id)
-            const newOrderSKU = await Orderable.fetch<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKU.ref.id)
+            const sku = await Tart.fetch<Orderable.SKUProtocol>(orderSKU.data.sku)
+            const newOrderSKU = await Tart.fetch<Orderable.OrderSKUProtocol>(orderSKU.ref)
             expect(sku.data.stock).toEqual(stock - quantity)
           }
         })
@@ -134,8 +135,8 @@ describe('OrderObject', () => {
           let quantity = 0
           for (const orderSKU of model.orderSKUs) {
             quantity += 1
-            const sku = await Orderable.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, orderSKU.data.sku.id)
-            const newOrderSKU = await Orderable.fetch<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKU.ref.id)
+            const sku = await Tart.fetch<Orderable.SKUProtocol>(orderSKU.data.sku)
+            const newOrderSKU = await Tart.fetch<Orderable.OrderSKUProtocol>(orderSKU.ref)
             expect(sku.data.stock).toEqual(stock + quantity)
           }
         })
@@ -160,7 +161,7 @@ describe('OrderObject', () => {
 
             // check stock did not decrement
             for (const sku of model.skus) {
-              const updatedSKU = await Orderable.fetch<Orderable.SKUProtocol>(Orderable.Path.SKU, sku.ref.id)
+              const updatedSKU = await Tart.fetch<Orderable.SKUProtocol>(sku.ref)
               expect(updatedSKU.data.stock).toEqual(sku.data.stock)
             }
           }

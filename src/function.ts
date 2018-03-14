@@ -8,7 +8,7 @@ import * as EventResponse from 'event-response'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
 import { Path, OrderPaymentStatus, OrderProtocol, OrderShopPaymentStatus, OrderShopProtocol, OrderSKUProtocol, ProductProtocol, ShopProtocol, SKUProtocol, StockType, StripeProtocol, UserProtocol } from './protocol'
 import { firestore, stripe } from './index'
-import * as Tart from './tart'
+import * as Tart from '@star__hoshi/tart'
 
 export namespace Functions {
   export class OrderSKUObject {
@@ -18,7 +18,7 @@ export namespace Functions {
     static async fetchFrom(order: Tart.Snapshot<OrderProtocol>) {
       const orderSKUQuerySnapshot = await order.ref.collection('orderSKUs').get()
       const orderSKUObjects = await Promise.all(orderSKUQuerySnapshot.docs.map(qds => {
-        return Tart.fetch<OrderSKUProtocol>(Path.OrderSKU, qds.ref.id).then(snapshot => {
+        return Tart.fetch<OrderSKUProtocol>(qds.ref).then(snapshot => {
           const orderSKUObject = new OrderSKUObject()
           orderSKUObject.orderSKU = snapshot
           return orderSKUObject

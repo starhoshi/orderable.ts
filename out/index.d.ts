@@ -4,7 +4,6 @@ import * as Stripe from 'stripe';
 export * from './error';
 export * from './protocol';
 export * from './function';
-export * from './tart';
 export declare let stripe: Stripe;
 export declare let firestore: FirebaseFirestore.Firestore;
 export declare const initialize: (options: {

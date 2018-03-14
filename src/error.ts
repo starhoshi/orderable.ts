@@ -1,7 +1,7 @@
 import * as EventResponse from 'event-response'
 import * as Retrycf from 'retrycf'
 import { OrderProtocol } from './protocol'
-import * as Tart from './tart'
+import * as Tart from '@star__hoshi/tart'
 
 export enum ValidationErrorType {
   ShopIsNotActive = 'ShopIsNotActive',
