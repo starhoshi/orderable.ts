@@ -14,7 +14,8 @@ export let firestore: FirebaseFirestore.Firestore
 
 export const initialize = (options: { adminOptions: any, stripeToken: string }) => {
   firestore = new FirebaseFirestore.Firestore(options.adminOptions)
-  Tart.initialize(options.adminOptions)
+  // Tart.initialize(options.adminOptions)
+  Tart.initialize(firestore)
   Retrycf.initialize(options.adminOptions)
   Mission.initialize(options.adminOptions)
   EventResponse.initialize(options.adminOptions)
