@@ -5269,12 +5269,12 @@ retry-request@^3.0.0, retry-request@^3.3.1:
     request "^2.81.0"
     through2 "^2.0.0"
 
-retrycf@^0.2.8:
-  version "0.2.8"
-  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.2.8.tgz#32ece09633950b306a4f8fa24562ab381790886b"
+retrycf@^0.2.9:
+  version "0.2.9"
+  resolved "https://registry.yarnpkg.com/retrycf/-/retrycf-0.2.9.tgz#76d93bcebaa76b37c8b693539b61842c3a53df01"
   dependencies:
-    "@google-cloud/firestore" "^0.11.2"
-    firebase-functions "^0.8.1"
+    "@google-cloud/firestore" "^0.13.0"
+    firebase-functions "^0.8.2"
 
 revalidator@0.1.x:
   version "0.1.8"

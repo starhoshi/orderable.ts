@@ -55,7 +55,7 @@
     "firebase-admin": "^5.10.0",
     "firebase-functions": "^0.8.2",
     "mission-completed": "^0.1.6",
-    "retrycf": "^0.2.8",
+    "retrycf": "^0.2.9",
     "stripe": "^5.5.0"
   }
 }
