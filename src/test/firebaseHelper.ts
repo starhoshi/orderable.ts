@@ -214,8 +214,8 @@ export class Firebase {
         const orderSKU = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKUData)
         orderSKU.saveWithBatch(batch)
 
-        orderShop.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU.ref)
-        order.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU.ref)
+        orderShop.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU)
+        order.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU)
         orderSKUsForReturn.push(orderSKU)
       }
 
