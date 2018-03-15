@@ -12,8 +12,8 @@ export * from './function'
 export let stripe: Stripe
 export let firestore: FirebaseFirestore.Firestore
 
-export const initialize = (options: { adminOptions: any, stripeToken: string }) => {
-  firestore = new FirebaseFirestore.Firestore(options.adminOptions)
+export const initialize = (options: { firestore: FirebaseFirestore.Firestore, stripeToken: string }) => {
+  firestore = options.firestore
   Tart.initialize(firestore)
   Retrycf.initialize(firestore)
   Mission.initialize(firestore)

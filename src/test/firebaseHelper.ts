@@ -75,10 +75,7 @@ export class Firebase {
       })
 
       Orderable.initialize({
-        adminOptions: {
-          projectId: 'sandbox-329fc',
-          keyFilename: './sandbox-329fc-firebase-adminsdk.json'
-        },
+        firestore: admin.firestore(),
         stripeToken: process.env.STRIPE as string
       })
     }
