@@ -136,14 +136,14 @@ export class Firebase {
     dataSet.order = dataSet.order || Firebase.shared.defaultOrder
 
     const batch = Orderable.firestore.batch()
-    const user = Tart.Snapshot.makeNotSavedSnapshot<Orderable.UserProtocol>(Orderable.Path.User, {})
+    const user = Tart.makeNotSavedSnapshot<Orderable.UserProtocol>(Orderable.Path.User, {})
     user.saveWithBatch(batch)
 
     let productsForReturn: Tart.Snapshot<Orderable.ProductProtocol>[] = []
     let skusForReturn: Tart.Snapshot<Orderable.SKUProtocol>[] = []
     let shops: { shop: Tart.Snapshot<Orderable.ShopProtocol>, products: { product: Tart.Snapshot<Orderable.ProductProtocol>, sku: Tart.Snapshot<Orderable.SKUProtocol>, quantity: number }[] }[] = []
     for (const shop of dataSet.shops) {
-      const sh = Tart.Snapshot.makeNotSavedSnapshot<Orderable.ShopProtocol>(Orderable.Path.Shop, { isActive: true, freePostageMinimumPrice: -1 })
+      const sh = Tart.makeNotSavedSnapshot<Orderable.ShopProtocol>(Orderable.Path.Shop, { isActive: true, freePostageMinimumPrice: -1 })
       sh.data.name = shop.name || 'shop'
       sh.data.isActive = !!shop.isActive
       sh.saveWithBatch(batch)
@@ -151,7 +151,7 @@ export class Firebase {
       let products: { product: Tart.Snapshot<Orderable.ProductProtocol>, sku: Tart.Snapshot<Orderable.SKUProtocol>, quantity: number }[] = []
       for (const sku of shop.skus) {
         const pData: Orderable.ProductProtocol = { name: sku.name || 'product' }
-        const p = Tart.Snapshot.makeNotSavedSnapshot<Orderable.ProductProtocol>(Orderable.Path.Product, pData)
+        const p = Tart.makeNotSavedSnapshot<Orderable.ProductProtocol>(Orderable.Path.Product, pData)
         p.saveWithBatch(batch)
 
         const skData: Orderable.SKUProtocol = {
@@ -161,7 +161,7 @@ export class Firebase {
           isPublished: true,
           isActive: !!sku.isActive
         }
-        const sk = Tart.Snapshot.makeNotSavedSnapshot<Orderable.SKUProtocol>(Orderable.Path.SKU, skData)
+        const sk = Tart.makeNotSavedSnapshot<Orderable.SKUProtocol>(Orderable.Path.SKU, skData)
         sk.saveWithBatch(batch)
         products.push({ product: p, sku: sk, quantity: sku.quantity || 1 })
         productsForReturn.push(p)
@@ -191,7 +191,7 @@ export class Firebase {
     if (dataSet.order.retry) {
       orderData.retry = dataSet.order.retry
     }
-    const order = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderProtocol>(Orderable.Path.Order, orderData)
+    const order = Tart.makeNotSavedSnapshot<Orderable.OrderProtocol>(Orderable.Path.Order, orderData)
 
     const orderSKUsForReturn: Tart.Snapshot<Orderable.OrderSKUProtocol>[] = []
     const orderShopsForReturn: Tart.Snapshot<Orderable.OrderShopProtocol>[] = []
@@ -201,7 +201,7 @@ export class Firebase {
         user: user.ref,
         order: order.ref
       }
-      const orderShop = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderShopProtocol>(Orderable.Path.OrderShop, orderShopData)
+      const orderShop = Tart.makeNotSavedSnapshot<Orderable.OrderShopProtocol>(Orderable.Path.OrderShop, orderShopData)
 
       for (const product of shop.products) {
         const orderSKUData: Orderable.OrderSKUProtocol = {
@@ -211,7 +211,7 @@ export class Firebase {
           sku: product.sku.ref,
           shop: shop.shop.ref
         }
-        const orderSKU = Tart.Snapshot.makeNotSavedSnapshot<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKUData)
+        const orderSKU = Tart.makeNotSavedSnapshot<Orderable.OrderSKUProtocol>(Orderable.Path.OrderSKU, orderSKUData)
         orderSKU.saveWithBatch(batch)
 
         orderShop.saveReferenceCollectionWithBatch(batch, 'orderSKUs', orderSKU)
