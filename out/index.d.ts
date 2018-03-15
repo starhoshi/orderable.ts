@@ -7,6 +7,6 @@ export * from './function';
 export declare let stripe: Stripe;
 export declare let firestore: FirebaseFirestore.Firestore;
 export declare const initialize: (options: {
-    adminOptions: any;
+    firestore: FirebaseFirestore.Firestore;
     stripeToken: string;
 }) => void;
