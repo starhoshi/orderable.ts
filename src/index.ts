@@ -18,6 +18,5 @@ export const initialize = (options: { firestore: FirebaseFirestore.Firestore, st
   Retrycf.initialize(firestore)
   Mission.initialize(firestore)
   EventResponse.initialize(firestore)
-  EventResponse.configure({ collectionPath: 'version/1/failure' })
   stripe = new Stripe(options.stripeToken)
 }

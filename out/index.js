@@ -17,6 +17,5 @@ exports.initialize = (options) => {
     Retrycf.initialize(exports.firestore);
     Mission.initialize(exports.firestore);
     EventResponse.initialize(exports.firestore);
-    EventResponse.configure({ collectionPath: 'version/1/failure' });
     exports.stripe = new Stripe(options.stripeToken);
 };
