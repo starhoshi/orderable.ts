@@ -56,7 +56,7 @@ export interface OrderProtocol extends Tart.Timestamps {
     completed?: {
         [id: string]: boolean;
     };
-    result?: EventResponse.IResult;
+    orderPaymentRequestedResult?: EventResponse.IResult;
     retry?: Retrycf.IRetry;
 }
 export declare enum OrderShopPaymentStatus {

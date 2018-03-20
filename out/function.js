@@ -61,6 +61,9 @@ var Functions;
                 }));
             });
         }
+        get result() {
+            return new EventResponse.Result(this.order.ref, 'orderPaymentRequested');
+        }
         get isCharged() {
             if (this.order && this.order.data.stripe && this.order.data.stripe.chargeID) {
                 return true;
@@ -126,7 +129,7 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.BadRequest, error);
             }
             throw new error_1.OrderableError('validateOrderExpired', error_1.ErrorType.Internal, error);
@@ -187,10 +190,10 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateShopIsActive', error_1.ErrorType.Internal, error);
         }
     });
@@ -211,10 +214,10 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateSKUIsActive', error_1.ErrorType.Internal, error);
         }
     });
@@ -241,10 +244,10 @@ var Functions;
         catch (error) {
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validatePaymentMethod', error_1.ErrorType.Internal, error);
         }
     });
@@ -261,10 +264,10 @@ var Functions;
             orderObject.order.data.completed = yield Mission.remove(orderObject.order.ref, preventStepName);
             if (error.constructor === error_1.BadRequestError) {
                 const brError = error;
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message);
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setBadRequest(brError.id, brError.message);
                 throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.BadRequest, error);
             }
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('validateAndDecreaseStock', error_1.ErrorType.Internal, error);
         }
     });
@@ -308,7 +311,7 @@ var Functions;
                 const errorType = yield stripeError.setError(orderObject.order, 'payment');
                 throw new error_1.OrderableError('payment', errorType, error);
             }
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('payment', error_1.ErrorType.Internal, error);
         }
     });
@@ -359,13 +362,13 @@ var Functions;
         }
         catch (error) {
             // If this step failed, we can not remember chargeID. Because set fatal error.
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
             throw new error_1.OrderableError('updateOrder', error_1.ErrorType.Internal, error);
         }
     });
     const setOrderTask = (orderObject) => __awaiter(this, void 0, void 0, function* () {
         try {
-            orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setOK();
+            orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setOK();
             return orderObject;
         }
         catch (error) {
@@ -382,7 +385,7 @@ var Functions;
         try {
             const retryStatus = Retrycf.retryStatus(orderObject.order.data, orderObject.previousOrder.data);
             if (retryStatus === Retrycf.Status.RetryFailed) {
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('orderPaymentRequested', 'Retry Failed');
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('orderPaymentRequested', 'Retry Failed');
                 throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, new error_1.RetryFailedError('orderPaymentRequested', orderObject.order.data.retry.errors.toString()));
             }
             // If order.paymentStatus update to PaymentRequested or should retry is true, continue processing.
@@ -408,7 +411,7 @@ var Functions;
         }
         catch (error) {
             if (error.constructor !== error_1.OrderableError) {
-                orderObject.order.data.result = yield new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message);
+                orderObject.order.data.orderPaymentRequestedResult = yield orderObject.result.setInternalError('Unknown Error', error.message);
                 throw new error_1.OrderableError('orderPaymentRequested', error_1.ErrorType.Internal, error);
             }
             return Promise.reject(error);

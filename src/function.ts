@@ -67,6 +67,10 @@ export namespace Functions {
       this.previousOrder = new Tart.Snapshot<OrderProtocol>(event.data.previous)
     }
 
+    get result() {
+      return new EventResponse.Result(this.order.ref, 'orderPaymentRequested')
+    }
+
     get isCharged(): boolean {
       if (this.order && this.order.data.stripe && this.order.data.stripe.chargeID) {
         return true
@@ -138,7 +142,7 @@ export namespace Functions {
     } catch (error) {
       if (error.constructor === BadRequestError) {
         const brError = error as BadRequestError
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setBadRequest(brError.id, brError.message)
         throw new OrderableError('validateOrderExpired', ErrorType.BadRequest, error)
       }
 
@@ -211,11 +215,11 @@ export namespace Functions {
     } catch (error) {
       if (error.constructor === BadRequestError) {
         const brError = error as BadRequestError
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setBadRequest(brError.id, brError.message)
         throw new OrderableError('validateShopIsActive', ErrorType.BadRequest, error)
       }
 
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
       throw new OrderableError('validateShopIsActive', ErrorType.Internal, error)
     }
   }
@@ -240,11 +244,11 @@ export namespace Functions {
     } catch (error) {
       if (error.constructor === BadRequestError) {
         const brError = error as BadRequestError
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setBadRequest(brError.id, brError.message)
         throw new OrderableError('validateSKUIsActive', ErrorType.BadRequest, error)
       }
 
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
       throw new OrderableError('validateSKUIsActive', ErrorType.Internal, error)
     }
   }
@@ -277,11 +281,11 @@ export namespace Functions {
     } catch (error) {
       if (error.constructor === BadRequestError) {
         const brError = error as BadRequestError
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setBadRequest(brError.id, brError.message)
         throw new OrderableError('validatePaymentMethod', ErrorType.BadRequest, error)
       }
 
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
       throw new OrderableError('validatePaymentMethod', ErrorType.Internal, error)
     }
   }
@@ -301,11 +305,11 @@ export namespace Functions {
 
       if (error.constructor === BadRequestError) {
         const brError = error as BadRequestError
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setBadRequest(brError.id, brError.message)
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setBadRequest(brError.id, brError.message)
         throw new OrderableError('validateAndDecreaseStock', ErrorType.BadRequest, error)
       }
 
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
       throw new OrderableError('validateAndDecreaseStock', ErrorType.Internal, error)
     }
   }
@@ -359,7 +363,7 @@ export namespace Functions {
         throw new OrderableError('payment', errorType, error)
       }
 
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
       throw new OrderableError('payment', ErrorType.Internal, error)
     }
   }
@@ -419,14 +423,14 @@ export namespace Functions {
       return orderObject
     } catch (error) {
       // If this step failed, we can not remember chargeID. Because set fatal error.
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
       throw new OrderableError('updateOrder', ErrorType.Internal, error)
     }
   }
 
   const setOrderTask = async (orderObject: OrderObject) => {
     try {
-      orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setOK()
+      orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setOK()
 
       return orderObject
     } catch (error) {
@@ -444,7 +448,7 @@ export namespace Functions {
     try {
       const retryStatus = Retrycf.retryStatus(orderObject.order.data, orderObject.previousOrder.data)
       if (retryStatus === Retrycf.Status.RetryFailed) {
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('orderPaymentRequested', 'Retry Failed')
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('orderPaymentRequested', 'Retry Failed')
         throw new OrderableError('orderPaymentRequested', ErrorType.Internal, new RetryFailedError('orderPaymentRequested', orderObject.order.data.retry!.errors.toString()))
       }
 
@@ -471,7 +475,7 @@ export namespace Functions {
       return Promise.resolve()
     } catch (error) {
       if (error.constructor !== OrderableError) {
-        orderObject.order.data.result = await new EventResponse.Result(orderObject.order.ref).setInternalError('Unknown Error', error.message)
+        orderObject.order.data.orderPaymentRequestedResult = await orderObject.result.setInternalError('Unknown Error', error.message)
         throw new OrderableError('orderPaymentRequested', ErrorType.Internal, error)
       }
 

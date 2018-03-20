@@ -66,7 +66,7 @@ export interface OrderProtocol extends Tart.Timestamps {
   // Mission
   completed?: { [id: string]: boolean }
   // EventResponse
-  result?: EventResponse.IResult
+  orderPaymentRequestedResult?: EventResponse.IResult
   // Retrycf
   retry?: Retrycf.IRetry
 

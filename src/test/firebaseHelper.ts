@@ -238,7 +238,7 @@ export class Firebase {
   async expectOrder(model: SampleModel) {
     const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
     expect(order.data.completed).toEqual({ [this.step]: true })
-    expect(order.data.result).toEqual({ status: EventResponse.Status.OK })
+    expect(order.data.orderPaymentRequestedResult).toEqual({ status: EventResponse.Status.OK })
     expect(order.data.stripe!.cardID).toBeDefined()
     expect(order.data.stripe!.customerID).toBeDefined()
     expect(order.data.stripe!.chargeID).toBeDefined()
@@ -277,9 +277,9 @@ export class Firebase {
 
   async expectFatal(model: SampleModel, step: string) {
     const order = await Tart.fetch<Orderable.OrderProtocol>(model.order.ref)
-    expect(order.data.result!.status).toEqual(EventResponse.Status.InternalError)
-    expect(order.data.result!.id!).toBe(step)
-    expect(order.data.result!.error).toBeDefined()
+    expect(order.data.orderPaymentRequestedResult!.status).toEqual(EventResponse.Status.InternalError)
+    expect(order.data.orderPaymentRequestedResult!.id!).toBe(step)
+    expect(order.data.orderPaymentRequestedResult!.message).toBeDefined()
   }
 
   async expectOrderShop(model: SampleModel) {

@@ -363,7 +363,7 @@ describe('orderPaymentRequested', () => {
 
       // Wait until the process is completed
       await Shana.observe<Orderable.OrderProtocol>(data.orderObject.order.ref, (d, r) => {
-        if (d.result && d.result.status === EventResponse.Status.OK) { return r() }
+        if (d.orderPaymentRequestedResult && d.orderPaymentRequestedResult.status === EventResponse.Status.OK) { return r() }
       })
 
       await Promise.all([

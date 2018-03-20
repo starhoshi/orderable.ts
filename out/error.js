@@ -130,12 +130,12 @@ class StripeError extends Error {
                 // validate
                 case StripeErrorType.StripeCardError: {
                     errorType = ErrorType.BadRequest;
-                    model.data.result = yield new EventResponse.Result(model.ref).setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`);
+                    model.data.orderPaymentRequestedResult = yield new EventResponse.Result(model.ref, 'orderPaymentRequested').setBadRequest(ValidationErrorType.StripeCardError, `${this.type}: ${this.message}`);
                     break;
                 }
                 case StripeErrorType.StripeInvalidRequestError: {
                     errorType = ErrorType.BadRequest;
-                    model.data.result = yield new EventResponse.Result(model.ref).setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`);
+                    model.data.orderPaymentRequestedResult = yield new EventResponse.Result(model.ref, 'orderPaymentRequested').setBadRequest(ValidationErrorType.StripeInvalidRequestError, `${this.type}: ${this.message}`);
                     break;
                 }
                 // retry
@@ -149,11 +149,11 @@ class StripeError extends Error {
                 case StripeErrorType.StripeAuthenticationError:
                 case StripeErrorType.UnexpectedError:
                     errorType = ErrorType.Internal;
-                    model.data.result = yield new EventResponse.Result(model.ref).setInternalError(step, `${this.type}: ${this.message}`);
+                    model.data.orderPaymentRequestedResult = yield new EventResponse.Result(model.ref, 'orderPaymentRequested').setInternalError(step, `${this.type}: ${this.message}`);
                     break;
                 default:
                     errorType = ErrorType.Internal;
-                    model.data.result = yield new EventResponse.Result(model.ref).setInternalError(step, `${this.type}: ${this.message}`);
+                    model.data.orderPaymentRequestedResult = yield new EventResponse.Result(model.ref, 'orderPaymentRequested').setInternalError(step, `${this.type}: ${this.message}`);
                     break;
             }
             return errorType;
