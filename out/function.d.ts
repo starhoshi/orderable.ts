@@ -1,7 +1,6 @@
 /// <reference types="stripe" />
 import * as functions from 'firebase-functions';
 import * as Stripe from 'stripe';
-import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore';
 import * as EventResponse from 'event-response';
 import { OrderProtocol, OrderSKUProtocol, ShopProtocol, SKUProtocol, UserProtocol } from './protocol';
 import * as Tart from '@star__hoshi/tart';
@@ -16,7 +15,7 @@ export declare namespace Functions {
         Stripe = 1,
     }
     class OrderObject {
-        event: functions.Event<DeltaDocumentSnapshot>;
+        event: functions.Event<functions.firestore.DeltaDocumentSnapshot>;
         orderID: string;
         order: Tart.Snapshot<OrderProtocol>;
         previousOrder: Tart.Snapshot<OrderProtocol>;
@@ -26,7 +25,7 @@ export declare namespace Functions {
         stripeCharge?: Stripe.charges.ICharge;
         stripeCard?: Stripe.cards.ICard;
         getShops(): Promise<void>;
-        constructor(event: functions.Event<DeltaDocumentSnapshot>);
+        constructor(event: functions.Event<functions.firestore.DeltaDocumentSnapshot>);
         readonly result: EventResponse.Result;
         readonly isCharged: boolean;
         readonly paymentAgencyType: PaymentAgencyType;

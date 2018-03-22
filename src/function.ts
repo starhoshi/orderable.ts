@@ -2,7 +2,6 @@ import * as functions from 'firebase-functions'
 import * as FirebaseFirestore from '@google-cloud/firestore'
 import * as Stripe from 'stripe'
 import * as Retrycf from 'retrycf'
-import { DeltaDocumentSnapshot } from 'firebase-functions/lib/providers/firestore'
 import * as Mission from 'mission-completed'
 import * as EventResponse from 'event-response'
 import { BadRequestError, BaseError, ErrorType, OrderableError, RetryFailedError, StripeError, StripeErrorType, ValidationErrorType } from './error'
@@ -40,7 +39,7 @@ export namespace Functions {
   }
 
   export class OrderObject {
-    event: functions.Event<DeltaDocumentSnapshot>
+    event: functions.Event<functions.firestore.DeltaDocumentSnapshot>
     orderID: string
     order: Tart.Snapshot<OrderProtocol>
     previousOrder: Tart.Snapshot<OrderProtocol>
@@ -60,7 +59,7 @@ export namespace Functions {
       }))
     }
 
-    constructor(event: functions.Event<DeltaDocumentSnapshot>) {
+    constructor(event: functions.Event<functions.firestore.DeltaDocumentSnapshot>) {
       this.event = event
       this.orderID = event.params!.orderID!
       this.order = new Tart.Snapshot<OrderProtocol>(event.data)
